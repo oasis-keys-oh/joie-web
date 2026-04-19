@@ -201,6 +201,55 @@ export default async function TripPage({ params }: TripPageProps) {
               />
             )}
 
+            {/* Featured: Hunt + Prep */}
+            <div className="mb-14">
+              <div className="flex items-center gap-5 mb-7">
+                <p className="label shrink-0">Trip Extras</p>
+                <div className="flex-1 border-t border-gray-100" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Link
+                  href={`/trip/${params.slug}/hunt`}
+                  className="group relative overflow-hidden rounded-sm border border-gray-100 hover:border-gold hover:border-opacity-60 transition-all duration-300 p-6"
+                  style={{ background: 'linear-gradient(135deg, #1B2B4B 0%, #243660 100%)' }}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <span style={{ fontSize: '1.8rem' }}>🏆</span>
+                    <span className="text-white opacity-40 group-hover:opacity-80 transition-opacity text-sm">→</span>
+                  </div>
+                  <p className="text-gold text-xs tracking-widest uppercase mb-1" style={{ letterSpacing: '0.18em' }}>
+                    The Hunt
+                  </p>
+                  <h3 className="font-serif font-bold text-white text-xl mb-2" style={{ lineHeight: '1.1' }}>
+                    Scavenger Hunt
+                  </h3>
+                  <p className="text-white opacity-50 text-xs leading-relaxed">
+                    11 challenges across Morocco and France. Points, stakes, a Grand Finale verse — and the first stork rule.
+                  </p>
+                </Link>
+
+                <Link
+                  href={`/trip/${params.slug}/prep`}
+                  className="group relative overflow-hidden rounded-sm border border-gray-100 hover:border-gold hover:border-opacity-60 transition-all duration-300 p-6"
+                  style={{ background: 'linear-gradient(135deg, #f8f5ef 0%, #f0ebe0 100%)' }}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <span style={{ fontSize: '1.8rem' }}>🧳</span>
+                    <span className="text-ink-muted opacity-40 group-hover:opacity-80 transition-opacity text-sm">→</span>
+                  </div>
+                  <p className="text-gold text-xs tracking-widest uppercase mb-1" style={{ letterSpacing: '0.18em' }}>
+                    Before You Go
+                  </p>
+                  <h3 className="font-serif font-bold text-navy text-xl mb-2" style={{ lineHeight: '1.1' }}>
+                    Trip Prep
+                  </h3>
+                  <p className="text-navy opacity-50 text-xs leading-relaxed">
+                    Packing checklist, books &amp; films, money &amp; connectivity, health &amp; safety — everything before departure.
+                  </p>
+                </Link>
+              </div>
+            </div>
+
             {/* Day grid */}
             <div>
               <div className="flex items-center gap-5 mb-8">
