@@ -30,9 +30,10 @@ export default async function TripPage({ params }: TripPageProps) {
   let error: string | null = null
 
   try {
-    trip = await getTripBySlug(params.slug)
-    days = await getTripDays(trip.id)
-  } catch (err) {
+    const t = await getTripBySlug(params.slug)
+    trip = t
+    days = await getTripDays(t.id)
+  } catch {
     error = 'Trip not found'
   }
 

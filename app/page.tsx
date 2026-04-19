@@ -1,5 +1,3 @@
-import Link from 'next/link'
-
 export default function Landing() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-8">

@@ -46,11 +46,13 @@ export default async function DayPage({ params }: DayPageProps) {
   let error: string | null = null
 
   try {
-    trip = await getTripBySlug(params.slug)
-    allDays = await getTripDays(trip.id)
-    day = await getTripDay(trip.id, dayNumber)
-    events = await getDayEvents(day.id)
-  } catch (err) {
+    const t = await getTripBySlug(params.slug)
+    trip = t
+    allDays = await getTripDays(t.id)
+    const d = await getTripDay(t.id, dayNumber)
+    day = d
+    events = await getDayEvents(d.id)
+  } catch {
     error = 'Day not found'
   }
 
