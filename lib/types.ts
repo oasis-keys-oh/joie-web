@@ -40,6 +40,7 @@ export interface Trip {
   has_phrases?: boolean;
   has_ef?: boolean;
   has_thread_boxes?: boolean;
+  trip_narrative?: string;
   created_at?: string;
   updated_at?: string;
 }
