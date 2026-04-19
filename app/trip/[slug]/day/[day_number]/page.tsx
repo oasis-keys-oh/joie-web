@@ -14,6 +14,8 @@ import NarrativeSection from '@/components/NarrativeSection'
 import DayCalloutSidebar from '@/components/DayCalloutSidebar'
 import DayNavigation from '@/components/DayNavigation'
 import PhotoFooter from '@/components/PhotoFooter'
+import PersonaDayCallout from '@/components/PersonaDayCallout'
+import FeedbackDrawer from '@/components/FeedbackDrawer'
 import { Trip, TripDay, Event } from '@/lib/types'
 import Link from 'next/link'
 
@@ -29,11 +31,11 @@ export async function generateMetadata({ params }: DayPageProps) {
     const trip = await getTripBySlug(params.slug)
     const day = await getTripDay(trip.id, parseInt(params.day_number))
     return {
-      title: `${day.title} — Day ${day.day_number} | Joie`,
+      title: `${day.title} — Day ${day.day_number} | Oukala Journeys`,
       description: `Day ${day.day_number} of your journey`,
     }
   } catch {
-    return { title: 'Day | Joie' }
+    return { title: 'Day | Oukala Journeys' }
   }
 }
 
@@ -80,27 +82,7 @@ export default async function DayPage({ params }: DayPageProps) {
 
   return (
     <>
-      {/* Back to trip overview — subtle breadcrumb overlaid on hero */}
-      <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
-        <div className="flex items-center justify-between px-8 py-5">
-          {/* Left: back link */}
-          <Link
-            href={`/trip/${params.slug}`}
-            className="pointer-events-auto flex items-center gap-2 group"
-            style={{ textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}
-          >
-            <span className="text-white opacity-60 group-hover:opacity-100 transition-opacity text-sm">←</span>
-            <span
-              className="text-white opacity-60 group-hover:opacity-100 transition-opacity text-xs uppercase tracking-widest hidden sm:inline"
-              style={{ letterSpacing: '0.16em' }}
-            >
-              {trip.title}
-            </span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Full-bleed day hero */}
+      {/* Full-bleed day hero — global header (layout.tsx) handles the back link via NavBreadcrumb */}
       <DayHeader day={day} />
 
       {/* Three-column: left day-nav | center content | right callout sidebar */}
@@ -134,6 +116,9 @@ export default async function DayPage({ params }: DayPageProps) {
                 </p>
               </div>
             )}
+
+            {/* Persona-specific framing — pulled from per_person_moments table */}
+            <PersonaDayCallout dayId={day.id} />
 
             {/* Meals */}
             {(day.meal_breakfast || day.meal_lunch || day.meal_dinner) && (
@@ -191,6 +176,19 @@ export default async function DayPage({ params }: DayPageProps) {
                 </div>
               </div>
             )}
+
+            {/* Feedback — leave a note for the curators */}
+            <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between">
+              <p className="text-xs text-ink-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.06em' }}>
+                Have a thought about this day?
+              </p>
+              <FeedbackDrawer
+                tripId={trip.id}
+                dayId={day.id}
+                dayTitle={day.title}
+                dayNumber={day.day_number}
+              />
+            </div>
 
             {/* Navigation */}
             <DayNavigation

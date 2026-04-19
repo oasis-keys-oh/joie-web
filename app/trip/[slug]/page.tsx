@@ -1,11 +1,40 @@
 import { getTripBySlug, getTripDays } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import TripHeader from '@/components/TripHeader'
 import DayCard from '@/components/DayCard'
 import TripSidebar from '@/components/TripSidebar'
 import PhotoFooter from '@/components/PhotoFooter'
+import PreTripDrops from '@/components/PreTripDrops'
 import { Trip, TripDay } from '@/lib/types'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
+
+async function getPreTripDrops(tripId: string, tripStartDate: string) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const { data } = await supabase
+    .from('pre_trip_content')
+    .select('id, date_offset_days, type, title, content')
+    .eq('trip_id', tripId)
+    .lt('date_offset_days', 0)   // only pre-trip rows (negative offsets)
+    .order('date_offset_days', { ascending: false })  // most recent first
+
+  if (!data) return []
+
+  const tripStart = new Date(tripStartDate)
+
+  return data.map((row: any) => {
+    const unlockDate = new Date(tripStart)
+    unlockDate.setDate(unlockDate.getDate() + row.date_offset_days) // date_offset_days is negative
+    return {
+      ...row,
+      unlock_date: unlockDate.toISOString().slice(0, 10), // YYYY-MM-DD
+    }
+  })
+}
 
 interface TripPageProps {
   params: {
@@ -17,23 +46,26 @@ export async function generateMetadata({ params }: TripPageProps) {
   try {
     const trip = await getTripBySlug(params.slug)
     return {
-      title: `${trip.title} | Joie`,
+      title: `${trip.title} | Oukala Journeys`,
       description: trip.subtitle || 'Your personalized journey',
     }
   } catch {
-    return { title: 'Trip | Joie' }
+    return { title: 'Trip | Oukala Journeys' }
   }
 }
 
 export default async function TripPage({ params }: TripPageProps) {
   let trip: Trip | null = null
   let days: TripDay[] = []
+  let drops: any[] = []
   let error: string | null = null
+  const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD server time
 
   try {
     const t = await getTripBySlug(params.slug)
     trip = t
     days = await getTripDays(t.id)
+    drops = await getPreTripDrops(t.id, t.start_date)
   } catch {
     error = 'Trip not found'
   }
@@ -158,6 +190,15 @@ export default async function TripPage({ params }: TripPageProps) {
                   {trip.epigraph}
                 </p>
               </div>
+            )}
+
+            {/* Pre-trip content drops — only visible before departure */}
+            {drops.length > 0 && (
+              <PreTripDrops
+                drops={drops}
+                tripStartDate={trip.start_date}
+                today={today}
+              />
             )}
 
             {/* Day grid */}

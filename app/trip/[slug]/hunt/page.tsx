@@ -96,7 +96,7 @@ export default async function HuntPage({ params }: HuntPageProps) {
         </div>
       </div>
 
-      <HuntClient tripSlug={params.slug} challenges={challenges} />
+      <HuntClient tripId={trip.id} tripSlug={params.slug} challenges={challenges} />
     </div>
   )
 }

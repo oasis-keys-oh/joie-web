@@ -1,4 +1,4 @@
-import { TripDay } from '@/lib/types'
+import { TripDay, LiteraryQuote, PhotoSpot } from '@/lib/types'
 
 interface DayCalloutSidebarProps {
   day: TripDay
@@ -81,7 +81,9 @@ export default function DayCalloutSidebar({ day }: DayCalloutSidebarProps) {
     day.wow_moment ||
     (day.thread_content && threadText) ||
     day.local_insider_tip ||
-    phraseText
+    phraseText ||
+    day.literary_quote?.text ||
+    day.photo_spot?.location
 
   if (!hasContent) return null
 
@@ -172,6 +174,72 @@ export default function DayCalloutSidebar({ day }: DayCalloutSidebarProps) {
               style={{ fontSize: '0.68rem', lineHeight: '1.55' }}
             >
               {phraseContext}
+            </p>
+          )}
+        </SidebarBox>
+      )}
+
+      {/* Literary Quote */}
+      {day.literary_quote?.text && (
+        <SidebarBox icon="❝" label="From the Literature" accentColor="#6366f1">
+          <p
+            className="font-serif text-navy italic leading-relaxed mb-2"
+            style={{ fontSize: '0.8rem', lineHeight: '1.7' }}
+          >
+            {day.literary_quote.text}
+          </p>
+          {day.literary_quote.attribution && (
+            <p
+              className="text-ink-muted text-right"
+              style={{ fontSize: '0.66rem', letterSpacing: '0.04em' }}
+            >
+              {day.literary_quote.attribution}
+            </p>
+          )}
+          {day.literary_quote.context && (
+            <p
+              className="text-ink-muted mt-1.5"
+              style={{ fontSize: '0.68rem', lineHeight: '1.55' }}
+            >
+              {day.literary_quote.context}
+            </p>
+          )}
+        </SidebarBox>
+      )}
+
+      {/* Instagram Photo Spot */}
+      {day.photo_spot?.location && (
+        <SidebarBox icon="📍" label="Photo Spot" accentColor="#0ea5e9">
+          <p
+            className="text-navy font-semibold mb-1"
+            style={{ fontSize: '0.78rem', letterSpacing: '0.01em' }}
+          >
+            {day.photo_spot.location}
+          </p>
+          {day.photo_spot.timing && (
+            <p className="text-ink-muted mt-1" style={{ fontSize: '0.7rem', lineHeight: '1.5' }}>
+              🕐 {day.photo_spot.timing}
+            </p>
+          )}
+          {day.photo_spot.angle && (
+            <p className="text-ink mt-1" style={{ fontSize: '0.7rem', lineHeight: '1.5' }}>
+              {day.photo_spot.angle}
+            </p>
+          )}
+          {day.photo_spot.instagram_caption && (
+            <p
+              className="text-ink-muted mt-2 italic"
+              style={{ fontSize: '0.67rem', lineHeight: '1.55' }}
+            >
+              &ldquo;{day.photo_spot.instagram_caption}&rdquo;
+            </p>
+          )}
+          {day.photo_spot.hashtags && day.photo_spot.hashtags.length > 0 && (
+            <p
+              className="mt-2"
+              style={{ fontSize: '0.64rem', color: '#0ea5e9', lineHeight: '1.6' }}
+            >
+              {day.photo_spot.hashtags.join(' ')}
             </p>
           )}
         </SidebarBox>

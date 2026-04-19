@@ -33,12 +33,12 @@ export default function Landing() {
           <h1
             className="font-serif font-bold text-white mb-6"
             style={{
-              fontSize: 'clamp(3.5rem, 10vw, 7rem)',
+              fontSize: 'clamp(3rem, 8vw, 6rem)',
               lineHeight: '0.95',
               letterSpacing: '-0.025em',
             }}
           >
-            Joie
+            Oukala Journeys
           </h1>
 
           <p
@@ -50,7 +50,7 @@ export default function Landing() {
               lineHeight: '1.6',
             }}
           >
-            Your personalized journey, crafted by Oukala Journeys.
+            Private travel, beautifully planned.
             Access your trip through the private link provided by your guide.
           </p>
 

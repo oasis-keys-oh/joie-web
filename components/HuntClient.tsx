@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import { usePersona, TRAVELERS } from '@/components/PersonaProvider'
 
 interface Challenge {
@@ -15,19 +16,25 @@ interface Challenge {
 }
 
 interface HuntClientProps {
-  tripSlug: string
+  tripId: string
+  tripSlug: string   // kept for UI breadcrumb links only
   challenges: Challenge[]
 }
 
-// Local submissions store (in-memory for this session — future: write to Supabase hunt_submissions)
-type Submissions = Record<string, string[]> // challengeId → travelerKeys who completed it
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+// Submissions: challengeId → travelerKeys who completed it
+type Submissions = Record<string, string[]>
 
 const TIEBREAKER_RULE = 'Whoever spots the first stork in Morocco wins the tiebreaker.'
 
 function getPointsColor(pts: number): string {
-  if (pts >= 10) return '#f97316'   // orange — grand finale
-  if (pts >= 5)  return '#a78bfa'   // purple — challenge
-  return '#C9A84C'                  // gold — discovery
+  if (pts >= 10) return '#f97316'
+  if (pts >= 5)  return '#a78bfa'
+  return '#C9A84C'
 }
 
 function getPointsLabel(pts: number): string {
@@ -36,18 +43,71 @@ function getPointsLabel(pts: number): string {
   return 'Discovery'
 }
 
-export default function HuntClient({ tripSlug, challenges }: HuntClientProps) {
+export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientProps) {
   const { traveler } = usePersona()
   const [submissions, setSubmissions] = useState<Submissions>({})
   const [finaleVerse, setFinaleVerse] = useState('')
   const [finaleSubmitted, setFinaleSubmitted] = useState(false)
   const [activeFilter, setActiveFilter] = useState<'all' | 'mine' | 'open'>('all')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  // Load all existing submissions from Supabase on mount
+  const loadSubmissions = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('hunt_submissions')
+        .select('challenge_id, traveler_key')
+        .eq('trip_id', tripId)
+
+      if (error) {
+        console.error('Failed to load hunt submissions:', error.message)
+      } else if (data) {
+        const built: Submissions = {}
+        for (const row of data) {
+          if (!built[row.challenge_id]) built[row.challenge_id] = []
+          if (!built[row.challenge_id].includes(row.traveler_key)) {
+            built[row.challenge_id].push(row.traveler_key)
+          }
+        }
+        setSubmissions(built)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [tripSlug])
+
+  useEffect(() => {
+    loadSubmissions()
+  }, [loadSubmissions])
+
+  // Also load any saved grand finale verse for current traveler
+  useEffect(() => {
+    if (!traveler) return
+    const grandFinale = challenges.find((c) => c.is_grand_finale)
+    if (!grandFinale) return
+
+    async function loadVerse() {
+      const { data } = await supabase
+        .from('hunt_submissions')
+        .select('verse_text, completed_at')
+        .eq('trip_id', tripId)
+        .eq('challenge_id', grandFinale!.id)
+        .eq('traveler_key', traveler!.key)
+        .maybeSingle()
+
+      if (data?.verse_text) {
+        setFinaleVerse(data.verse_text)
+        setFinaleSubmitted(true)
+      }
+    }
+    loadVerse()
+  }, [traveler, challenges, tripSlug])
 
   // Compute scores
   const scores: Record<string, number> = {}
-  for (const t of TRAVELERS) {
-    scores[t.key] = 0
-  }
+  for (const t of TRAVELERS) scores[t.key] = 0
   for (const [challengeId, completedBy] of Object.entries(submissions)) {
     const challenge = challenges.find((c) => c.id === challengeId)
     if (!challenge) continue
@@ -59,14 +119,77 @@ export default function HuntClient({ tripSlug, challenges }: HuntClientProps) {
   const sorted = TRAVELERS.slice().sort((a, b) => (scores[b.key] || 0) - (scores[a.key] || 0))
   const totalPossible = challenges.reduce((sum, c) => sum + c.points, 0)
 
-  function toggleCompletion(challengeId: string, travelerKey: string) {
+  async function toggleCompletion(challengeId: string, travelerKey: string) {
+    const current = submissions[challengeId] || []
+    const isDone = current.includes(travelerKey)
+
+    // Optimistic UI update
     setSubmissions((prev) => {
-      const current = prev[challengeId] || []
-      const next = current.includes(travelerKey)
+      const next = isDone
         ? current.filter((k) => k !== travelerKey)
         : [...current, travelerKey]
       return { ...prev, [challengeId]: next }
     })
+
+    setSaving(true)
+    try {
+      if (isDone) {
+        // Remove
+        await supabase
+          .from('hunt_submissions')
+          .delete()
+          .eq('trip_id', tripId)
+          .eq('challenge_id', challengeId)
+          .eq('traveler_key', travelerKey)
+      } else {
+        // Insert
+        await supabase
+          .from('hunt_submissions')
+          .upsert({
+            trip_id: tripId,
+            challenge_id: challengeId,
+            traveler_key: travelerKey,
+            completed_at: new Date().toISOString(),
+          }, { onConflict: 'trip_id,challenge_id,traveler_key' })
+      }
+    } catch (err) {
+      console.error('Failed to save submission:', err)
+      // Revert optimistic update on error
+      await loadSubmissions()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function submitFinaleVerse() {
+    if (!finaleVerse.trim() || !traveler) return
+    const grandFinale = challenges.find((c) => c.is_grand_finale)
+    if (!grandFinale) return
+
+    setSaving(true)
+    try {
+      await supabase
+        .from('hunt_submissions')
+        .upsert({
+          trip_id: tripId,
+          challenge_id: grandFinale.id,
+          traveler_key: traveler.key,
+          verse_text: finaleVerse.trim(),
+          completed_at: new Date().toISOString(),
+        }, { onConflict: 'trip_id,challenge_id,traveler_key' })
+
+      setFinaleSubmitted(true)
+      // Also mark grand finale as completed in scores
+      setSubmissions((prev) => {
+        const current = prev[grandFinale.id] || []
+        if (current.includes(traveler.key)) return prev
+        return { ...prev, [grandFinale.id]: [...current, traveler.key] }
+      })
+    } catch (err) {
+      console.error('Failed to submit verse:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const iCompletedCount = traveler
@@ -86,8 +209,22 @@ export default function HuntClient({ tripSlug, challenges }: HuntClientProps) {
   const grandFinale = challenges.find((c) => c.is_grand_finale)
   const regularChallenges = filteredChallenges.filter((c) => !c.is_grand_finale)
 
+  // Split regular challenges into tiers for clearer visual grouping
+  const discoveryChallenges = regularChallenges.filter((c) => c.points < 5)
+  const mainChallenges      = regularChallenges.filter((c) => c.points >= 5)
+
   return (
     <div className="max-w-5xl mx-auto px-6 sm:px-10 lg:px-14 py-12">
+
+      {/* Saving indicator */}
+      {saving && (
+        <div
+          className="fixed top-20 right-6 z-50 px-4 py-2 rounded-sm text-xs text-white uppercase tracking-widest"
+          style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
+        >
+          Saving…
+        </div>
+      )}
 
       {/* Leaderboard */}
       <div className="mb-12">
@@ -97,43 +234,58 @@ export default function HuntClient({ tripSlug, challenges }: HuntClientProps) {
           <span className="text-xs text-ink-muted">{totalPossible} pts total</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {sorted.map((t, rank) => {
-            const pts = scores[t.key] || 0
-            const pct = totalPossible > 0 ? (pts / totalPossible) * 100 : 0
-            const isMe = traveler?.key === t.key
-            return (
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {TRAVELERS.map((t) => (
               <div
                 key={t.key}
-                className="relative p-4 rounded-sm text-center"
-                style={{
-                  background: isMe ? 'rgba(27,43,75,0.06)' : 'rgba(27,43,75,0.02)',
-                  border: isMe ? `2px solid ${t.color}` : '1px solid rgba(27,43,75,0.07)',
-                }}
+                className="p-4 rounded-sm text-center animate-pulse"
+                style={{ background: 'rgba(27,43,75,0.03)', border: '1px solid rgba(27,43,75,0.07)' }}
               >
-                {rank === 0 && pts > 0 && (
-                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-sm">🏆</div>
-                )}
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold mx-auto mb-2"
-                  style={{ background: t.color }}
-                >
-                  {t.initials}
-                </div>
-                <p className="text-navy font-medium text-sm">{t.name}</p>
-                <p className="font-serif font-bold text-navy text-2xl mt-1">{pts}</p>
-                <p className="text-xs text-ink-muted">pts</p>
-                {/* Mini progress bar */}
-                <div className="mt-2 h-1 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${pct}%`, background: t.color }}
-                  />
-                </div>
+                <div className="w-10 h-10 rounded-full mx-auto mb-2" style={{ background: t.color + '40' }} />
+                <div className="h-3 bg-gray-100 rounded mx-auto w-12 mb-2" />
+                <div className="h-6 bg-gray-100 rounded mx-auto w-8" />
               </div>
-            )
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {sorted.map((t, rank) => {
+              const pts = scores[t.key] || 0
+              const pct = totalPossible > 0 ? (pts / totalPossible) * 100 : 0
+              const isMe = traveler?.key === t.key
+              return (
+                <div
+                  key={t.key}
+                  className="relative p-4 rounded-sm text-center"
+                  style={{
+                    background: isMe ? 'rgba(27,43,75,0.06)' : 'rgba(27,43,75,0.02)',
+                    border: isMe ? `2px solid ${t.color}` : '1px solid rgba(27,43,75,0.07)',
+                  }}
+                >
+                  {rank === 0 && pts > 0 && (
+                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-sm">🏆</div>
+                  )}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold mx-auto mb-2"
+                    style={{ background: t.color }}
+                  >
+                    {t.initials}
+                  </div>
+                  <p className="text-navy font-medium text-sm">{t.name}</p>
+                  <p className="font-serif font-bold text-navy text-2xl mt-1">{pts}</p>
+                  <p className="text-xs text-ink-muted">pts</p>
+                  <div className="mt-2 h-1 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${pct}%`, background: t.color }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         <p
           className="mt-3 text-center text-xs text-ink-muted"
@@ -170,9 +322,111 @@ export default function HuntClient({ tripSlug, challenges }: HuntClientProps) {
         )}
       </div>
 
-      {/* Challenge cards */}
+      {/* ── The Challenges (5pt) ── */}
+      {mainChallenges.length > 0 && (
+        <div className="mb-2">
+          <div className="flex items-center gap-4 mb-4">
+            <p className="label shrink-0" style={{ color: '#a78bfa' }}>The Challenge</p>
+            <div className="flex-1 border-t" style={{ borderColor: '#a78bfa30' }} />
+            <span className="text-xs shrink-0" style={{ color: '#a78bfa', letterSpacing: '0.1em' }}>5 pts each</span>
+          </div>
+        </div>
+      )}
+
+      {/* Challenge cards — Challenges (5pt) first, then Discoveries (3pt) */}
+      <div className="space-y-4 mb-6">
+        {mainChallenges.map((challenge) => {
+          const completedBy = submissions[challenge.id] || []
+          const iCompleted = traveler ? completedBy.includes(traveler.key) : false
+          const ptColor = getPointsColor(challenge.points)
+          const ptLabel = getPointsLabel(challenge.points)
+
+          return (
+            <div
+              key={challenge.id}
+              className="rounded-sm overflow-hidden"
+              style={{
+                border: `1px solid ${iCompleted ? ptColor + '40' : 'rgba(27,43,75,0.08)'}`,
+                background: iCompleted ? `${ptColor}08` : 'white',
+              }}
+            >
+              <div className="p-5">
+                <div className="flex items-start gap-4">
+                  <div
+                    className="shrink-0 flex flex-col items-center justify-center rounded-sm px-3 py-2"
+                    style={{ background: ptColor + '15', minWidth: '52px' }}
+                  >
+                    <span className="font-serif font-bold text-lg" style={{ color: ptColor, lineHeight: '1' }}>
+                      {challenge.points}
+                    </span>
+                    <span className="text-xs mt-0.5 uppercase tracking-wide" style={{ color: ptColor, fontSize: '0.58rem', letterSpacing: '0.1em' }}>
+                      {ptLabel}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-serif font-bold text-navy text-base leading-snug">
+                      {challenge.title}
+                    </h3>
+                    {challenge.category && (
+                      <p className="text-xs text-ink-muted uppercase tracking-widest mt-0.5" style={{ letterSpacing: '0.1em' }}>
+                        {challenge.category}
+                      </p>
+                    )}
+                    <p className="text-sm text-ink mt-2 leading-relaxed" style={{ color: '#555' }}>
+                      {challenge.description}
+                    </p>
+                    {challenge.location_hint && (
+                      <p className="text-xs text-ink-muted mt-2 italic">📍 {challenge.location_hint}</p>
+                    )}
+                    {challenge.requires_photo && (
+                      <p className="text-xs mt-2" style={{ color: ptColor }}>📸 Photo proof required</p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-gray-50 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-ink-muted uppercase tracking-widest mr-1" style={{ letterSpacing: '0.1em' }}>
+                    Mark complete:
+                  </span>
+                  {TRAVELERS.map((t) => {
+                    const done = completedBy.includes(t.key)
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => toggleCompletion(challenge.id, t.key)}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
+                        style={{
+                          background: done ? t.color : 'rgba(27,43,75,0.05)',
+                          color: done ? 'white' : '#9ca3af',
+                          border: `1px solid ${done ? t.color : 'transparent'}`,
+                        }}
+                      >
+                        <span className="w-4 h-4 rounded-full flex items-center justify-center text-white text-xs shrink-0" style={{ background: t.color, fontSize: '0.6rem' }}>
+                          {t.initials}
+                        </span>
+                        {t.name}{done && ' ✓'}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Discoveries (3pt) ── */}
+      {discoveryChallenges.length > 0 && (
+        <div className="mb-2 mt-10">
+          <div className="flex items-center gap-4 mb-4">
+            <p className="label shrink-0" style={{ color: '#C9A84C' }}>Discoveries</p>
+            <div className="flex-1 border-t" style={{ borderColor: '#C9A84C30' }} />
+            <span className="text-xs shrink-0" style={{ color: '#C9A84C', letterSpacing: '0.1em' }}>3 pts each</span>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4 mb-12">
-        {regularChallenges.map((challenge) => {
+        {discoveryChallenges.map((challenge) => {
           const completedBy = submissions[challenge.id] || []
           const iCompleted = traveler ? completedBy.includes(traveler.key) : false
           const ptColor = getPointsColor(challenge.points)
@@ -301,8 +555,8 @@ export default function HuntClient({ tripSlug, challenges }: HuntClientProps) {
                     {traveler ? `Submitting as ${traveler.name}` : 'Select a traveler in the nav first'}
                   </p>
                   <button
-                    onClick={() => { if (finaleVerse.trim() && traveler) setFinaleSubmitted(true) }}
-                    disabled={!finaleVerse.trim() || !traveler}
+                    onClick={submitFinaleVerse}
+                    disabled={!finaleVerse.trim() || !traveler || saving}
                     className="px-6 py-2 text-xs uppercase tracking-widest transition-all duration-200 disabled:opacity-40"
                     style={{
                       background: '#f97316',

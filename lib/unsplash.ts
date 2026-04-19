@@ -35,8 +35,8 @@ export const MOROCCO_PHOTOS: UnsplashPhoto[] = [
   photo('photo-1585208798174-6cedd86e019a', 'Calin Stan', 'calinstan'),
   photo('photo-1517821099606-cef63a9bcda6', 'Cyrus Crossan', 'cys_escapes'),
   photo('photo-1539020140153-e479b8c22e70', 'Mostafa Meraji', 'mostafa_meraji'),
-  photo('photo-1553697388-94e804e2f0f6', 'Ait Benhadou', 'moroccophoto'),
-  photo('photo-1528360983277-13d401cdc186', 'Medina Street', 'moroccostreet'),
+  photo('photo-1553697388-94e804e2f0f6', 'Erol Ahmed', 'erol_ahmed'),
+  photo('photo-1528360983277-13d401cdc186', 'Asoggetti', 'asoggetti'),
 ]
 
 // ─── France (general) ──────────────────────────────────────────────────────
@@ -49,17 +49,17 @@ export const FRANCE_PHOTOS: UnsplashPhoto[] = [
 // ─── Burgundy / Wine country ───────────────────────────────────────────────
 export const BURGUNDY_PHOTOS: UnsplashPhoto[] = [
   photo('photo-1504279577054-acfeccf8fc52', 'Kym Ellis', 'kymellis'),
-  photo('photo-1596394516093-501ba68a0ba6', 'Burgundy Vineyard', 'burgundy'),
-  photo('photo-1504215680853-026ed2a45def', 'Wine Country', 'winecountry'),
-  photo('photo-1558618666-fcd25c85cd64', 'French Countryside', 'frenchcountry'),
+  photo('photo-1596394516093-501ba68a0ba6', 'Grape Things', 'grapethings'),
+  photo('photo-1504215680853-026ed2a45def', 'Roberta Sorge', 'robertasorge'),
+  photo('photo-1558618666-fcd25c85cd64', 'Kelsey Knight', 'kelseyknightphoto'),
 ]
 
 // ─── Loire Valley / Châteaux ───────────────────────────────────────────────
 export const LOIRE_PHOTOS: UnsplashPhoto[] = [
   photo('photo-1543946602-a0fce8117697', 'Micheile Henderson', 'micheile'),
-  photo('photo-1506905925346-21bda4d32df4', 'Chateau Loire', 'loirechateau'),
-  photo('photo-1464822759023-fed622ff2c3b', 'Loire Valley', 'loirevalley'),
-  photo('photo-1467269204594-9661b134dd2b', 'French Garden', 'frenchgarden'),
+  photo('photo-1506905925346-21bda4d32df4', 'Samuel Ferrara', 'samuelferrara'),
+  photo('photo-1464822759023-fed622ff2c3b', 'Kalen Emsley', 'kalenemsley'),
+  photo('photo-1467269204594-9661b134dd2b', 'James Donovan', 'jmesdo'),
 ]
 
 // ─── Spain / Andalusia ─────────────────────────────────────────────────────

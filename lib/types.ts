@@ -11,6 +11,20 @@ export interface PhraseItem {
   pronunciation?: string;
 }
 
+export interface LiteraryQuote {
+  text: string;
+  attribution?: string;   // "— Paul Bowles, The Sheltering Sky"
+  context?: string;       // optional editorial framing sentence
+}
+
+export interface PhotoSpot {
+  location: string;       // e.g. "Bab Bou Jeloud, Fez Medina"
+  timing?: string;        // e.g. "Golden hour, 6:00–6:45 pm"
+  angle?: string;         // e.g. "Face east, keep the gate right of frame"
+  hashtags?: string[];    // e.g. ["#VisitMorocco", "#FezMedina"]
+  instagram_caption?: string;
+}
+
 export interface ThreadContent {
   title?: string;
   content?: string;
@@ -68,6 +82,8 @@ export interface TripDay {
   meal_breakfast?: string;
   meal_lunch?: string;
   meal_dinner?: string;
+  literary_quote?: LiteraryQuote;
+  photo_spot?: PhotoSpot;
   created_at?: string;
   updated_at?: string;
 }

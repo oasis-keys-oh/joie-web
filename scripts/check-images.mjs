@@ -2,40 +2,52 @@
  * Pre-deploy image URL checker.
  * Run: npm run check:images
  *
- * Checks all Unsplash photo IDs return HTTP 200.
- * Keep this list in sync with lib/unsplash.ts
+ * Checks ALL Unsplash photo IDs used in lib/unsplash.ts return HTTP 200.
+ * This list is the source of truth — keep it in sync with all pool arrays
+ * in lib/unsplash.ts.
+ *
+ * Also wired into netlify.toml — runs before every Netlify build.
+ * A single broken ID fails the deploy.
  */
 
 const PHOTOS = [
-  // Morocco
+  // ── Morocco ──────────────────────────────────────────────────────────────
   { pool: 'Morocco', id: 'photo-1585208798174-6cedd86e019a' },
   { pool: 'Morocco', id: 'photo-1517821099606-cef63a9bcda6' },
   { pool: 'Morocco', id: 'photo-1539020140153-e479b8c22e70' },
   { pool: 'Morocco', id: 'photo-1553697388-94e804e2f0f6' },
   { pool: 'Morocco', id: 'photo-1528360983277-13d401cdc186' },
-  // France
+
+  // ── France (general) ─────────────────────────────────────────────────────
   { pool: 'France',  id: 'photo-1502602898657-3e91760cbb34' },
   { pool: 'France',  id: 'photo-1499856871958-5b9627545d1a' },
   { pool: 'France',  id: 'photo-1509439581779-6298f75bf6e5' },
-  // Burgundy
+
+  // ── Burgundy / Wine country ───────────────────────────────────────────────
   { pool: 'Burgundy', id: 'photo-1504279577054-acfeccf8fc52' },
   { pool: 'Burgundy', id: 'photo-1596394516093-501ba68a0ba6' },
   { pool: 'Burgundy', id: 'photo-1504215680853-026ed2a45def' },
   { pool: 'Burgundy', id: 'photo-1558618666-fcd25c85cd64' },
-  // Loire
+
+  // ── Loire Valley / Châteaux ───────────────────────────────────────────────
   { pool: 'Loire', id: 'photo-1543946602-a0fce8117697' },
   { pool: 'Loire', id: 'photo-1506905925346-21bda4d32df4' },
   { pool: 'Loire', id: 'photo-1464822759023-fed622ff2c3b' },
   { pool: 'Loire', id: 'photo-1467269204594-9661b134dd2b' },
-  // Spain
+
+  // ── Spain / Andalusia ─────────────────────────────────────────────────────
   { pool: 'Spain', id: 'photo-1558642084-fd07fae5282e' },
   { pool: 'Spain', id: 'photo-1543783207-ec64e4d95325' },
   { pool: 'Spain', id: 'photo-1540575467063-178a50c2df87' },
   { pool: 'Spain', id: 'photo-1516483638261-f4dbaf036963' },
-  // Default
+
+  // ── Default / Travel ──────────────────────────────────────────────────────
   { pool: 'Default', id: 'photo-1469854523086-cc02fe5d8800' },
   { pool: 'Default', id: 'photo-1476514525535-07fb3b4ae5f1' },
   { pool: 'Default', id: 'photo-1488085061387-422e29b40080' },
+
+  // ── Home page hero ────────────────────────────────────────────────────────
+  { pool: 'Home', id: 'photo-1558642084-fd07fae5282e' },
 ]
 
 let passed = 0
