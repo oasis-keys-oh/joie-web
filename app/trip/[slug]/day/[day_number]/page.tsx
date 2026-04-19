@@ -11,8 +11,9 @@ import MealRow from '@/components/MealRow'
 import HotelCard from '@/components/HotelCard'
 import ReservationCard from '@/components/ReservationCard'
 import NarrativeSection from '@/components/NarrativeSection'
-import CalloutBox from '@/components/CalloutBox'
+import DayCalloutSidebar from '@/components/DayCalloutSidebar'
 import DayNavigation from '@/components/DayNavigation'
+import PhotoFooter from '@/components/PhotoFooter'
 import { Trip, TripDay, Event } from '@/lib/types'
 import Link from 'next/link'
 
@@ -79,15 +80,35 @@ export default async function DayPage({ params }: DayPageProps) {
 
   return (
     <>
+      {/* Back to trip overview — subtle breadcrumb overlaid on hero */}
+      <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
+        <div className="flex items-center justify-between px-8 py-5">
+          {/* Left: back link */}
+          <Link
+            href={`/trip/${params.slug}`}
+            className="pointer-events-auto flex items-center gap-2 group"
+            style={{ textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}
+          >
+            <span className="text-white opacity-60 group-hover:opacity-100 transition-opacity text-sm">←</span>
+            <span
+              className="text-white opacity-60 group-hover:opacity-100 transition-opacity text-xs uppercase tracking-widest hidden sm:inline"
+              style={{ letterSpacing: '0.16em' }}
+            >
+              {trip.title}
+            </span>
+          </Link>
+        </div>
+      </div>
+
       {/* Full-bleed day hero */}
       <DayHeader day={day} />
 
-      {/* Two-column: left sidebar + main content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12">
-        <div className="py-10 grid grid-cols-1 lg:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr] gap-10 lg:gap-12 items-start">
+      {/* Three-column: left day-nav | center content | right callout sidebar */}
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 lg:px-12">
+        <div className="py-10 grid grid-cols-1 lg:grid-cols-[240px_1fr_260px] xl:grid-cols-[260px_1fr_280px] gap-8 lg:gap-10 items-start">
 
-          {/* ── LEFT SIDEBAR ── */}
-          <div className="lg:sticky lg:top-24 order-2 lg:order-1">
+          {/* ── LEFT SIDEBAR — Day Navigation + Map ── */}
+          <div className="lg:sticky lg:top-24 order-3 lg:order-1">
             <DaySidebar
               days={allDays}
               currentDayNumber={dayNumber}
@@ -95,8 +116,8 @@ export default async function DayPage({ params }: DayPageProps) {
             />
           </div>
 
-          {/* ── MAIN CONTENT ── */}
-          <div className="order-1 lg:order-2 max-w-2xl pb-24">
+          {/* ── CENTER CONTENT ── */}
+          <div className="order-1 lg:order-2 min-w-0 pb-24">
 
             {/* Morning Brief */}
             {day.morning_brief && (
@@ -171,30 +192,6 @@ export default async function DayPage({ params }: DayPageProps) {
               </div>
             )}
 
-            {/* Callout Boxes */}
-            <div className="mt-12 space-y-6">
-              {day.wow_moment && (
-                <CalloutBox type="wow" content={day.wow_moment} />
-              )}
-              {day.thread_content && (
-                <CalloutBox
-                  type="thread"
-                  title={day.thread_title}
-                  content={day.thread_content.content || ''}
-                />
-              )}
-              {day.local_insider_tip && (
-                <CalloutBox type="one_thing" content={day.local_insider_tip} />
-              )}
-              {day.phrase && (
-                <CalloutBox
-                  type="phrase"
-                  title={day.phrase.title}
-                  content={day.phrase.content || ''}
-                />
-              )}
-            </div>
-
             {/* Navigation */}
             <DayNavigation
               tripSlug={params.slug}
@@ -203,8 +200,20 @@ export default async function DayPage({ params }: DayPageProps) {
             />
 
           </div>
+
+          {/* ── RIGHT SIDEBAR — Callout Boxes ── */}
+          <div className="lg:sticky lg:top-24 order-2 lg:order-3">
+            <DayCalloutSidebar day={day} />
+          </div>
+
         </div>
       </div>
+
+      {/* Bottom photo showcase */}
+      <PhotoFooter
+        region={day.region}
+        caption={`${day.region} · ${day.location || ''}`}
+      />
     </>
   )
 }

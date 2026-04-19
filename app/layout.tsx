@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter, Playfair_Display } from 'next/font/google'
 import Link from 'next/link'
+import { PersonaProvider } from '@/components/PersonaProvider'
+import PersonaSwitcher from '@/components/PersonaSwitcher'
 import './globals.css'
 
 const inter = Inter({
@@ -18,6 +20,14 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: 'Joie by Oukala Journeys',
   description: 'Your personalized journey awaits',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 }
 
 export default function RootLayout({
@@ -28,24 +38,25 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${playfair.variable} font-sans bg-white text-ink`}>
+        <PersonaProvider>
 
-        {/* Minimal top nav — doesn't compete with hero imagery */}
-        <header className="fixed top-0 left-0 right-0 z-50 mix-blend-normal">
+        {/* Minimal top nav — floats over hero imagery */}
+        <header className="fixed top-0 left-0 right-0 z-50">
           <div className="flex items-center justify-between px-8 py-5">
-            <Link href="/" className="flex items-center gap-3 group">
+            {/* Logo — Oukala Journeys only. "Joie" is the app, referenced at footer. */}
+            <Link href="/" className="flex items-center gap-2 group">
               <span
-                className="font-serif text-xl font-bold text-white drop-shadow-sm tracking-tight"
-                style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4)' }}
+                className="text-xs tracking-widest uppercase text-white opacity-75 hover:opacity-100 transition-opacity duration-200"
+                style={{ letterSpacing: '0.22em', textShadow: '0 1px 10px rgba(0,0,0,0.5)' }}
               >
-                Joie
-              </span>
-              <span
-                className="text-xs tracking-widest uppercase text-white opacity-70 drop-shadow-sm hidden sm:inline"
-                style={{ letterSpacing: '0.18em', textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}
-              >
-                by Oukala Journeys
+                Oukala Journeys
               </span>
             </Link>
+
+            {/* Right: persona switcher */}
+            <div className="flex items-center gap-5">
+              <PersonaSwitcher />
+            </div>
           </div>
         </header>
 
@@ -55,26 +66,54 @@ export default function RootLayout({
 
         <footer className="bg-navy text-white">
           <div className="max-w-6xl mx-auto px-8 py-16">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex flex-col md:flex-row items-start justify-between gap-10">
               <div>
-                <p className="font-serif text-2xl font-bold text-white mb-1">Joie</p>
-                <p className="text-xs tracking-widest uppercase opacity-50" style={{ letterSpacing: '0.2em' }}>
-                  by Oukala Journeys
+                <p className="font-serif text-2xl font-bold text-white mb-1">Oukala Journeys</p>
+                <p className="text-xs tracking-widest uppercase opacity-40 mb-4" style={{ letterSpacing: '0.18em' }}>
+                  Private Travel, Beautifully Planned
                 </p>
+                <a
+                  href="https://oukalajourney.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-white opacity-40 hover:opacity-70 transition-opacity tracking-widest uppercase"
+                  style={{ letterSpacing: '0.14em' }}
+                >
+                  oukalajourney.com →
+                </a>
               </div>
-              <div className="text-center md:text-right">
-                <p className="text-sm opacity-40 tracking-wide">
-                  © {new Date().getFullYear()} Oukala Journeys
-                </p>
-                <p className="text-xs opacity-25 mt-1 tracking-widest uppercase" style={{ letterSpacing: '0.15em' }}>
-                  All rights reserved
+
+              <div className="flex flex-col gap-2 text-right">
+                <Link href="/" className="text-xs text-white opacity-40 hover:opacity-70 transition-opacity uppercase tracking-widest" style={{ letterSpacing: '0.13em' }}>
+                  My Journeys
+                </Link>
+                <a
+                  href="https://oukalajourney.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-white opacity-40 hover:opacity-70 transition-opacity uppercase tracking-widest"
+                  style={{ letterSpacing: '0.13em' }}
+                >
+                  Plan a New Trip
+                </a>
+                <p className="text-xs text-white opacity-20 mt-4" style={{ letterSpacing: '0.1em' }}>
+                  Powered by Joie
                 </p>
               </div>
             </div>
-            <div className="mt-12 border-t border-white border-opacity-10" />
+
+            <div className="mt-12 pt-8 border-t border-white border-opacity-10 flex flex-col sm:flex-row items-center justify-between gap-2">
+              <p className="text-xs opacity-25 tracking-wide">
+                © {new Date().getFullYear()} Oukala Journeys. All rights reserved.
+              </p>
+              <p className="text-xs opacity-20 tracking-widest uppercase" style={{ letterSpacing: '0.12em' }}>
+                A luxury travel experience
+              </p>
+            </div>
           </div>
         </footer>
 
+        </PersonaProvider>
       </body>
     </html>
   )

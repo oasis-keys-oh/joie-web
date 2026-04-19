@@ -1,4 +1,6 @@
 import { ReferenceItem } from '@/lib/types'
+import { formatDateShort, formatTime } from '@/lib/utils'
+import PlaceTooltip from '@/components/PlaceTooltip'
 
 interface HotelCardProps {
   hotel: ReferenceItem
@@ -33,7 +35,11 @@ export default function HotelCard({ hotel }: HotelCardProps) {
           className="font-serif text-2xl font-bold text-navy mb-6"
           style={{ letterSpacing: '-0.01em' }}
         >
-          {hotel.name}
+          <PlaceTooltip
+            name={hotel.name}
+            address={hotel.address}
+            className="font-serif text-2xl font-bold text-navy"
+          />
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
@@ -50,13 +56,15 @@ export default function HotelCard({ hotel }: HotelCardProps) {
               {hotel.check_in && (
                 <div>
                   <p className="label mb-1.5">Check-in</p>
-                  <p className="font-serif text-base font-semibold text-navy">{hotel.check_in}</p>
+                  <p className="font-serif text-base font-semibold text-navy">{formatDateShort(hotel.check_in)}</p>
+                {formatTime(hotel.check_in) && <p className="text-ink-muted mt-0.5" style={{ fontSize: '0.72rem' }}>{formatTime(hotel.check_in)}</p>}
                 </div>
               )}
               {hotel.check_out && (
                 <div>
                   <p className="label mb-1.5">Check-out</p>
-                  <p className="font-serif text-base font-semibold text-navy">{hotel.check_out}</p>
+                  <p className="font-serif text-base font-semibold text-navy">{formatDateShort(hotel.check_out)}</p>
+                  {formatTime(hotel.check_out) && <p className="text-ink-muted mt-0.5" style={{ fontSize: '0.72rem' }}>{formatTime(hotel.check_out)}</p>}
                 </div>
               )}
             </div>

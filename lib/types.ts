@@ -5,8 +5,10 @@ export interface ColorTheme {
 }
 
 export interface PhraseItem {
-  title?: string;
-  content?: string;
+  text?: string;
+  context?: string;
+  meaning?: string;
+  pronunciation?: string;
 }
 
 export interface ThreadContent {
@@ -33,6 +35,8 @@ export interface Trip {
   subtitle?: string;
   dedication?: string;
   epigraph?: string;
+  epigraph_translation?: string;
+  epigraph_transliteration?: string;
   start_date: string;
   end_date: string;
   web_slug: string;
@@ -55,7 +59,7 @@ export interface TripDay {
   location?: string;
   phrase?: PhraseItem;
   wow_moment?: string;
-  thread_content?: ThreadContent;
+  thread_content?: string | ThreadContent;
   thread_title?: string;
   local_insider_tip?: string;
   morning_brief?: string;

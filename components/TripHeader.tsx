@@ -1,16 +1,19 @@
 import Image from 'next/image'
 import { Trip } from '@/lib/types'
+import { SPAIN_PHOTOS } from '@/lib/unsplash'
+import UnsplashCredit from '@/components/UnsplashCredit'
+import { formatDate } from '@/lib/utils'
 
 interface TripHeaderProps {
   trip: Trip
   imageUrl?: string
 }
 
-// Curated Unsplash images by destination feel
-const heroImage = 'https://images.unsplash.com/photo-1558642084-fd07fae5282e?w=2400&h=1400&fit=crop&q=90'
+// Fixed hero: Seville/Andalusia feel — first Spain photo
+const heroPhoto = SPAIN_PHOTOS[0]
 
 export default function TripHeader({ trip, imageUrl }: TripHeaderProps) {
-  const finalImageUrl = imageUrl || heroImage
+  const finalImageUrl = imageUrl || `https://images.unsplash.com/${heroPhoto.id}?w=2400&h=1400&fit=crop&q=90`
 
   return (
     <div
@@ -25,7 +28,7 @@ export default function TripHeader({ trip, imageUrl }: TripHeaderProps) {
         className="object-cover"
         priority
         sizes="100vw"
-        quality={90}
+        unoptimized
       />
 
       {/* Gradient overlay — deep at bottom, light at top */}
@@ -85,11 +88,14 @@ export default function TripHeader({ trip, imageUrl }: TripHeaderProps) {
               className="text-white text-xs tracking-widest uppercase opacity-60"
               style={{ letterSpacing: '0.18em' }}
             >
-              {trip.start_date} — {trip.end_date}
+              {formatDate(trip.start_date)} — {formatDate(trip.end_date)}
             </p>
           </div>
         </div>
       </div>
+
+      {/* Photo attribution */}
+      {!imageUrl && <UnsplashCredit photo={heroPhoto} variant="hero" />}
 
       {/* Scroll hint */}
       <div className="absolute bottom-8 right-10 flex flex-col items-center gap-2 opacity-40">

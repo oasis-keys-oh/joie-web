@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { TripDay } from '@/lib/types'
+import { formatDateShort } from '@/lib/utils'
+import WeatherWidget from '@/components/WeatherWidget'
 
 interface DaySidebarProps {
   days: TripDay[]
@@ -23,19 +25,52 @@ function getRegionDot(region: string): string {
   return '#9ca3af'
 }
 
-// Use the Embed API place search — cleanest for single locations
-function buildDayMapUrl(day: TripDay): string {
-  const key = MAPS_KEY
-  // Take the first location before any arrow, slash, or dash for a clean query
+// Known city coords for reliable map display — avoids ambiguous geocoding
+const CITY_COORDS: Record<string, { lat: number; lon: number; zoom: number }> = {
+  'casablanca':   { lat: 33.5731, lon: -7.5898, zoom: 12 },
+  'rabat':        { lat: 33.9716, lon: -6.8498, zoom: 12 },
+  'fez':          { lat: 34.0181, lon: -5.0078, zoom: 12 },
+  'marrakech':    { lat: 31.6295, lon: -7.9811, zoom: 12 },
+  'tangier':      { lat: 35.7595, lon: -5.8340, zoom: 12 },
+  'lyon':         { lat: 45.7640, lon: 4.8357,  zoom: 12 },
+  'dijon':        { lat: 47.3220, lon: 5.0415,  zoom: 12 },
+  'beaune':       { lat: 47.0231, lon: 4.8400,  zoom: 13 },
+  'amboise':      { lat: 47.4133, lon: 0.9828,  zoom: 13 },
+  'blois':        { lat: 47.5861, lon: 1.3359,  zoom: 13 },
+  'chambord':     { lat: 47.6161, lon: 1.5168,  zoom: 14 },
+  'chenonceaux':  { lat: 47.3250, lon: 1.0700,  zoom: 14 },
+  'paris':        { lat: 48.8566, lon: 2.3522,  zoom: 13 },
+  'versailles':   { lat: 48.8014, lon: 2.1301,  zoom: 13 },
+}
+
+function buildMapUrl(day: TripDay): string | null {
+  if (!MAPS_KEY) {
+    // Fall back to OpenStreetMap embed (no key needed)
+    return buildOsmUrl(day)
+  }
   const raw = day.location || day.region || day.title
-  const primary = raw.split(/[→\/–—]/)[0].trim()
-  const query = encodeURIComponent(primary)
-  return `https://www.google.com/maps/embed/v1/place?key=${key}&q=${query}&zoom=11`
+  const primary = raw.split(/[→/–—]/)[0].trim()
+  const query = encodeURIComponent(`${primary}`)
+  return `https://www.google.com/maps/embed/v1/place?key=${MAPS_KEY}&q=${query}&zoom=12`
+}
+
+function buildOsmUrl(day: TripDay): string {
+  // Try to match a known city for accurate coordinates
+  const raw = (day.location || day.region || day.title).toLowerCase()
+  for (const [city, coords] of Object.entries(CITY_COORDS)) {
+    if (raw.includes(city)) {
+      const { lat, lon, zoom } = coords
+      return `https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.05}%2C${lat - 0.03}%2C${lon + 0.05}%2C${lat + 0.03}&layer=mapnik&marker=${lat}%2C${lon}`
+    }
+  }
+  // Generic OSM search fallback
+  const query = encodeURIComponent((day.location || day.region || day.title).split(/[→/–—]/)[0].trim())
+  return `https://www.openstreetmap.org/export/embed.html?bbox=-8%2C30%2C3%2C50&layer=mapnik`
 }
 
 export default function DaySidebar({ days, currentDayNumber, tripSlug }: DaySidebarProps) {
   const currentDay = days.find((d) => d.day_number === currentDayNumber)
-  const mapUrl = currentDay ? buildDayMapUrl(currentDay) : null
+  const mapUrl = currentDay ? buildMapUrl(currentDay) : null
 
   return (
     <aside className="space-y-7">
@@ -64,6 +99,18 @@ export default function DaySidebar({ days, currentDayNumber, tripSlug }: DaySide
               {currentDay.location}
             </p>
           )}
+        </div>
+      )}
+
+      {/* Weather for current day */}
+      {currentDay && (
+        <div>
+          <div className="flex items-center gap-4 mb-3">
+            <p className="label shrink-0">Weather</p>
+            <div className="flex-1 border-t border-gray-100" />
+          </div>
+          {/* @ts-expect-error async server component */}
+          <WeatherWidget day={currentDay} />
         </div>
       )}
 
@@ -120,7 +167,7 @@ export default function DaySidebar({ days, currentDayNumber, tripSlug }: DaySide
                     className={`mt-0.5 truncate ${isCurrent ? 'text-white opacity-50' : 'text-ink-muted'}`}
                     style={{ fontSize: '0.65rem', letterSpacing: '0.03em' }}
                   >
-                    {day.date}
+                    {formatDateShort(day.date)}
                   </p>
                 </div>
               </Link>

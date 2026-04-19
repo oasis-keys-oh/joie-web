@@ -1,4 +1,6 @@
+import Link from 'next/link'
 import { Trip, TripDay } from '@/lib/types'
+import { formatDate } from '@/lib/utils'
 
 interface TripSidebarProps {
   trip: Trip
@@ -16,9 +18,9 @@ function buildRouteMapUrl(): string {
   const destination = encodeURIComponent('Paris, France')
   const waypoints = [
     'Rabat, Morocco',
+    'Fez, Morocco',
     'Lyon, France',
     'Beaune, France',
-    'Chambord, France',
   ].map(encodeURIComponent).join('|')
 
   return `https://www.google.com/maps/embed/v1/directions?key=${key}&origin=${origin}&destination=${destination}&waypoints=${waypoints}&mode=driving&zoom=5`
@@ -53,13 +55,15 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
         {/* Route stop list */}
         <div className="mt-4 space-y-0">
           {[
-            { label: 'Denver', sub: 'Departure · Jun 8' },
+            { label: 'Denver', sub: 'Departure · Jun 9' },
             { label: 'Casablanca', sub: 'Morocco · Days 1–2' },
-            { label: 'Rabat', sub: 'Morocco · Days 3–5' },
-            { label: 'Lyon → Burgundy', sub: 'France · Days 6–9' },
-            { label: 'Loire Valley', sub: 'France · Days 10–13' },
-            { label: 'Paris', sub: 'Day 14' },
-            { label: 'Denver', sub: 'Return · Jun 22' },
+            { label: 'Rabat', sub: 'Morocco · Days 3–4' },
+            { label: 'Fez', sub: 'Morocco · Day 5' },
+            { label: 'Lyon', sub: 'France · Days 6–7' },
+            { label: 'Burgundy', sub: 'France · Days 8–10' },
+            { label: 'Loire Valley', sub: 'France · Days 11–13' },
+            { label: 'Paris', sub: 'Days 14–15' },
+            { label: 'Denver', sub: 'Return · Jun 24' },
           ].map((stop, i, arr) => (
             <div key={i} className="flex items-start gap-3 py-1.5">
               <div className="flex flex-col items-center pt-1.5 shrink-0" style={{ width: '12px' }}>
@@ -107,6 +111,35 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
                 {day.wow_moment}
               </p>
             </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-gray-100" />
+
+      {/* Quick Links */}
+      <div>
+        <div className="flex items-center gap-4 mb-4">
+          <p className="label shrink-0">Trip Resources</p>
+          <div className="flex-1 border-t border-gray-100" />
+        </div>
+        <div className="space-y-2">
+          {[
+            { href: `/trip/${trip.web_slug}/prep`, label: 'Before You Go', sub: 'Packing · Health · Currency', emoji: '🧳' },
+            { href: `/trip/${trip.web_slug}/hunt`, label: 'The Hunt', sub: 'Scavenger hunt · Leaderboard', emoji: '🏆' },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex items-center gap-3 px-4 py-3 rounded-sm border border-gray-100 hover:border-gold hover:border-opacity-50 transition-all duration-200 group"
+            >
+              <span style={{ fontSize: '1.1rem' }}>{link.emoji}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-navy font-medium text-sm group-hover:text-gold transition-colors">{link.label}</p>
+                <p className="text-ink-muted" style={{ fontSize: '0.68rem' }}>{link.sub}</p>
+              </div>
+              <span className="text-ink-muted group-hover:text-gold transition-colors text-sm">→</span>
+            </Link>
           ))}
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { Event } from '@/lib/types'
 import { CheckCircle2, Clock, MapPin } from 'lucide-react'
+import PlaceTooltip from '@/components/PlaceTooltip'
 
 interface ReservationCardProps {
   event: Event
@@ -54,7 +55,11 @@ export default function ReservationCard({ event }: ReservationCardProps) {
           className="font-serif text-xl font-bold text-navy mb-4"
           style={{ letterSpacing: '-0.01em' }}
         >
-          {event.title}
+          <PlaceTooltip
+            name={event.title}
+            address={event.address}
+            className="font-serif text-xl font-bold text-navy"
+          />
         </h3>
 
         <div className="space-y-3 mb-5">

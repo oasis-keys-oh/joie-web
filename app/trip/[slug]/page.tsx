@@ -2,8 +2,10 @@ import { getTripBySlug, getTripDays } from '@/lib/supabase'
 import TripHeader from '@/components/TripHeader'
 import DayCard from '@/components/DayCard'
 import TripSidebar from '@/components/TripSidebar'
+import PhotoFooter from '@/components/PhotoFooter'
 import { Trip, TripDay } from '@/lib/types'
 import Link from 'next/link'
+import { formatDate } from '@/lib/utils'
 
 interface TripPageProps {
   params: {
@@ -96,7 +98,7 @@ export default async function TripPage({ params }: TripPageProps) {
               <div className="shrink-0 text-right">
                 <p className="label mb-1">Dates</p>
                 <p className="font-serif text-base text-ink">
-                  {trip.start_date} <span className="text-gold mx-1.5">—</span> {trip.end_date}
+                  {formatDate(trip.start_date)} <span className="text-gold mx-1.5">—</span> {formatDate(trip.end_date)}
                 </p>
                 <p className="text-xs text-ink-muted mt-1">{days.length} days</p>
               </div>
@@ -129,10 +131,29 @@ export default async function TripPage({ params }: TripPageProps) {
 
             {/* Epigraph */}
             {trip.epigraph && (
-              <div className="mb-12 py-8 border-y border-gold border-opacity-15 text-center">
+              <div className="mb-12 py-10 border-y border-gold border-opacity-15 text-center">
+                {/* English translation first */}
+                {trip.epigraph_translation && (
+                  <p
+                    className="font-serif text-xl italic text-navy mb-3"
+                    style={{ lineHeight: '1.6' }}
+                  >
+                    &ldquo;{trip.epigraph_translation}&rdquo;
+                  </p>
+                )}
+                {/* Transliteration */}
+                {trip.epigraph_transliteration && (
+                  <p
+                    className="text-ink-muted mb-4 italic"
+                    style={{ fontSize: '0.85rem', letterSpacing: '0.02em' }}
+                  >
+                    {trip.epigraph_transliteration}
+                  </p>
+                )}
+                {/* Original script */}
                 <p
-                  className="font-serif text-xl italic text-ink-muted"
-                  style={{ lineHeight: '1.6', direction: 'rtl' }}
+                  className="font-serif text-base text-ink-muted opacity-60"
+                  style={{ lineHeight: '1.6', direction: 'rtl', fontFamily: 'serif' }}
                 >
                   {trip.epigraph}
                 </p>
@@ -160,6 +181,9 @@ export default async function TripPage({ params }: TripPageProps) {
 
         </div>
       </div>
+
+      {/* Bottom photo showcase — Morocco first, then France */}
+      <PhotoFooter region="Morocco" caption="Morocco" />
     </>
   )
 }

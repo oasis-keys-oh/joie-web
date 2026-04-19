@@ -1,61 +1,58 @@
+'use client'
+
 import Image from 'next/image'
+import { useState, useEffect } from 'react'
 import { TripDay } from '@/lib/types'
+import { getPhotoPool, UnsplashPhoto } from '@/lib/unsplash'
+import UnsplashCredit from '@/components/UnsplashCredit'
+import { formatDate } from '@/lib/utils'
 
 interface DayHeaderProps {
   day: TripDay
 }
 
-function getDayHeroImage(day: TripDay): string {
-  const images: Record<string, string[]> = {
-    'morocco': [
-      'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1548018560-c7196548f4af?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1517821099606-cef63a9bcda6?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1539020140153-e479b8c22e70?w=2000&h=900&fit=crop&q=85',
-    ],
-    'france': [
-      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1509439581779-6298f75bf6e5?w=2000&h=900&fit=crop&q=85',
-    ],
-    'spain': [
-      'https://images.unsplash.com/photo-1558642084-fd07fae5282e?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=2000&h=900&fit=crop&q=85',
-    ],
-    'default': [
-      'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=2000&h=900&fit=crop&q=85',
-      'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=2000&h=900&fit=crop&q=85',
-    ],
-  }
-
-  const regionLower = (day.region || '').toLowerCase()
-  let pool = images.default
-  for (const [key, imgs] of Object.entries(images)) {
-    if (regionLower.includes(key)) {
-      pool = imgs
-      break
-    }
-  }
-  return pool[day.day_number % pool.length]
+function sized(photo: UnsplashPhoto, w: number, h: number, q: number): string {
+  return `https://images.unsplash.com/${photo.id}?w=${w}&h=${h}&fit=crop&q=${q}`
 }
 
 export default function DayHeader({ day }: DayHeaderProps) {
-  const heroImage = getDayHeroImage(day)
+  const pool = getPhotoPool(day.region || '')
+  // Start from a deterministic offset per day so images don't always start the same
+  const [index, setIndex] = useState(day.day_number % pool.length)
+  const [fading, setFading] = useState(false)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFading(true)
+      setTimeout(() => {
+        setIndex((i) => (i + 1) % pool.length)
+        setFading(false)
+      }, 600)
+    }, 6000)
+    return () => clearInterval(interval)
+  }, [pool.length])
+
+  const photo = pool[index]
+  const imgUrl = sized(photo, 2000, 900, 85)
 
   return (
     <div className="relative w-full overflow-hidden" style={{ height: '70vh', minHeight: '480px' }}>
-      <Image
-        src={heroImage}
-        alt={day.title}
-        fill
-        className="object-cover"
-        priority
-        sizes="100vw"
-        quality={85}
-      />
+
+      {/* Cycling image with crossfade */}
+      <div
+        className="absolute inset-0 transition-opacity duration-700"
+        style={{ opacity: fading ? 0 : 1 }}
+      >
+        <Image
+          src={imgUrl}
+          alt={day.title}
+          fill
+          className="object-cover"
+          priority
+          sizes="100vw"
+          unoptimized
+        />
+      </div>
 
       {/* Gradient */}
       <div
@@ -101,26 +98,39 @@ export default function DayHeader({ day }: DayHeaderProps) {
         {/* Date + location */}
         <div className="flex items-center gap-6 mt-2">
           {day.date && (
-            <p
-              className="text-white opacity-55 text-sm"
-              style={{ letterSpacing: '0.04em' }}
-            >
-              {day.date}
+            <p className="text-white opacity-55 text-sm" style={{ letterSpacing: '0.04em' }}>
+              {formatDate(day.date)}
             </p>
           )}
           {day.location && (
             <>
               <div className="w-px h-4 bg-white opacity-30" />
-              <p
-                className="text-white opacity-55 text-sm"
-                style={{ letterSpacing: '0.04em' }}
-              >
+              <p className="text-white opacity-55 text-sm" style={{ letterSpacing: '0.04em' }}>
                 {day.location}
               </p>
             </>
           )}
         </div>
+
+        {/* Dot indicators */}
+        <div className="flex items-center gap-1.5 mt-5">
+          {pool.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setFading(true); setTimeout(() => { setIndex(i); setFading(false) }, 600) }}
+              className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+              style={{
+                background: i === index ? '#C9A84C' : 'rgba(255,255,255,0.4)',
+                transform: i === index ? 'scale(1.3)' : 'scale(1)',
+              }}
+              aria-label={`Photo ${i + 1}`}
+            />
+          ))}
+        </div>
       </div>
+
+      {/* Photo attribution */}
+      <UnsplashCredit photo={{ ...photo, url: imgUrl }} variant="hero" />
     </div>
   )
 }
