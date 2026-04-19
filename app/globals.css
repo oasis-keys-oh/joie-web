@@ -14,15 +14,85 @@ html {
 
 body {
   background-color: #ffffff;
-  color: #1b2b4b;
+  color: #1a1a1a;
   font-family: var(--font-inter), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-playfair), serif;
+}
+
+/* Full-bleed utility — breaks out of any container */
+.bleed {
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}
+
+/* Gold hairline rule */
+.rule-gold {
+  border: none;
+  border-top: 1px solid #C9A84C;
+  opacity: 0.4;
+}
+
+/* Section label style */
+.label {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #C9A84C;
+}
+
+/* Smooth image hover */
+.img-hover {
+  transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.img-hover:hover {
+  transform: scale(1.03);
+}
+
+/* Day card hover underline */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: #C9A84C;
+  transition: width 0.3s ease;
+}
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* Prose rhythm */
+.prose-luxury p {
+  line-height: 1.85;
+  color: #3d3d3d;
+}
+
+/* Logistics pill */
+.logistics-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  color: #7a6034;
+  background: rgba(201, 168, 76, 0.06);
 }
