@@ -36,7 +36,7 @@ export default async function HuntPage({ params }: HuntPageProps) {
 
   try {
     trip = await getTripBySlug(params.slug)
-    challenges = await getHuntChallenges(trip.id)
+    challenges = await getHuntChallenges(trip!.id)
   } catch {
     return (
       <div className="flex items-center justify-center min-h-screen">
