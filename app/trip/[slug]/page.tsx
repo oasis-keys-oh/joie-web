@@ -6,6 +6,7 @@ import TripSidebar from '@/components/TripSidebar'
 import PhotoFooter from '@/components/PhotoFooter'
 import PreTripDrops from '@/components/PreTripDrops'
 import CuratorThread from '@/components/CuratorThread'
+import PersonaDedication from '@/components/PersonaDedication'
 import { Trip, TripDay } from '@/lib/types'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
@@ -100,13 +101,12 @@ export default async function TripPage({ params }: TripPageProps) {
       {/* Two-column layout below hero */}
       <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14">
 
-        {/* Dedication */}
-        {trip.dedication && (
-          <div className="py-14 text-center border-b border-gold border-opacity-20">
-            <p className="font-serif text-xl italic text-ink-muted leading-relaxed max-w-2xl mx-auto">
-              &ldquo;{trip.dedication}&rdquo;
-            </p>
-          </div>
+        {/* Dedication — persona-aware: each traveler sees their own line */}
+        {((trip as any).dedications || trip.dedication) && (
+          <PersonaDedication
+            dedications={(trip as any).dedications || {}}
+            fallback={trip.dedication}
+          />
         )}
 
         {/* Two-column: main content (left) + sidebar (right) */}

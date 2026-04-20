@@ -31,9 +31,10 @@ export default function StickyDayBar({ dayNumber, title, location, region }: Pro
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-40 transition-all duration-300"
+      className="fixed left-0 right-0 z-40 transition-all duration-300"
       style={{
-        transform: visible ? 'translateY(0)' : 'translateY(-100%)',
+        top: '60px',  /* sits flush below the main nav bar */
+        transform: visible ? 'translateY(0)' : 'translateY(-200%)',
         opacity: visible ? 1 : 0,
         background: 'rgba(27,43,75,0.96)',
         backdropFilter: 'blur(8px)',
