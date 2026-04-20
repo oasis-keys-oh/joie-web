@@ -2,8 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Playfair_Display } from 'next/font/google'
 import Link from 'next/link'
 import { PersonaProvider } from '@/components/PersonaProvider'
-import PersonaSwitcher from '@/components/PersonaSwitcher'
-import NavBreadcrumb from '@/components/NavBreadcrumb'
+import NavBar from '@/components/NavBar'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import './globals.css'
 
@@ -42,30 +41,8 @@ export default function RootLayout({
       <body className={`${inter.variable} ${playfair.variable} font-sans bg-white text-ink`}>
         <PersonaProvider>
 
-        {/* Minimal top nav — floats over hero imagery */}
-        <header className="fixed top-0 left-0 right-0 z-50">
-          <div className="flex items-center justify-between px-8 py-5">
-            {/* Left: logo OR back breadcrumb depending on current route */}
-            <div className="flex items-center gap-5">
-              <Link href="/" className="flex items-center gap-2 group shrink-0">
-                <span
-                  className="text-xs tracking-widest uppercase text-white opacity-75 hover:opacity-100 transition-opacity duration-200"
-                  style={{ letterSpacing: '0.22em', textShadow: '0 1px 10px rgba(0,0,0,0.5)' }}
-                >
-                  Oukala Journeys
-                </span>
-              </Link>
-              {/* Breadcrumb back link — renders only on sub-pages (day, hunt, prep) */}
-              <span className="text-white opacity-30 text-xs hidden sm:inline">/</span>
-              <NavBreadcrumb />
-            </div>
-
-            {/* Right: persona switcher */}
-            <div className="flex items-center gap-5">
-              <PersonaSwitcher />
-            </div>
-          </div>
-        </header>
+        {/* Global nav — transparent over heroes, navy on scroll */}
+        <NavBar />
 
         <ServiceWorkerRegistration />
         <main className="min-h-screen bg-white overflow-x-hidden">
