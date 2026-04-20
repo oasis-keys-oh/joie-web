@@ -109,7 +109,6 @@ export default function DaySidebar({ days, currentDayNumber, tripSlug }: DaySide
             <p className="label shrink-0">Weather</p>
             <div className="flex-1 border-t border-gray-100" />
           </div>
-          {/* @ts-expect-error async server component */}
           <WeatherWidget day={currentDay} />
         </div>
       )}

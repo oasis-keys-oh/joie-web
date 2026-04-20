@@ -35,9 +35,14 @@ export default async function HuntPage({ params }: HuntPageProps) {
   let challenges: any[] = []
 
   try {
-    trip = await getTripBySlug(params.slug)
-    challenges = await getHuntChallenges(trip!.id)
+    const t = await getTripBySlug(params.slug)
+    trip = t
+    challenges = await getHuntChallenges(t.id)
   } catch {
+    // fall through to null check below
+  }
+
+  if (!trip) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-ink-muted">Trip not found.</p>

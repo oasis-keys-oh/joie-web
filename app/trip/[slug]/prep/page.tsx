@@ -49,12 +49,17 @@ export default async function PrepPage({ params }: PrepPageProps) {
   let recommendations: any[] = []
 
   try {
-    trip = await getTripBySlug(params.slug)
+    const t = await getTripBySlug(params.slug)
+    trip = t
     ;[packingItems, recommendations] = await Promise.all([
-      getPackingItems(trip.id),
-      getRecommendations(trip.id),
+      getPackingItems(t.id),
+      getRecommendations(t.id),
     ])
   } catch {
+    // fall through to null check below
+  }
+
+  if (!trip) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-ink-muted">Trip not found.</p>
