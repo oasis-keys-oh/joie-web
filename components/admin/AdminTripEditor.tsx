@@ -7,6 +7,9 @@ import {
   upsertHotelAction, deleteHotelAction,
   upsertChallengeAction, deleteChallengeAction,
   updateDayFieldAction,
+  upsertPackingItemAction, deletePackingItemAction,
+  upsertRecAction, deleteRecAction,
+  upsertPreTripDropAction, deletePreTripDropAction,
 } from '@/app/admin/actions'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -17,8 +20,9 @@ interface Event { id: string; day_id: string; type: string; title: string; time_
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string }
 interface Challenge { id: string; day_number?: number; title: string; description: string; transliteration?: string; points: number; challenge_type: string }
-interface PackingItem { id: string; label: string; category: string; segment?: string; traveler_key?: string; notes?: string; amazon_url?: string }
-interface Rec { id: string; type: string; title: string; author?: string; notes?: string; amazon_url?: string; streaming_url?: string; streaming_platform?: string }
+interface PackingItem { id: string; item: string; category: string; segment?: string; traveler_key?: string; reason?: string; sort_order?: number }
+interface Rec { id: string; type: string; title: string; author?: string; description?: string; why_relevant?: string; when_to_enjoy?: string; amazon_url?: string; streaming_url?: string; streaming_platform?: string; sort_order?: number }
+interface PreTripDrop { id: string; date_offset_days: number; type: string; title?: string; content: string; media_url?: string; sent: boolean }
 interface Feedback { id: string; day_id: string; traveler_name: string; comment: string; created_at: string }
 
 interface Props {
@@ -30,6 +34,7 @@ interface Props {
   challenges: Challenge[]
   packing: PackingItem[]
   recs: Rec[]
+  drops: PreTripDrop[]
   feedback: Feedback[]
   activeTab: string
 }
@@ -42,6 +47,7 @@ const TABS = [
   { id: 'hunt',      label: 'Hunt' },
   { id: 'packing',   label: 'Packing' },
   { id: 'recs',      label: 'Recommendations' },
+  { id: 'pretripdrops', label: 'Pre-Trip Drops' },
   { id: 'feedback',  label: 'Feedback' },
 ]
 
@@ -155,7 +161,7 @@ function SectionHeader({ title, onAdd }: { title: string; onAdd?: () => void }) 
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, feedback, activeTab: initTab }: Props) {
+export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, activeTab: initTab }: Props) {
   const [tab, setTab] = useState(initTab)
 
   return (
@@ -191,9 +197,10 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       {tab === 'contacts' && <ContactsTab trip={trip} contacts={contacts} />}
       {tab === 'hotels'   && <HotelsTab   trip={trip} hotels={hotels} />}
       {tab === 'hunt'     && <HuntTab     trip={trip} challenges={challenges} />}
-      {tab === 'packing'  && <PackingTab  packing={packing} />}
-      {tab === 'recs'     && <RecsTab     recs={recs} />}
-      {tab === 'feedback' && <FeedbackTab days={days} feedback={feedback} />}
+      {tab === 'packing'       && <PackingTab    trip={trip} packing={packing} />}
+      {tab === 'recs'          && <RecsTab       trip={trip} recs={recs} />}
+      {tab === 'pretripdrops'  && <PreTripDropsTab trip={trip} drops={drops} />}
+      {tab === 'feedback'      && <FeedbackTab   days={days} feedback={feedback} />}
     </div>
   )
 }
@@ -794,9 +801,16 @@ function ChallengeRow({ challenge, tripId }: { challenge: Challenge; tripId: str
   )
 }
 
-// ── Packing Tab (read-only for now) ──────────────────────────────────────────
+// ── Packing Tab ───────────────────────────────────────────────────────────────
 
-function PackingTab({ packing }: { packing: PackingItem[] }) {
+const PACKING_CATEGORIES = ['Clothing', 'Cycling Gear', 'Evening Wear', 'Footwear', 'Toiletries', 'Documents', 'Tech', 'Health', 'Other']
+const TRAVELER_KEYS = ['all', 'omar', 'kristi', 'todd', 'erica']
+const SEGMENTS = ['', 'cycling', 'evening', 'beach', 'city', 'all']
+
+function PackingTab({ trip, packing }: { trip: Trip; packing: PackingItem[] }) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+
   const byCategory = packing.reduce((acc, item) => {
     const cat = item.category || 'Other'
     if (!acc[cat]) acc[cat] = []
@@ -806,18 +820,66 @@ function PackingTab({ packing }: { packing: PackingItem[] }) {
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-ink-muted">Packing list — {packing.length} items across {Object.keys(byCategory).length} categories.</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-ink-muted">{packing.length} items across {Object.keys(byCategory).length} categories.</p>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          + Add Item
+        </button>
+      </div>
+
+      {adding && (
+        <Card>
+          <SectionHeader title="New Packing Item" />
+          <form
+            action={async (fd) => {
+              fd.set('trip_id', trip.id)
+              await upsertPackingItemAction(fd)
+              setAdding(false)
+              window.location.reload()
+            }}
+            className="space-y-3"
+          >
+            <input type="hidden" name="trip_id" value={trip.id} />
+            <div><Label>Item Name *</Label><Input name="item" required placeholder="e.g. Cycling jersey" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Category</Label>
+                <Select name="category" options={PACKING_CATEGORIES} />
+              </div>
+              <div>
+                <Label>Traveler</Label>
+                <Select name="traveler_key" options={TRAVELER_KEYS} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Segment</Label>
+                <select name="segment" className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" style={{ background: '#faf8f4' }}>
+                  <option value="">None</option>
+                  {SEGMENTS.filter(s => s).map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div><Label>Sort Order</Label><Input name="sort_order" placeholder="0" /></div>
+            </div>
+            <div><Label>Reason / Note</Label><Textarea name="reason" placeholder="Why this item matters for this trip…" rows={2} /></div>
+            <div className="flex gap-3">
+              <SaveBtn pending={pending} />
+              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
       {Object.entries(byCategory).map(([cat, items]) => (
         <div key={cat}>
           <h3 className="font-serif font-bold text-navy mb-3">{cat}</h3>
           <div className="space-y-2">
-            {items.map(item => (
-              <div key={item.id} className="flex items-start gap-4 px-4 py-3 bg-white border border-gray-100 rounded-sm">
-                <span className="text-sm text-navy font-medium flex-1">{item.label}</span>
-                {item.traveler_key && <span className="text-xs text-ink-muted">{item.traveler_key}</span>}
-                {item.amazon_url && <a href={item.amazon_url} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75">Amazon →</a>}
-              </div>
-            ))}
+            {items.map(item => <PackingRow key={item.id} item={item} tripId={trip.id} />)}
           </div>
         </div>
       ))}
@@ -825,9 +887,85 @@ function PackingTab({ packing }: { packing: PackingItem[] }) {
   )
 }
 
-// ── Recommendations Tab (read-only for now) ───────────────────────────────────
+function PackingRow({ item, tripId }: { item: PackingItem; tripId: string }) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
 
-function RecsTab({ recs }: { recs: Rec[] }) {
+  return (
+    <Card>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-navy font-medium">{item.item}</p>
+            <div className="flex gap-3 mt-0.5 flex-wrap">
+              {item.traveler_key && item.traveler_key !== 'all' && (
+                <span className="text-xs text-gold">{item.traveler_key}</span>
+              )}
+              {item.segment && <span className="text-xs text-ink-muted">{item.segment}</span>}
+              {item.reason && <span className="text-xs text-ink-muted italic">{item.reason}</span>}
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
+            <DeleteBtn
+              pending={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm('Delete this packing item?')) {
+                  await deletePackingItemAction(item.id)
+                  window.location.reload()
+                }
+              })}
+            />
+          </div>
+        </div>
+      ) : (
+        <form
+          action={async (fd) => {
+            fd.set('id', item.id)
+            fd.set('trip_id', tripId)
+            await upsertPackingItemAction(fd)
+            setEditing(false)
+            window.location.reload()
+          }}
+          className="space-y-3"
+        >
+          <input type="hidden" name="id" value={item.id} />
+          <input type="hidden" name="trip_id" value={tripId} />
+          <div><Label>Item Name *</Label><Input name="item" defaultValue={item.item} required /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Category</Label><Select name="category" defaultValue={item.category} options={PACKING_CATEGORIES} /></div>
+            <div><Label>Traveler</Label><Select name="traveler_key" defaultValue={item.traveler_key || 'all'} options={TRAVELER_KEYS} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Segment</Label>
+              <select name="segment" defaultValue={item.segment || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
+                <option value="">None</option>
+                {SEGMENTS.filter(s => s).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div><Label>Sort Order</Label><Input name="sort_order" defaultValue={String(item.sort_order || '')} /></div>
+          </div>
+          <div><Label>Reason / Note</Label><Textarea name="reason" defaultValue={item.reason} rows={2} /></div>
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
+          </div>
+        </form>
+      )}
+    </Card>
+  )
+}
+
+// ── Recommendations Tab ───────────────────────────────────────────────────────
+
+const REC_TYPES = ['book', 'audiobook', 'film', 'podcast', 'music', 'documentary', 'other']
+const STREAMING_PLATFORMS = ['', 'Netflix', 'Apple TV+', 'Amazon Prime', 'Spotify', 'YouTube', 'Disney+', 'Audible', 'Other']
+
+function RecsTab({ trip, recs }: { trip: Trip; recs: Rec[] }) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+
   const byType = recs.reduce((acc, r) => {
     if (!acc[r.type]) acc[r.type] = []
     acc[r.type].push(r)
@@ -836,25 +974,279 @@ function RecsTab({ recs }: { recs: Rec[] }) {
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-ink-muted">{recs.length} recommendations.</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-ink-muted">{recs.length} recommendations.</p>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          + Add Rec
+        </button>
+      </div>
+
+      {adding && (
+        <Card>
+          <SectionHeader title="New Recommendation" />
+          <form
+            action={async (fd) => {
+              fd.set('trip_id', trip.id)
+              await upsertRecAction(fd)
+              setAdding(false)
+              window.location.reload()
+            }}
+            className="space-y-3"
+          >
+            <input type="hidden" name="trip_id" value={trip.id} />
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Title *</Label><Input name="title" required placeholder="Book / film / album title" /></div>
+              <div><Label>Type</Label><Select name="type" options={REC_TYPES} /></div>
+            </div>
+            <div><Label>Author / Artist / Director</Label><Input name="author" placeholder="Author or creator" /></div>
+            <div><Label>Description</Label><Textarea name="description" placeholder="Brief synopsis or description…" rows={2} /></div>
+            <div><Label>Why Relevant to This Trip</Label><Textarea name="why_relevant" placeholder="How does this connect to Morocco, France, the journey…" rows={2} /></div>
+            <div><Label>When to Enjoy</Label><Input name="when_to_enjoy" placeholder="Before departure / On the plane / During the trip…" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Amazon URL</Label><Input name="amazon_url" placeholder="https://amazon.com/…" /></div>
+              <div><Label>Streaming URL</Label><Input name="streaming_url" placeholder="https://…" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Streaming Platform</Label>
+                <select name="streaming_platform" className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
+                  {STREAMING_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
+                </select>
+              </div>
+              <div><Label>Sort Order</Label><Input name="sort_order" placeholder="0" /></div>
+            </div>
+            <div className="flex gap-3">
+              <SaveBtn pending={pending} />
+              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
       {Object.entries(byType).map(([type, items]) => (
         <div key={type}>
           <h3 className="font-serif font-bold text-navy mb-3 capitalize">{type}s</h3>
-          <div className="space-y-2">
-            {items.map(r => (
-              <div key={r.id} className="px-4 py-3 bg-white border border-gray-100 rounded-sm">
-                <p className="font-semibold text-navy text-sm">{r.title}</p>
-                {r.author && <p className="text-xs text-ink-muted">{r.author}</p>}
-                <div className="flex gap-3 mt-1">
-                  {r.amazon_url && <a href={r.amazon_url} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75">Amazon →</a>}
-                  {r.streaming_url && <a href={r.streaming_url} target="_blank" rel="noopener noreferrer" className="text-xs text-ink-muted hover:text-navy">{r.streaming_platform} →</a>}
-                </div>
-              </div>
-            ))}
+          <div className="space-y-3">
+            {items.map(r => <RecRow key={r.id} rec={r} tripId={trip.id} />)}
           </div>
         </div>
       ))}
     </div>
+  )
+}
+
+function RecRow({ rec, tripId }: { rec: Rec; tripId: string }) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <Card>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs uppercase tracking-widest px-2 py-0.5 rounded-sm" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C', letterSpacing: '0.1em' }}>{rec.type}</span>
+            </div>
+            <p className="font-semibold text-navy text-sm">{rec.title}</p>
+            {rec.author && <p className="text-xs text-ink-muted">{rec.author}</p>}
+            {rec.why_relevant && <p className="text-xs text-ink-muted italic mt-1">{rec.why_relevant}</p>}
+            {rec.when_to_enjoy && <p className="text-xs text-ink-muted mt-0.5">⏱ {rec.when_to_enjoy}</p>}
+            <div className="flex gap-3 mt-1">
+              {rec.amazon_url && <a href={rec.amazon_url} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75">Amazon →</a>}
+              {rec.streaming_url && <a href={rec.streaming_url} target="_blank" rel="noopener noreferrer" className="text-xs text-ink-muted hover:text-navy">{rec.streaming_platform} →</a>}
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
+            <DeleteBtn
+              pending={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm('Delete this recommendation?')) {
+                  await deleteRecAction(rec.id)
+                  window.location.reload()
+                }
+              })}
+            />
+          </div>
+        </div>
+      ) : (
+        <form
+          action={async (fd) => {
+            fd.set('id', rec.id)
+            fd.set('trip_id', tripId)
+            await upsertRecAction(fd)
+            setEditing(false)
+            window.location.reload()
+          }}
+          className="space-y-3"
+        >
+          <input type="hidden" name="id" value={rec.id} />
+          <input type="hidden" name="trip_id" value={tripId} />
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Title *</Label><Input name="title" defaultValue={rec.title} required /></div>
+            <div><Label>Type</Label><Select name="type" defaultValue={rec.type} options={REC_TYPES} /></div>
+          </div>
+          <div><Label>Author / Artist</Label><Input name="author" defaultValue={rec.author} /></div>
+          <div><Label>Description</Label><Textarea name="description" defaultValue={rec.description} rows={2} /></div>
+          <div><Label>Why Relevant</Label><Textarea name="why_relevant" defaultValue={rec.why_relevant} rows={2} /></div>
+          <div><Label>When to Enjoy</Label><Input name="when_to_enjoy" defaultValue={rec.when_to_enjoy} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Amazon URL</Label><Input name="amazon_url" defaultValue={rec.amazon_url} /></div>
+            <div><Label>Streaming URL</Label><Input name="streaming_url" defaultValue={rec.streaming_url} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Streaming Platform</Label>
+              <select name="streaming_platform" defaultValue={rec.streaming_platform || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
+                {STREAMING_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
+              </select>
+            </div>
+            <div><Label>Sort Order</Label><Input name="sort_order" defaultValue={String(rec.sort_order || '')} /></div>
+          </div>
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
+          </div>
+        </form>
+      )}
+    </Card>
+  )
+}
+
+// ── Pre-Trip Drops Tab ────────────────────────────────────────────────────────
+
+const DROP_TYPES = ['history', 'music', 'phrase', 'weather', 'tip', 'story', 'challenge', 'announcement']
+
+function PreTripDropsTab({ trip, drops }: { trip: Trip; drops: PreTripDrop[] }) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  const sorted = [...drops].sort((a, b) => a.date_offset_days - b.date_offset_days)
+
+  function offsetLabel(n: number) {
+    if (n === 0) return 'Day of departure'
+    if (n < 0) return `${Math.abs(n)} days before`
+    return `${n} days after`
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-ink-muted">{drops.length} pre-trip content drops. Negative offset = days before departure.</p>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          + Add Drop
+        </button>
+      </div>
+
+      {adding && (
+        <Card>
+          <SectionHeader title="New Pre-Trip Drop" />
+          <form
+            action={async (fd) => {
+              fd.set('trip_id', trip.id)
+              await upsertPreTripDropAction(fd)
+              setAdding(false)
+              window.location.reload()
+            }}
+            className="space-y-3"
+          >
+            <input type="hidden" name="trip_id" value={trip.id} />
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Days Offset *</Label>
+                <Input name="date_offset_days" required placeholder="-7 (7 days before)" />
+              </div>
+              <div><Label>Type</Label><Select name="type" options={DROP_TYPES} /></div>
+              <div><Label>Title</Label><Input name="title" placeholder="Optional headline" /></div>
+            </div>
+            <div><Label>Content *</Label><Textarea name="content" required placeholder="The drop content shown to travelers…" rows={4} /></div>
+            <div><Label>Media URL</Label><Input name="media_url" placeholder="https://… (optional image or audio link)" /></div>
+            <div className="flex gap-3">
+              <SaveBtn pending={pending} />
+              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {sorted.map(drop => <PreTripDropRow key={drop.id} drop={drop} tripId={trip.id} offsetLabel={offsetLabel} />)}
+    </div>
+  )
+}
+
+function PreTripDropRow({ drop, tripId, offsetLabel }: { drop: PreTripDrop; tripId: string; offsetLabel: (n: number) => string }) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <Card>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-xs font-semibold text-gold">{offsetLabel(drop.date_offset_days)}</span>
+              <span className="text-xs uppercase tracking-widest px-2 py-0.5 rounded-sm" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C', letterSpacing: '0.1em' }}>{drop.type}</span>
+              {drop.sent && <span className="text-xs text-green-600 font-semibold">Sent ✓</span>}
+            </div>
+            {drop.title && <p className="font-semibold text-navy text-sm">{drop.title}</p>}
+            <p className="text-xs text-ink-muted mt-1 line-clamp-3" style={{ color: '#555' }}>{drop.content}</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
+            <DeleteBtn
+              pending={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm('Delete this drop?')) {
+                  await deletePreTripDropAction(drop.id)
+                  window.location.reload()
+                }
+              })}
+            />
+          </div>
+        </div>
+      ) : (
+        <form
+          action={async (fd) => {
+            fd.set('id', drop.id)
+            fd.set('trip_id', tripId)
+            await upsertPreTripDropAction(fd)
+            setEditing(false)
+            window.location.reload()
+          }}
+          className="space-y-3"
+        >
+          <input type="hidden" name="id" value={drop.id} />
+          <input type="hidden" name="trip_id" value={tripId} />
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Days Offset *</Label><Input name="date_offset_days" defaultValue={String(drop.date_offset_days)} required /></div>
+            <div><Label>Type</Label><Select name="type" defaultValue={drop.type} options={DROP_TYPES} /></div>
+            <div><Label>Title</Label><Input name="title" defaultValue={drop.title} /></div>
+          </div>
+          <div><Label>Content *</Label><Textarea name="content" defaultValue={drop.content} required rows={4} /></div>
+          <div><Label>Media URL</Label><Input name="media_url" defaultValue={drop.media_url} /></div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-navy cursor-pointer">
+              <input type="checkbox" name="sent" value="true" defaultChecked={drop.sent} className="rounded" />
+              Mark as sent
+            </label>
+          </div>
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
+          </div>
+        </form>
+      )}
+    </Card>
   )
 }
 

@@ -14,6 +14,7 @@ interface PreTripDrop {
 interface Props {
   drops: PreTripDrop[]
   tripStartDate: string
+  tripTitle: string
   today: string             // ISO date string (server computed)
 }
 
@@ -38,7 +39,7 @@ function daysUntil(iso: string, today: string): number {
   return Math.ceil((u.getTime() - t.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-export default function PreTripDrops({ drops, tripStartDate, today }: Props) {
+export default function PreTripDrops({ drops, tripStartDate, tripTitle, today }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   if (!drops || drops.length === 0) return null
@@ -75,7 +76,7 @@ export default function PreTripDrops({ drops, tripStartDate, today }: Props) {
         >
           <p className="font-serif text-navy font-bold text-2xl">{daysToTrip}</p>
           <p className="text-xs text-ink-muted uppercase tracking-widest mt-0.5" style={{ letterSpacing: '0.14em' }}>
-            days until The Andalusian Thread begins
+            days until {tripTitle} begins
           </p>
         </div>
       )}

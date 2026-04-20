@@ -146,3 +146,85 @@ export async function deleteChallengeAction(id: string) {
   const admin = createAdminClient()
   await admin.from('hunt_challenges').delete().eq('id', id)
 }
+
+// ── Packing items ────────────────────────────────────────────────────────────
+
+export async function upsertPackingItemAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const payload = {
+    trip_id: formData.get('trip_id') as string,
+    item: formData.get('item') as string,
+    category: formData.get('category') as string,
+    segment: formData.get('segment') as string || null,
+    traveler_key: formData.get('traveler_key') as string || null,
+    reason: formData.get('reason') as string || null,
+    sort_order: parseInt(formData.get('sort_order') as string) || null,
+  }
+  if (id) {
+    await admin.from('packing_items').update(payload).eq('id', id)
+  } else {
+    await admin.from('packing_items').insert(payload)
+  }
+}
+
+export async function deletePackingItemAction(id: string) {
+  const admin = createAdminClient()
+  await admin.from('packing_items').delete().eq('id', id)
+}
+
+// ── Recommendations ──────────────────────────────────────────────────────────
+
+export async function upsertRecAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const payload = {
+    trip_id: formData.get('trip_id') as string,
+    type: formData.get('type') as string,
+    title: formData.get('title') as string,
+    author: formData.get('author') as string || null,
+    description: formData.get('description') as string || null,
+    why_relevant: formData.get('why_relevant') as string || null,
+    when_to_enjoy: formData.get('when_to_enjoy') as string || null,
+    amazon_url: formData.get('amazon_url') as string || null,
+    streaming_url: formData.get('streaming_url') as string || null,
+    streaming_platform: formData.get('streaming_platform') as string || null,
+    sort_order: parseInt(formData.get('sort_order') as string) || null,
+  }
+  if (id) {
+    await admin.from('recommendations').update(payload).eq('id', id)
+  } else {
+    await admin.from('recommendations').insert(payload)
+  }
+}
+
+export async function deleteRecAction(id: string) {
+  const admin = createAdminClient()
+  await admin.from('recommendations').delete().eq('id', id)
+}
+
+// ── Pre-trip content drops ───────────────────────────────────────────────────
+
+export async function upsertPreTripDropAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const payload = {
+    trip_id: formData.get('trip_id') as string,
+    date_offset_days: parseInt(formData.get('date_offset_days') as string),
+    type: formData.get('type') as string,
+    title: formData.get('title') as string || null,
+    content: formData.get('content') as string,
+    media_url: formData.get('media_url') as string || null,
+    sent: formData.get('sent') === 'true',
+  }
+  if (id) {
+    await admin.from('pre_trip_content').update(payload).eq('id', id)
+  } else {
+    await admin.from('pre_trip_content').insert(payload)
+  }
+}
+
+export async function deletePreTripDropAction(id: string) {
+  const admin = createAdminClient()
+  await admin.from('pre_trip_content').delete().eq('id', id)
+}

@@ -197,6 +197,7 @@ export default async function TripPage({ params }: TripPageProps) {
               <PreTripDrops
                 drops={drops}
                 tripStartDate={trip.start_date}
+                tripTitle={trip.title}
                 today={today}
               />
             )}

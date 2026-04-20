@@ -68,7 +68,7 @@ export default async function HuntPage({ params }: HuntPageProps) {
           className="text-gold text-xs tracking-widest uppercase mb-3"
           style={{ letterSpacing: '0.2em' }}
         >
-          The Andalusian Thread
+          {trip.title}
         </p>
         <h1
           className="font-serif font-bold text-white"

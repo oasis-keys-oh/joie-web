@@ -101,7 +101,7 @@ function PersonaPicker({ onSelect }: { onSelect: (t: Traveler) => void }) {
             Oukala Journeys
           </p>
           <h2 className="font-serif text-white font-bold" style={{ fontSize: '1.75rem', lineHeight: '1.1' }}>
-            Welcome to The Andalusian Thread
+            Welcome to your journey
           </h2>
           <p className="text-white opacity-55 mt-2 text-sm" style={{ lineHeight: '1.6' }}>
             Who are you joining us as?

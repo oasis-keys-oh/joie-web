@@ -25,6 +25,7 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
     { data: challenges },
     { data: packing },
     { data: recs },
+    { data: drops },
     { data: feedback },
   ] = await Promise.all([
     admin.from('trips').select('*').eq('id', tripId).single(),
@@ -34,7 +35,8 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
     admin.from('reference_items').select('*').eq('trip_id', tripId).eq('type', 'hotel').order('check_in'),
     admin.from('hunt_challenges').select('*').eq('trip_id', tripId).order('day_number'),
     admin.from('packing_items').select('*').eq('trip_id', tripId).order('category'),
-    admin.from('recommendations').select('*').eq('trip_id', tripId).order('type'),
+    admin.from('recommendations').select('*').eq('trip_id', tripId).order('sort_order'),
+    admin.from('pre_trip_content').select('*').eq('trip_id', tripId).order('date_offset_days'),
     admin.from('feedback').select('*').eq('trip_id', tripId).order('created_at', { ascending: false }),
   ])
 
@@ -70,6 +72,7 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
         challenges={challenges || []}
         packing={packing || []}
         recs={recs || []}
+        drops={drops || []}
         feedback={feedback || []}
         activeTab={activeTab}
       />
