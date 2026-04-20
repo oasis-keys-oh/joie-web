@@ -780,6 +780,81 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
               </div>
             </div>
           ))}
+
+          {/* ── Official Travel Resources ── */}
+          <div>
+            <div className="flex items-center gap-4 mb-5">
+              <p className="label shrink-0">Official Travel Resources</p>
+              <div className="flex-1 border-t border-gray-100" />
+            </div>
+            <div className="space-y-3">
+              {[
+                {
+                  flag: '🇲🇦',
+                  country: 'Morocco',
+                  advisory: { label: 'State Dept Advisory', url: 'https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/Morocco.html' },
+                  embassy: { label: 'U.S. Embassy Rabat', url: 'https://ma.usembassy.gov' },
+                  smartTraveler: true,
+                },
+                {
+                  flag: '🇫🇷',
+                  country: 'France',
+                  advisory: { label: 'State Dept Advisory', url: 'https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/France.html' },
+                  embassy: { label: 'U.S. Embassy Paris', url: 'https://fr.usembassy.gov' },
+                  smartTraveler: true,
+                },
+              ].map((c) => (
+                <div
+                  key={c.country}
+                  className="flex items-center gap-4 px-5 py-4 rounded-sm border border-gray-100 bg-white"
+                >
+                  <span style={{ fontSize: '1.4rem' }}>{c.flag}</span>
+                  <span className="flex-1">
+                    <span className="font-medium text-navy text-sm block">{c.country}</span>
+                  </span>
+                  <div className="flex gap-2 flex-wrap justify-end">
+                    <a
+                      href={c.advisory.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs px-3 py-1.5 rounded-sm border border-gray-200 text-ink-muted hover:border-navy hover:text-navy transition-all"
+                      style={{ letterSpacing: '0.06em' }}
+                    >
+                      {c.advisory.label} →
+                    </a>
+                    <a
+                      href={c.embassy.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs px-3 py-1.5 rounded-sm border border-gray-200 text-ink-muted hover:border-navy hover:text-navy transition-all"
+                      style={{ letterSpacing: '0.06em' }}
+                    >
+                      {c.embassy.label} →
+                    </a>
+                  </div>
+                </div>
+              ))}
+              <div
+                className="px-5 py-4 rounded-sm"
+                style={{ background: 'rgba(27,43,75,0.03)', border: '1px solid rgba(27,43,75,0.07)' }}
+              >
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  <strong className="text-navy">Smart Traveler Enrollment Program (STEP):</strong>{' '}
+                  Register your trip at{' '}
+                  <a
+                    href="https://step.state.gov"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold hover:underline"
+                  >
+                    step.state.gov
+                  </a>{' '}
+                  so the U.S. Embassy can reach you in an emergency. Takes 2 minutes.
+                </p>
+              </div>
+            </div>
+          </div>
+
         </div>
       )}
 

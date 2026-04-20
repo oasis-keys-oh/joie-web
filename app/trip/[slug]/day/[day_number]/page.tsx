@@ -23,6 +23,7 @@ import MustBuySection from '@/components/MustBuySection'
 import WineFoodThread from '@/components/WineFoodThread'
 import PaceIndicator from '@/components/PaceIndicator'
 import CulturalNotesBox from '@/components/CulturalNotesBox'
+import StickyDayBar from '@/components/StickyDayBar'
 import { Trip, TripDay, Event } from '@/lib/types'
 import Link from 'next/link'
 
@@ -92,6 +93,9 @@ export default async function DayPage({ params }: DayPageProps) {
     <>
       {/* Full-bleed day hero — global header (layout.tsx) handles the back link via NavBreadcrumb */}
       <DayHeader day={day} />
+
+      {/* Sticky bar — floats in once hero scrolls out of view */}
+      <StickyDayBar dayNumber={day.day_number} title={day.title} location={day.location} region={day.region} />
 
       {/* Three-column: left day-nav | center content | right callout sidebar */}
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 lg:px-12">

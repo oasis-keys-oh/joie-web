@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { TripDay } from '@/lib/types'
-import { getPhotoPool, UnsplashPhoto } from '@/lib/unsplash'
+import { getPhotoPool, DEFAULT_PHOTOS, UnsplashPhoto } from '@/lib/unsplash'
 import UnsplashCredit from '@/components/UnsplashCredit'
 import { formatDate } from '@/lib/utils'
 
@@ -15,12 +15,40 @@ function sized(photo: UnsplashPhoto, w: number, h: number, q: number): string {
   return `https://images.unsplash.com/${photo.id}?w=${w}&h=${h}&fit=crop&q=${q}`
 }
 
+/**
+ * Resolve the best photo pool for a day.
+ * - Handles transit strings like "Casablanca → Rabat" by preferring the destination (right side).
+ * - Falls back through: destination city → origin city → region → DEFAULT.
+ * - Starting index uses a simple hash of day_number to spread photos across adjacent days.
+ */
+function resolvePool(location: string | undefined, region: string | undefined, dayNumber: number) {
+  const loc = location || ''
+  // Handle "A → B" or "A - B" transit format — try destination (B) first
+  const arrowIdx = loc.indexOf('→')
+  const dashIdx = loc.indexOf(' - ')
+  const separator = arrowIdx !== -1 ? arrowIdx : dashIdx !== -1 ? dashIdx : -1
+
+  let pool = null
+  if (separator !== -1) {
+    const destination = loc.slice(separator + (arrowIdx !== -1 ? 1 : 3)).trim()
+    const origin = loc.slice(0, separator).trim()
+    const destPool = getPhotoPool(destination)
+    pool = destPool !== DEFAULT_PHOTOS ? destPool : getPhotoPool(origin)
+    if (pool === DEFAULT_PHOTOS) pool = getPhotoPool(region || '')
+  } else {
+    const combined = [loc, region].filter(Boolean).join(' ')
+    pool = getPhotoPool(combined)
+  }
+
+  // Spread starting index: use a simple hash so adjacent days in same region
+  // don't all show the same photo (dayNumber * 3 mod pool.length gives a spread)
+  const startIndex = (dayNumber * 3) % pool.length
+  return { pool, startIndex }
+}
+
 export default function DayHeader({ day }: DayHeaderProps) {
-  // Use location for city-level accuracy (e.g. "Loire — Chambord"), fall back to region
-  const locationStr = [day.location, day.region].filter(Boolean).join(' ')
-  const pool = getPhotoPool(locationStr)
-  // Start from a deterministic offset per day so images don't always start the same
-  const [index, setIndex] = useState(day.day_number % pool.length)
+  const { pool, startIndex } = resolvePool(day.location, day.region, day.day_number)
+  const [index, setIndex] = useState(startIndex)
   const [fading, setFading] = useState(false)
 
   useEffect(() => {

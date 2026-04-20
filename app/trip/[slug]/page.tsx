@@ -94,8 +94,8 @@ export default async function TripPage({ params }: TripPageProps) {
 
   return (
     <>
-      {/* Full-bleed hero */}
-      <TripHeader trip={trip} />
+      {/* Full-bleed hero — derive photo from first day's location */}
+      <TripHeader trip={trip} firstDestination={days[0]?.location || days[0]?.region || 'morocco'} />
 
       {/* Two-column layout below hero */}
       <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14">

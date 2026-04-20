@@ -1,18 +1,23 @@
 import Image from 'next/image'
 import { Trip } from '@/lib/types'
-import { SPAIN_PHOTOS } from '@/lib/unsplash'
+import { getPhotoPool, UnsplashPhoto } from '@/lib/unsplash'
 import UnsplashCredit from '@/components/UnsplashCredit'
 import { formatDate } from '@/lib/utils'
 
 interface TripHeaderProps {
   trip: Trip
+  /** Override hero image URL — e.g. from a custom trip cover photo */
   imageUrl?: string
+  /** First destination region/city to pick a relevant hero photo pool */
+  firstDestination?: string
 }
 
-// Fixed hero: Seville/Andalusia feel — first Spain photo
-const heroPhoto = SPAIN_PHOTOS[0]
-
-export default function TripHeader({ trip, imageUrl }: TripHeaderProps) {
+export default function TripHeader({ trip, imageUrl, firstDestination }: TripHeaderProps) {
+  // Derive hero from the trip's first destination (passed from server), not a hardcoded location.
+  // Falls back to a general travel photo if no destination is specified.
+  const destination = firstDestination || (trip as any).first_destination || 'morocco'
+  const pool = getPhotoPool(destination)
+  const heroPhoto: UnsplashPhoto = pool[0]
   const finalImageUrl = imageUrl || `https://images.unsplash.com/${heroPhoto.id}?w=2400&h=1400&fit=crop&q=90`
 
   return (
