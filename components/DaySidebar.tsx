@@ -137,38 +137,39 @@ export default function DaySidebar({ days, currentDayNumber, tripSlug }: DaySide
                 `}
               >
                 {/* Region dot */}
-                <div className="pt-1.5 shrink-0">
-                  <div
+                <span className="pt-1.5 shrink-0" style={{ display: 'block' }}>
+                  <span
                     className="w-1.5 h-1.5 rounded-full"
                     style={{
+                      display: 'block',
                       background: isCurrent ? '#C9A84C' : dotColor,
                       opacity: isCurrent ? 1 : 0.55,
                     }}
                   />
-                </div>
+                </span>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-1.5">
+                <span className="min-w-0 flex-1" style={{ display: 'block' }}>
+                  <span className="flex items-baseline gap-1.5" style={{ display: 'flex' }}>
                     <span
                       className={`shrink-0 font-semibold ${isCurrent ? 'text-gold' : 'text-ink-muted'}`}
                       style={{ fontSize: '0.67rem', letterSpacing: '0.06em' }}
                     >
                       {day.day_number}
                     </span>
-                    <p
+                    <span
                       className={`truncate font-medium ${isCurrent ? 'text-white' : 'text-navy'}`}
-                      style={{ fontSize: '0.73rem', lineHeight: '1.35' }}
+                      style={{ display: 'block', fontSize: '0.73rem', lineHeight: '1.35' }}
                     >
                       {day.title}
-                    </p>
-                  </div>
-                  <p
+                    </span>
+                  </span>
+                  <span
                     className={`mt-0.5 truncate ${isCurrent ? 'text-white opacity-50' : 'text-ink-muted'}`}
-                    style={{ fontSize: '0.65rem', letterSpacing: '0.03em' }}
+                    style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.03em' }}
                   >
                     {formatDateShort(day.date)}
-                  </p>
-                </div>
+                  </span>
+                </span>
               </Link>
             )
           })}

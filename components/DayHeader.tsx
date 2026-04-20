@@ -16,7 +16,9 @@ function sized(photo: UnsplashPhoto, w: number, h: number, q: number): string {
 }
 
 export default function DayHeader({ day }: DayHeaderProps) {
-  const pool = getPhotoPool(day.region || '')
+  // Use location for city-level accuracy (e.g. "Loire — Chambord"), fall back to region
+  const locationStr = [day.location, day.region].filter(Boolean).join(' ')
+  const pool = getPhotoPool(locationStr)
   // Start from a deterministic offset per day so images don't always start the same
   const [index, setIndex] = useState(day.day_number % pool.length)
   const [fading, setFading] = useState(false)

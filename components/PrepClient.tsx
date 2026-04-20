@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePersona } from '@/components/PersonaProvider'
 
 interface PackingItem {
@@ -8,8 +8,8 @@ interface PackingItem {
   category: string
   item: string
   notes?: string
-  for_traveler?: string | null  // null = everyone
-  segment?: string  // 'morocco' | 'france' | 'all'
+  for_traveler?: string | null
+  segment?: string
 }
 
 interface Recommendation {
@@ -19,6 +19,8 @@ interface Recommendation {
   author?: string
   description?: string
   amazon_url?: string
+  streaming_url?: string
+  streaming_platform?: string
   why_relevant?: string
 }
 
@@ -55,11 +57,187 @@ const REC_TYPES: { id: string; label: string; emoji: string }[] = [
   { id: 'music', label: 'Music', emoji: '🎵' },
 ]
 
+type CurrencyCode = 'USD' | 'MAD' | 'EUR'
+
+// ── Exchange Rate Widget (bidirectional) ──────────────────────────────
+function ExchangeRateCalculator() {
+  const [activeCurrency, setActiveCurrency] = useState<CurrencyCode>('USD')
+  const [inputValue, setInputValue] = useState('100')
+  const [rates, setRates] = useState<{ MAD: number; EUR: number } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchRates() {
+      try {
+        const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD')
+        if (!res.ok) throw new Error('fetch failed')
+        const data = await res.json()
+        setRates({ MAD: data.rates.MAD, EUR: data.rates.EUR })
+        setLastUpdated(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }))
+      } catch {
+        setRates({ MAD: 10.05, EUR: 0.92 })
+        setLastUpdated(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchRates()
+  }, [])
+
+  // Convert inputValue in activeCurrency → USD (base)
+  function toUSD(amount: number, from: CurrencyCode): number {
+    if (!rates) return amount
+    if (from === 'USD') return amount
+    if (from === 'MAD') return amount / rates.MAD
+    if (from === 'EUR') return amount / rates.EUR
+    return amount
+  }
+
+  const rawAmount = parseFloat(inputValue) || 0
+  const usdBase = toUSD(rawAmount, activeCurrency)
+
+  function getConverted(code: CurrencyCode): number {
+    if (!rates) return 0
+    if (code === 'USD') return usdBase
+    if (code === 'MAD') return usdBase * rates.MAD
+    if (code === 'EUR') return usdBase * rates.EUR
+    return 0
+  }
+
+  function formatRate(from: CurrencyCode, to: CurrencyCode): string {
+    if (!rates) return ''
+    const fromUSD = toUSD(1, from)
+    const toAmt = getConverted === undefined ? 0 : (() => {
+      if (to === 'USD') return fromUSD
+      if (to === 'MAD') return fromUSD * rates.MAD
+      if (to === 'EUR') return fromUSD * rates.EUR
+      return 0
+    })()
+    return `1 ${from} = ${toAmt.toFixed(2)} ${to}`
+  }
+
+  const CURRENCIES: { code: CurrencyCode; label: string; symbol: string; color: string }[] = [
+    { code: 'USD', label: 'US Dollar',       symbol: '$',  color: '#1d4ed8' },
+    { code: 'MAD', label: 'Moroccan Dirham', symbol: 'DH', color: '#b45309' },
+    { code: 'EUR', label: 'Euro',            symbol: '€',  color: '#15803d' },
+  ]
+
+  return (
+    <div
+      className="p-6 rounded-sm"
+      style={{ background: 'rgba(27,43,75,0.04)', border: '1px solid rgba(27,43,75,0.08)' }}
+    >
+      <div className="flex items-center gap-3 mb-5">
+        <span style={{ fontSize: '1.2rem' }}>💱</span>
+        <p className="label">Live Exchange Rates</p>
+        {lastUpdated && (
+          <span className="text-ink-muted ml-auto" style={{ fontSize: '0.65rem' }}>
+            Updated {lastUpdated}
+          </span>
+        )}
+        {!lastUpdated && !loading && (
+          <span className="text-ink-muted ml-auto" style={{ fontSize: '0.65rem' }}>
+            Approx. rates
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="text-center py-4 text-ink-muted text-sm">Loading rates…</div>
+      ) : rates ? (
+        <>
+          <p className="text-xs text-ink-muted mb-3" style={{ fontSize: '0.68rem' }}>
+            Click any currency to type in that amount
+          </p>
+          <div className="space-y-2">
+            {CURRENCIES.map((c) => {
+              const isActive = activeCurrency === c.code
+              const displayValue = isActive
+                ? inputValue
+                : getConverted(c.code).toFixed(c.code === 'MAD' ? 0 : 2)
+
+              return (
+                <div
+                  key={c.code}
+                  onClick={() => {
+                    if (!isActive) {
+                      // Switch active currency — convert displayed value to new input
+                      const converted = getConverted(c.code)
+                      setActiveCurrency(c.code)
+                      setInputValue(c.code === 'MAD' ? converted.toFixed(0) : converted.toFixed(2))
+                    }
+                  }}
+                  className="flex items-center gap-4 px-4 py-3 rounded-sm cursor-pointer transition-all duration-200"
+                  style={{
+                    background: isActive ? `${c.color}10` : 'white',
+                    border: isActive ? `2px solid ${c.color}` : '1px solid rgba(27,43,75,0.09)',
+                  }}
+                >
+                  {/* Currency badge */}
+                  <div
+                    className="shrink-0 w-12 text-center font-bold text-sm rounded-sm py-1"
+                    style={{ background: `${c.color}15`, color: c.color }}
+                  >
+                    {c.symbol}
+                  </div>
+
+                  {/* Input or read-only display */}
+                  <div className="flex-1">
+                    {isActive ? (
+                      <input
+                        type="number"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                        className="w-full font-serif font-bold text-navy text-xl outline-none bg-transparent"
+                        style={{ lineHeight: '1' }}
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-serif font-bold text-navy text-xl" style={{ lineHeight: '1' }}>
+                        {displayValue}
+                      </p>
+                    )}
+                    <p className="text-ink-muted mt-0.5" style={{ fontSize: '0.65rem', letterSpacing: '0.06em' }}>
+                      {c.label}
+                      {isActive && <span className="ml-2 opacity-60">← enter amount</span>}
+                    </p>
+                  </div>
+
+                  {/* Rate reference */}
+                  {!isActive && (
+                    <p className="text-ink-muted shrink-0 text-right" style={{ fontSize: '0.6rem', lineHeight: '1.5' }}>
+                      {formatRate(activeCurrency, c.code)}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </>
+      ) : null}
+
+      <p className="text-ink-muted mt-4 text-center" style={{ fontSize: '0.65rem' }}>
+        For reference only. Rates fluctuate — check your bank before departure.
+      </p>
+    </div>
+  )
+}
+
+// ── Main Component ────────────────────────────────────────────────────
 export default function PrepClient({ tripSlug, packingItems, recommendations }: PrepClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>('packing')
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
+  const [healthPackingList, setHealthPackingList] = useState<Set<string>>(new Set())
   const [segment, setSegment] = useState<'all' | 'morocco' | 'france'>('all')
+  const [revealedRecs, setRevealedRecs] = useState<Set<string>>(new Set())
   const { traveler } = usePersona()
+
+  function revealRec(id: string) {
+    setRevealedRecs((prev) => new Set([...prev, id]))
+  }
 
   function toggleItem(id: string) {
     setCheckedItems((prev) => {
@@ -68,6 +246,11 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
       else next.add(id)
       return next
     })
+  }
+
+  function addHealthItemToPacking(label: string) {
+    setHealthPackingList((prev) => new Set([...prev, label]))
+    setActiveTab('packing')
   }
 
   // Filter packing items
@@ -84,12 +267,39 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
     groupedItems[cat].push(item)
   }
 
-  const totalItems = filteredItems.length
+  // Inject health items added via "Add to packing list"
+  if (healthPackingList.size > 0) {
+    const healthExtra = groupedItems['Health & Pharmacy'] || []
+    const existingLabels = new Set(healthExtra.map((i) => i.item))
+    for (const label of healthPackingList) {
+      if (!existingLabels.has(label)) {
+        healthExtra.push({ id: `health-${label}`, category: 'Health & Pharmacy', item: label, notes: 'Added from Health & Safety' })
+      }
+    }
+    groupedItems['Health & Pharmacy'] = healthExtra
+  }
+
+  const totalItems = filteredItems.length + healthPackingList.size
   const checkedCount = filteredItems.filter((i) => checkedItems.has(i.id)).length
   const pct = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0
 
   return (
     <div className="max-w-5xl mx-auto px-6 sm:px-10 lg:px-14 py-12">
+
+      {/* ── Packing Philosophy — always visible at top ── */}
+      <div
+        className="mb-10 p-6 rounded-sm"
+        style={{ background: 'rgba(27,43,75,0.04)', borderLeft: '3px solid #C9A84C' }}
+      >
+        <p className="text-xs text-ink-muted uppercase tracking-widest mb-2" style={{ letterSpacing: '0.14em' }}>
+          Oukala Packing Philosophy
+        </p>
+        <p className="text-sm text-ink leading-relaxed">
+          Morocco and France require different wardrobes. Plan for layering in Burgundy (June evenings can be 55°F),
+          and modest dress for medinas — knees and shoulders covered. One carry-on each if you can manage it.
+          The best hotel stays leave room for what you find.
+        </p>
+      </div>
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-12 border-b border-gray-100 pb-0">
@@ -112,18 +322,24 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
       {/* ── PACKING TAB ── */}
       {activeTab === 'packing' && (
         <div>
+          {healthPackingList.size > 0 && (
+            <div
+              className="mb-6 px-4 py-3 rounded-sm text-sm"
+              style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)' }}
+            >
+              ✓ {healthPackingList.size} item{healthPackingList.size !== 1 ? 's' : ''} added from Health & Safety → Health & Pharmacy
+            </div>
+          )}
+
           {/* Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-            {/* Segment filter */}
             <div className="flex gap-2">
               {(['all', 'morocco', 'france'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSegment(s)}
                   className={`px-4 py-1.5 text-xs uppercase tracking-widest rounded-sm transition-all duration-200 ${
-                    segment === s
-                      ? 'bg-navy text-white'
-                      : 'bg-gray-50 text-ink-muted hover:bg-gray-100'
+                    segment === s ? 'bg-navy text-white' : 'bg-gray-50 text-ink-muted hover:bg-gray-100'
                   }`}
                   style={{ letterSpacing: '0.12em' }}
                 >
@@ -131,18 +347,11 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
                 </button>
               ))}
             </div>
-
-            {/* Progress */}
             <div className="flex items-center gap-3">
               <div className="flex-1 sm:w-32 h-1 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gold transition-all duration-500"
-                  style={{ width: `${pct}%` }}
-                />
+                <div className="h-full bg-gold transition-all duration-500" style={{ width: `${pct}%` }} />
               </div>
-              <span className="text-xs text-ink-muted shrink-0">
-                {checkedCount}/{totalItems} packed
-              </span>
+              <span className="text-xs text-ink-muted shrink-0">{checkedCount}/{totalItems} packed</span>
             </div>
           </div>
 
@@ -152,15 +361,12 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
               const items = groupedItems[cat]
               if (!items || items.length === 0) return null
               const allChecked = items.every((i) => checkedItems.has(i.id))
-
               return (
                 <div key={cat}>
                   <div className="flex items-center gap-4 mb-4">
                     <p className="label shrink-0">{cat}</p>
                     <div className="flex-1 border-t border-gray-100" />
-                    {allChecked && (
-                      <span className="text-xs text-gold">✓ Done</span>
-                    )}
+                    {allChecked && <span className="text-xs text-gold">✓ Done</span>}
                   </div>
                   <div className="space-y-1">
                     {items.map((item) => {
@@ -176,18 +382,19 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
                             onChange={() => toggleItem(item.id)}
                             className="mt-0.5 shrink-0 accent-gold"
                           />
-                          <div className="min-w-0 flex-1">
-                            <p
+                          <span className="min-w-0 flex-1" style={{ display: 'block' }}>
+                            <span
                               className={`text-sm font-medium transition-colors ${checked ? 'line-through text-ink-muted' : 'text-navy'}`}
+                              style={{ display: 'block' }}
                             >
                               {item.item}
-                            </p>
+                            </span>
                             {item.notes && (
-                              <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
+                              <span className="text-xs text-ink-muted mt-0.5 leading-relaxed" style={{ display: 'block' }}>
                                 {item.notes}
-                              </p>
+                              </span>
                             )}
-                          </div>
+                          </span>
                           {item.segment && item.segment !== 'all' && (
                             <span
                               className="shrink-0 text-xs px-2 py-0.5 rounded-sm mt-0.5"
@@ -207,7 +414,7 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
               )
             })}
 
-            {/* Handle any unlisted categories */}
+            {/* Unlisted categories */}
             {Object.keys(groupedItems)
               .filter((cat) => !PACKING_CATEGORIES.includes(cat))
               .map((cat) => {
@@ -220,41 +427,23 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
                     </div>
                     <div className="space-y-1">
                       {items.map((item) => (
-                        <label
-                          key={item.id}
-                          className="flex items-start gap-3 px-3 py-3 rounded-sm cursor-pointer hover:bg-gray-50"
-                        >
+                        <label key={item.id} className="flex items-start gap-3 px-3 py-3 rounded-sm cursor-pointer hover:bg-gray-50">
                           <input
                             type="checkbox"
                             checked={checkedItems.has(item.id)}
                             onChange={() => toggleItem(item.id)}
                             className="mt-0.5 shrink-0 accent-gold"
                           />
-                          <div>
-                            <p className="text-sm font-medium text-navy">{item.item}</p>
-                            {item.notes && <p className="text-xs text-ink-muted mt-0.5">{item.notes}</p>}
-                          </div>
+                          <span style={{ display: 'block' }}>
+                            <span className="text-sm font-medium text-navy" style={{ display: 'block' }}>{item.item}</span>
+                            {item.notes && <span className="text-xs text-ink-muted mt-0.5" style={{ display: 'block' }}>{item.notes}</span>}
+                          </span>
                         </label>
                       ))}
                     </div>
                   </div>
                 )
               })}
-          </div>
-
-          {/* Packing note */}
-          <div
-            className="mt-12 p-6 rounded-sm"
-            style={{ background: 'rgba(27,43,75,0.04)', borderLeft: '3px solid #C9A84C' }}
-          >
-            <p className="text-xs text-ink-muted uppercase tracking-widest mb-2" style={{ letterSpacing: '0.14em' }}>
-              Oukala Packing Philosophy
-            </p>
-            <p className="text-sm text-ink leading-relaxed">
-              Morocco and France require different wardrobes. Plan for layering in Burgundy (June evenings can be 55°F),
-              and modest dress for medinas — knees and shoulders covered. One carry-on each if you can manage it.
-              The best hotel stays leave room for what you find.
-            </p>
           </div>
         </div>
       )}
@@ -273,64 +462,111 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
                   <div className="flex-1 border-t border-gray-100" />
                 </div>
                 <div className="space-y-5">
-                  {recs.map((rec) => (
-                    <div
-                      key={rec.id}
-                      className="flex items-start gap-4 p-5 rounded-sm"
-                      style={{ background: 'rgba(27,43,75,0.03)', border: '1px solid rgba(27,43,75,0.07)' }}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-serif font-bold text-navy text-base leading-snug">
-                          {rec.title}
-                        </p>
-                        {rec.author && (
-                          <p className="text-xs text-ink-muted mt-0.5 uppercase tracking-wide" style={{ letterSpacing: '0.1em' }}>
-                            {rec.author}
-                          </p>
-                        )}
-                        {rec.why_relevant && (
-                          <p className="text-sm text-ink mt-3 leading-relaxed" style={{ color: '#555' }}>
-                            {rec.why_relevant}
-                          </p>
-                        )}
-                        {rec.description && !rec.why_relevant && (
-                          <p className="text-sm text-ink-muted mt-2 leading-relaxed">
-                            {rec.description}
-                          </p>
-                        )}
+                  {recs.map((rec) => {
+                    // Special case: Todd's costume — shown as "Cultural Immersion" until revealed
+                    const isToddEntry = rec.title?.toLowerCase().includes('costume') || rec.description?.toLowerCase().includes('halloween')
+                    const revealed = revealedRecs.has(rec.id)
+
+                    return (
+                      <div
+                        key={rec.id}
+                        className="flex items-start gap-4 p-5 rounded-sm"
+                        style={{ background: 'rgba(27,43,75,0.03)', border: '1px solid rgba(27,43,75,0.07)' }}
+                      >
+                        <span className="min-w-0 flex-1" style={{ display: 'block' }}>
+                          <span className="font-serif font-bold text-navy text-base leading-snug" style={{ display: 'block' }}>
+                            {isToddEntry && !revealed ? 'Cultural Immersion Attire' : rec.title}
+                          </span>
+                          {rec.author && (
+                            <span className="text-xs text-ink-muted mt-0.5 uppercase tracking-wide" style={{ letterSpacing: '0.1em', display: 'block' }}>
+                              {rec.author}
+                            </span>
+                          )}
+                          {isToddEntry && !revealed ? (
+                            <span style={{ display: 'block' }}>
+                              <span className="text-sm text-ink-muted mt-3 leading-relaxed italic" style={{ color: '#888', display: 'block' }}>
+                                A carefully selected cultural ensemble for the journey ahead. Details revealed upon request.
+                              </span>
+                              <button
+                                onClick={() => revealRec(rec.id)}
+                                className="mt-3 text-xs uppercase tracking-widest text-gold hover:text-navy transition-colors"
+                                style={{ letterSpacing: '0.14em' }}
+                              >
+                                Reveal →
+                              </button>
+                            </span>
+                          ) : (
+                            <span style={{ display: 'block' }}>
+                              {rec.why_relevant && (
+                                <span className="text-sm text-ink mt-3 leading-relaxed" style={{ color: '#555', display: 'block' }}>
+                                  {rec.why_relevant}
+                                </span>
+                              )}
+                              {rec.description && !rec.why_relevant && (
+                                <span className="text-sm text-ink-muted mt-2 leading-relaxed" style={{ display: 'block' }}>
+                                  {rec.description}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex flex-col gap-2 shrink-0" style={{ display: 'flex' }}>
+                          {rec.amazon_url && (
+                            <a
+                              href={rec.amazon_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 text-xs uppercase tracking-widest text-navy border border-navy border-opacity-30 hover:bg-navy hover:text-white transition-all duration-200 rounded-sm text-center"
+                              style={{ letterSpacing: '0.12em' }}
+                            >
+                              Amazon →
+                            </a>
+                          )}
+                          {rec.streaming_url && rec.streaming_platform && (
+                            <a
+                              href={rec.streaming_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 text-xs uppercase tracking-widest rounded-sm text-center transition-all duration-200"
+                              style={{
+                                letterSpacing: '0.12em',
+                                background: 'rgba(201,168,76,0.12)',
+                                color: '#1B2B4B',
+                                border: '1px solid rgba(201,168,76,0.4)',
+                              }}
+                            >
+                              {rec.streaming_platform} →
+                            </a>
+                          )}
+                          {!rec.amazon_url && !rec.streaming_url && (
+                            <span
+                              className="px-4 py-2 text-xs uppercase tracking-widest text-ink-muted border border-gray-200 rounded-sm text-center"
+                              style={{ letterSpacing: '0.12em' }}
+                            >
+                              Find it
+                            </span>
+                          )}
+                        </span>
                       </div>
-                      {rec.amazon_url && (
-                        <a
-                          href={rec.amazon_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="shrink-0 px-4 py-2 text-xs uppercase tracking-widest text-navy border border-navy border-opacity-30 hover:bg-navy hover:text-white transition-all duration-200 rounded-sm"
-                          style={{ letterSpacing: '0.12em' }}
-                        >
-                          Find it →
-                        </a>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )
           })}
 
-          {/* Stub for when DB is empty */}
           {recommendations.length === 0 && (
             <div className="text-center py-16">
               <p className="text-ink-muted text-sm">Recommendations coming soon.</p>
             </div>
           )}
 
-          {/* Amazon affiliate note */}
           <div
             className="mt-8 p-4 rounded-sm"
             style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)' }}
           >
             <p className="text-xs text-ink-muted leading-relaxed">
-              Links marked "Find it →" are affiliate links. When you buy through them, Oukala Journeys earns a small commission at no extra cost to you.
+              Links marked "Amazon →" are affiliate links. When you buy through them, Oukala Journeys earns a small commission at no extra cost to you.
             </p>
           </div>
         </div>
@@ -339,6 +575,9 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
       {/* ── MONEY & CONNECTIVITY TAB ── */}
       {activeTab === 'money' && (
         <div className="space-y-10 max-w-2xl">
+
+          {/* Live exchange rate calculator — top of money tab */}
+          <ExchangeRateCalculator />
 
           <div>
             <div className="flex items-center gap-4 mb-6">
@@ -377,10 +616,7 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
                   </div>
                   <p className="text-sm text-ink leading-relaxed mb-3">{c.tip}</p>
                   {c.warning && (
-                    <p
-                      className="text-xs px-3 py-2 rounded-sm"
-                      style={{ background: 'rgba(180,83,9,0.08)', color: '#b45309' }}
-                    >
+                    <p className="text-xs px-3 py-2 rounded-sm" style={{ background: 'rgba(180,83,9,0.08)', color: '#b45309' }}>
                       ⚠️ {c.warning}
                     </p>
                   )}
@@ -403,10 +639,10 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
               ].map((item) => (
                 <div key={item.title} className="flex gap-4 py-4 border-b border-gray-50">
                   <div className="w-2 h-2 rounded-full bg-gold mt-2 shrink-0" />
-                  <div>
-                    <p className="font-medium text-navy text-sm">{item.title}</p>
-                    <p className="text-sm text-ink-muted mt-1 leading-relaxed">{item.note}</p>
-                  </div>
+                  <span style={{ display: 'block' }}>
+                    <span className="font-medium text-navy text-sm" style={{ display: 'block' }}>{item.title}</span>
+                    <span className="text-sm text-ink-muted mt-1 leading-relaxed" style={{ display: 'block' }}>{item.note}</span>
+                  </span>
                 </div>
               ))}
             </div>
@@ -452,7 +688,6 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
       {/* ── HEALTH & SAFETY TAB ── */}
       {activeTab === 'health' && (
         <div className="space-y-10 max-w-2xl">
-
           {[
             {
               title: 'Before You Leave',
@@ -499,12 +734,24 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
               </div>
               <div className="space-y-3">
                 {section.items.map((item) => (
-                  <div key={item.label} className="flex gap-4 py-3 border-b border-gray-50">
+                  <div key={item.label} className="flex gap-4 py-3 border-b border-gray-50 group">
                     <div className="w-2 h-2 rounded-full bg-gold mt-2 shrink-0" />
-                    <div>
-                      <p className="font-medium text-navy text-sm">{item.label}</p>
-                      <p className="text-sm text-ink-muted mt-1 leading-relaxed">{item.note}</p>
-                    </div>
+                    <span className="flex-1" style={{ display: 'block' }}>
+                      <span className="font-medium text-navy text-sm" style={{ display: 'block' }}>{item.label}</span>
+                      <span className="text-sm text-ink-muted mt-1 leading-relaxed" style={{ display: 'block' }}>{item.note}</span>
+                    </span>
+                    <button
+                      onClick={() => addHealthItemToPacking(item.label)}
+                      className={`shrink-0 self-start mt-0.5 text-xs px-3 py-1.5 rounded-sm transition-all duration-200 ${
+                        healthPackingList.has(item.label)
+                          ? 'bg-gold text-white cursor-default'
+                          : 'border border-gray-200 text-ink-muted hover:border-gold hover:text-gold'
+                      }`}
+                      style={{ letterSpacing: '0.08em' }}
+                      disabled={healthPackingList.has(item.label)}
+                    >
+                      {healthPackingList.has(item.label) ? '✓ Added' : '+ Pack'}
+                    </button>
                   </div>
                 ))}
               </div>

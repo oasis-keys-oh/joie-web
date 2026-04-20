@@ -37,6 +37,25 @@ export interface ItineraryNarrativeSegment {
   logistics?: string;
 }
 
+export interface CulturalNote {
+  term: string;
+  explanation: string;
+}
+
+export interface MustBuyItem {
+  item: string;
+  why?: string;
+  where?: string;
+  price_range?: string;
+}
+
+export interface WineFoodPick {
+  name: string;
+  type?: string;       // e.g. "wine", "cheese", "spice", "pastry"
+  note?: string;
+  when_to_get?: string; // e.g. "This afternoon at the souk"
+}
+
 export interface BriefingCard {
   title?: string;
   content?: string;
@@ -84,6 +103,12 @@ export interface TripDay {
   meal_dinner?: string;
   literary_quote?: LiteraryQuote;
   photo_spot?: PhotoSpot;
+  must_buy?: MustBuyItem[];
+  wine_food_picks?: WineFoodPick[];
+  pace_morning?: string;
+  pace_afternoon?: string;
+  pace_note?: string;
+  cultural_notes?: CulturalNote[];
   created_at?: string;
   updated_at?: string;
 }

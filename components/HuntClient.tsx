@@ -37,6 +37,56 @@ function getPointsColor(pts: number): string {
   return '#C9A84C'
 }
 
+/**
+ * Detect and visually highlight transliteration patterns in challenge descriptions.
+ * Pattern: "SomePhrase (transliteration — meaning)" or Arabic/RTL text surrounded by parens.
+ * Renders: description text + styled pronunciation pill if pattern found.
+ */
+function ChallengeDescription({ text }: { text: string }) {
+  // Match pattern: "word" (romanization — pronounced: X, meaning "Y")
+  // We look for text in quotes or the pattern: phrase (pronunciation — meaning)
+  const transMatch = text.match(/[""]([^""]+)[""]\s*\(([^)]+)\)/)
+  const parenMatch = !transMatch ? text.match(/\(([^)]*(?:pronounced|meaning|—)[^)]*)\)/i) : null
+
+  if (transMatch || parenMatch) {
+    const pill: string = transMatch ? (transMatch[2] ?? '') : (parenMatch ? (parenMatch[1] ?? '') : '')
+    const parts: string[] = pill.split(/—|,/)
+    return (
+      <div>
+        <p className="text-sm text-ink mt-2 leading-relaxed" style={{ color: '#555' }}>
+          {text}
+        </p>
+        <div
+          className="mt-2 px-3 py-2 rounded-sm inline-block"
+          style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)' }}
+        >
+          {parts.map((part: string, i: number) => (
+            <span
+              key={i}
+              className="text-xs"
+              style={{
+                display: 'inline',
+                color: i === 0 ? '#1B2B4B' : '#6b5a2e',
+                fontStyle: i > 0 ? 'italic' : 'normal',
+                fontWeight: i === 0 ? 600 : 400,
+              }}
+            >
+              {i > 0 && ' — '}
+              {part.trim()}
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <p className="text-sm text-ink mt-2 leading-relaxed" style={{ color: '#555' }}>
+      {text}
+    </p>
+  )
+}
+
 function getPointsLabel(pts: number): string {
   if (pts >= 10) return 'Grand Finale'
   if (pts >= 5)  return 'Challenge'
@@ -372,9 +422,7 @@ export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientP
                         {challenge.category}
                       </p>
                     )}
-                    <p className="text-sm text-ink mt-2 leading-relaxed" style={{ color: '#555' }}>
-                      {challenge.description}
-                    </p>
+                    <ChallengeDescription text={challenge.description} />
                     {challenge.location_hint && (
                       <p className="text-xs text-ink-muted mt-2 italic">📍 {challenge.location_hint}</p>
                     )}
@@ -465,9 +513,7 @@ export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientP
                         {challenge.category}
                       </p>
                     )}
-                    <p className="text-sm text-ink mt-2 leading-relaxed" style={{ color: '#555' }}>
-                      {challenge.description}
-                    </p>
+                    <ChallengeDescription text={challenge.description} />
                     {challenge.location_hint && (
                       <p className="text-xs text-ink-muted mt-2 italic">
                         📍 {challenge.location_hint}

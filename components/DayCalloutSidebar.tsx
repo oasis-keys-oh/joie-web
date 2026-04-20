@@ -25,14 +25,16 @@ function SidebarBox({
 }) {
   return (
     <div
-      className="rounded-sm overflow-hidden"
+      className="rounded-sm"
       style={{
         background: 'rgba(27, 43, 75, 0.04)',
         border: '1px solid rgba(27, 43, 75, 0.07)',
         borderLeft: `3px solid ${accentColor}`,
+        overflow: 'hidden',
+        minWidth: 0,
       }}
     >
-      <div className="px-4 pt-4 pb-4">
+      <div className="px-4 pt-4 pb-4" style={{ minWidth: 0, overflow: 'hidden' }}>
         <div className="flex items-center gap-2 mb-2.5">
           <span style={{ fontSize: '0.75rem', color: accentColor }}>{icon}</span>
           <span
@@ -148,14 +150,14 @@ export default function DayCalloutSidebar({ day }: DayCalloutSidebarProps) {
         <SidebarBox icon="«" label="Phrase of the Day" accentColor="#e11d48">
           <p
             className="font-serif text-navy font-semibold mb-1"
-            style={{ fontSize: '0.88rem', letterSpacing: '0.01em' }}
+            style={{ fontSize: '0.88rem', letterSpacing: '0.01em', overflowWrap: 'break-word', wordBreak: 'break-word', whiteSpace: 'normal' }}
           >
             {phraseText}
           </p>
           {phrasePronounciation && (
             <p
               className="text-ink-muted italic mb-1.5"
-              style={{ fontSize: '0.68rem', letterSpacing: '0.03em' }}
+              style={{ fontSize: '0.68rem', letterSpacing: '0.03em', overflowWrap: 'break-word', wordBreak: 'break-word' }}
             >
               {phrasePronounciation}
             </p>
@@ -163,7 +165,7 @@ export default function DayCalloutSidebar({ day }: DayCalloutSidebarProps) {
           {phraseMeaning && (
             <p
               className="text-navy"
-              style={{ fontSize: '0.72rem', lineHeight: '1.5' }}
+              style={{ fontSize: '0.72rem', lineHeight: '1.5', overflowWrap: 'break-word' }}
             >
               {phraseMeaning}
             </p>
@@ -171,7 +173,7 @@ export default function DayCalloutSidebar({ day }: DayCalloutSidebarProps) {
           {phraseContext && (
             <p
               className="text-ink-muted mt-1.5 italic"
-              style={{ fontSize: '0.68rem', lineHeight: '1.55' }}
+              style={{ fontSize: '0.68rem', lineHeight: '1.55', overflowWrap: 'break-word' }}
             >
               {phraseContext}
             </p>

@@ -21,18 +21,19 @@ export default function DayNavigation({ tripSlug, currentDay, totalDays }: DayNa
             href={`/trip/${tripSlug}/day/${previousDay}`}
             className="group flex items-center gap-4 text-left"
           >
-            <div
+            <span
               className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-full group-hover:border-gold group-hover:bg-gold group-hover:bg-opacity-5 transition-all duration-200"
+              style={{ display: 'flex' }}
             >
               <ArrowLeft className="w-4 h-4 text-ink-muted group-hover:text-gold transition-colors" />
-            </div>
-            <div>
-              <p className="label mb-0.5">Previous</p>
-              <p className="font-serif text-sm font-medium text-navy">Day {previousDay}</p>
-            </div>
+            </span>
+            <span style={{ display: 'block' }}>
+              <span className="label mb-0.5" style={{ display: 'block' }}>Previous</span>
+              <span className="font-serif text-sm font-medium text-navy" style={{ display: 'block' }}>Day {previousDay}</span>
+            </span>
           </Link>
         ) : (
-          <div />
+          <span />
         )}
 
         {/* Back to trip overview */}
@@ -40,23 +41,24 @@ export default function DayNavigation({ tripSlug, currentDay, totalDays }: DayNa
           href={`/trip/${tripSlug}`}
           className="group flex flex-col items-center gap-1"
         >
-          <div className="flex gap-1">
+          <span className="flex gap-1" style={{ display: 'flex' }}>
             {Array.from({ length: Math.min(totalDays, 5) }).map((_, i) => (
-              <div
+              <span
                 key={i}
                 className="w-1 h-1 rounded-full transition-colors duration-200"
                 style={{
+                  display: 'block',
                   background: i === (currentDay - 1) % 5 ? '#C9A84C' : '#d1d5db',
                 }}
               />
             ))}
-          </div>
-          <p
+          </span>
+          <span
             className="text-xs text-ink-muted group-hover:text-gold transition-colors uppercase tracking-widest mt-1"
-            style={{ letterSpacing: '0.15em' }}
+            style={{ display: 'block', letterSpacing: '0.15em' }}
           >
             All Days
-          </p>
+          </span>
         </Link>
 
         {/* Next */}
@@ -65,18 +67,19 @@ export default function DayNavigation({ tripSlug, currentDay, totalDays }: DayNa
             href={`/trip/${tripSlug}/day/${nextDay}`}
             className="group flex items-center gap-4 text-right"
           >
-            <div className="text-right">
-              <p className="label mb-0.5">Next</p>
-              <p className="font-serif text-sm font-medium text-navy">Day {nextDay}</p>
-            </div>
-            <div
+            <span className="text-right" style={{ display: 'block' }}>
+              <span className="label mb-0.5" style={{ display: 'block' }}>Next</span>
+              <span className="font-serif text-sm font-medium text-navy" style={{ display: 'block' }}>Day {nextDay}</span>
+            </span>
+            <span
               className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-full group-hover:border-gold group-hover:bg-gold group-hover:bg-opacity-5 transition-all duration-200"
+              style={{ display: 'flex' }}
             >
               <ArrowRight className="w-4 h-4 text-ink-muted group-hover:text-gold transition-colors" />
-            </div>
+            </span>
           </Link>
         ) : (
-          <div />
+          <span />
         )}
 
       </div>

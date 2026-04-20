@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Trip, TripDay } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
+import DaysUntilBadge from '@/components/DaysUntilBadge'
 
 interface TripSidebarProps {
   trip: Trip
@@ -10,6 +11,7 @@ interface TripSidebarProps {
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
 
 const HIGHLIGHT_DAYS = [2, 5, 8, 11, 14]
+
 
 // Full trip route as a directions embed — Morocco to France arc
 function buildRouteMapUrl(): string {
@@ -33,6 +35,9 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
   return (
     <aside className="space-y-8">
 
+      {/* Days Until — client component to avoid hydration mismatch */}
+      <DaysUntilBadge startDate={trip.start_date} endDate={trip.end_date} />
+
       {/* Route Map */}
       <div>
         <div className="flex items-center gap-4 mb-4">
@@ -55,35 +60,60 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
         {/* Route stop list */}
         <div className="mt-4 space-y-0">
           {[
-            { label: 'Denver', sub: 'Departure · Jun 9' },
-            { label: 'Casablanca', sub: 'Morocco · Days 1–2' },
-            { label: 'Rabat', sub: 'Morocco · Days 3–4' },
-            { label: 'Fez', sub: 'Morocco · Day 5' },
-            { label: 'Lyon', sub: 'France · Days 6–7' },
-            { label: 'Burgundy', sub: 'France · Days 8–10' },
-            { label: 'Loire Valley', sub: 'France · Days 11–13' },
-            { label: 'Paris', sub: 'Days 14–15' },
-            { label: 'Denver', sub: 'Return · Jun 24' },
-          ].map((stop, i, arr) => (
-            <div key={i} className="flex items-start gap-3 py-1.5">
-              <div className="flex flex-col items-center pt-1.5 shrink-0" style={{ width: '12px' }}>
-                <div
+            { label: 'Denver', sub: 'Departure · Jun 9', day: null },
+            { label: 'Casablanca', sub: 'Morocco · Days 1–2', day: 1 },
+            { label: 'Rabat', sub: 'Morocco · Days 3–4', day: 3 },
+            { label: 'Fez', sub: 'Morocco · Day 5', day: 5 },
+            { label: 'Lyon', sub: 'France · Days 6–7', day: 6 },
+            { label: 'Burgundy', sub: 'France · Days 8–10', day: 8 },
+            { label: 'Loire Valley', sub: 'France · Days 11–13', day: 11 },
+            { label: 'Paris', sub: 'Days 14–15', day: 14 },
+            { label: 'Denver', sub: 'Return · Jun 24', day: null },
+          ].map((stop, i, arr) => {
+            const href = stop.day ? `/trip/${trip.web_slug}/day/${stop.day}` : null
+            const dot = (
+              <span className="flex flex-col items-center pt-1.5 shrink-0" style={{ width: '12px' }}>
+                <span
                   className="w-2 h-2 rounded-full border-2 shrink-0"
                   style={{
                     borderColor: '#C9A84C',
                     background: i === 0 || i === arr.length - 1 ? '#C9A84C' : 'white',
+                    display: 'inline-block',
                   }}
                 />
                 {i < arr.length - 1 && (
-                  <div className="w-px bg-gray-200 mt-1" style={{ height: '14px' }} />
+                  <span className="w-px bg-gray-200 mt-1" style={{ height: '14px', display: 'block' }} />
                 )}
+              </span>
+            )
+
+            const label = (
+              <span className="pb-1" style={{ display: 'block' }}>
+                <span
+                  className="font-semibold"
+                  style={{ fontSize: '0.78rem', color: '#1B2B4B', display: 'block' }}
+                >
+                  {stop.label}
+                  {href && <span className="ml-1 text-gold opacity-0 group-hover:opacity-100 transition-opacity">→</span>}
+                </span>
+                <span className="text-ink-muted" style={{ fontSize: '0.68rem', letterSpacing: '0.04em', display: 'block' }}>{stop.sub}</span>
+              </span>
+            )
+
+            return href ? (
+              <Link
+                key={i}
+                href={href}
+                className="flex items-start gap-3 py-1.5 group hover:bg-gray-50 -mx-2 px-2 rounded-sm transition-colors"
+              >
+                {dot}{label}
+              </Link>
+            ) : (
+              <div key={i} className="flex items-start gap-3 py-1.5">
+                {dot}{label}
               </div>
-              <div className="pb-1">
-                <p className="text-navy font-semibold" style={{ fontSize: '0.78rem' }}>{stop.label}</p>
-                <p className="text-ink-muted" style={{ fontSize: '0.68rem', letterSpacing: '0.04em' }}>{stop.sub}</p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -134,10 +164,10 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
               className="flex items-center gap-3 px-4 py-3 rounded-sm border border-gray-100 hover:border-gold hover:border-opacity-50 transition-all duration-200 group"
             >
               <span style={{ fontSize: '1.1rem' }}>{link.emoji}</span>
-              <div className="min-w-0 flex-1">
-                <p className="text-navy font-medium text-sm group-hover:text-gold transition-colors">{link.label}</p>
-                <p className="text-ink-muted" style={{ fontSize: '0.68rem' }}>{link.sub}</p>
-              </div>
+              <span className="min-w-0 flex-1" style={{ display: 'block' }}>
+                <span className="text-navy font-medium text-sm group-hover:text-gold transition-colors" style={{ display: 'block' }}>{link.label}</span>
+                <span className="text-ink-muted" style={{ fontSize: '0.68rem', display: 'block' }}>{link.sub}</span>
+              </span>
               <span className="text-ink-muted group-hover:text-gold transition-colors text-sm">→</span>
             </Link>
           ))}

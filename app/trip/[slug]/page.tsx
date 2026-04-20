@@ -257,8 +257,18 @@ export default async function TripPage({ params }: TripPageProps) {
                 <div className="flex-1 border-t border-gray-100" />
               </div>
               <div className="grid grid-cols-1 gap-px bg-gray-100 sm:grid-cols-2">
-                {days.map((day) => (
-                  <DayCard key={day.id} day={day} tripSlug={params.slug} />
+                {days.map((day, i) => (
+                  <div
+                    key={day.id}
+                    className={
+                      // If this is the last card and the total count is odd, span full width
+                      i === days.length - 1 && days.length % 2 !== 0
+                        ? 'sm:col-span-2'
+                        : ''
+                    }
+                  >
+                    <DayCard day={day} tripSlug={params.slug} />
+                  </div>
                 ))}
               </div>
             </div>

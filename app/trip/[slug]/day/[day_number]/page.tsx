@@ -16,6 +16,10 @@ import DayNavigation from '@/components/DayNavigation'
 import PhotoFooter from '@/components/PhotoFooter'
 import PersonaDayCallout from '@/components/PersonaDayCallout'
 import FeedbackDrawer from '@/components/FeedbackDrawer'
+import MustBuySection from '@/components/MustBuySection'
+import WineFoodThread from '@/components/WineFoodThread'
+import PaceIndicator from '@/components/PaceIndicator'
+import CulturalNotesBox from '@/components/CulturalNotesBox'
 import { Trip, TripDay, Event } from '@/lib/types'
 import Link from 'next/link'
 
@@ -117,9 +121,6 @@ export default async function DayPage({ params }: DayPageProps) {
               </div>
             )}
 
-            {/* Persona-specific framing — pulled from per_person_moments table */}
-            <PersonaDayCallout dayId={day.id} />
-
             {/* Meals */}
             {(day.meal_breakfast || day.meal_lunch || day.meal_dinner) && (
               <div className="mt-10">
@@ -161,7 +162,7 @@ export default async function DayPage({ params }: DayPageProps) {
               </div>
             )}
 
-            {/* Itinerary Narrative */}
+            {/* Itinerary Narrative — pace pills are inlined per segment */}
             {day.itinerary_narrative && day.itinerary_narrative.length > 0 && (
               <div className="mt-12">
                 <div className="flex items-center gap-5 mb-10">
@@ -170,12 +171,44 @@ export default async function DayPage({ params }: DayPageProps) {
                 </div>
                 {/* Timeline wrapper */}
                 <div className="pl-1 border-l border-gray-200 space-y-0">
-                  {day.itinerary_narrative.map((segment, idx) => (
-                    <NarrativeSection key={idx} segment={segment} />
-                  ))}
+                  {day.itinerary_narrative.map((segment, idx) => {
+                    // Match pace to segment by time_label keyword
+                    const label = (segment.time_label || '').toLowerCase()
+                    const segmentPace =
+                      label.includes('morning')   ? day.pace_morning :
+                      label.includes('afternoon') ? day.pace_afternoon :
+                      label.includes('evening') || label.includes('night') ? day.pace_note :
+                      undefined
+                    return (
+                      <NarrativeSection key={idx} segment={segment} pace={segmentPace} />
+                    )
+                  })}
                 </div>
               </div>
             )}
+
+            {/* Fallback standalone pace indicator — only shown if no narrative sections to host it */}
+            {(!day.itinerary_narrative || day.itinerary_narrative.length === 0) && (
+              <PaceIndicator day={day} />
+            )}
+
+            {/* Wine & Food: Pick Up Today */}
+            {day.wine_food_picks && day.wine_food_picks.length > 0 && (
+              <WineFoodThread picks={day.wine_food_picks} />
+            )}
+
+            {/* Must Buy */}
+            {day.must_buy && day.must_buy.length > 0 && (
+              <MustBuySection items={day.must_buy} />
+            )}
+
+            {/* Cultural Notes — expandable glossary */}
+            {day.cultural_notes && day.cultural_notes.length > 0 && (
+              <CulturalNotesBox notes={day.cultural_notes} />
+            )}
+
+            {/* Persona framing */}
+            <PersonaDayCallout dayId={day.id} />
 
             {/* Feedback — leave a note for the curators */}
             <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between">
@@ -209,7 +242,7 @@ export default async function DayPage({ params }: DayPageProps) {
 
       {/* Bottom photo showcase */}
       <PhotoFooter
-        region={day.region}
+        region={`${day.location || ''} ${day.region}`}
         caption={`${day.region} · ${day.location || ''}`}
       />
     </>

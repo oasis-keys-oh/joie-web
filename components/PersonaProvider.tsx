@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 
 export type TravelerKey = 'omar' | 'kristi' | 'todd' | 'erica'
 
@@ -40,10 +41,15 @@ export function usePersona() {
 
 const STORAGE_KEY = 'joie_traveler'
 
+// The trip slug to redirect to after persona selection on the home page
+const TRIP_SLUG = 'hamid-andalusia-2026'
+
 export function PersonaProvider({ children }: { children: React.ReactNode }) {
   const [traveler, setTravelerState] = useState<Traveler | null>(null)
   const [showPicker, setShowPicker] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     setMounted(true)
@@ -63,6 +69,10 @@ export function PersonaProvider({ children }: { children: React.ReactNode }) {
     setTravelerState(t)
     localStorage.setItem(STORAGE_KEY, t.key)
     setShowPicker(false)
+    // After selecting persona on the home page, navigate to the trip
+    if (pathname === '/') {
+      router.push(`/trip/${TRIP_SLUG}`)
+    }
   }
 
   if (!mounted) return <>{children}</>
