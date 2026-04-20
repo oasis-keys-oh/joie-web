@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useEffect, useRef } from 'react'
 import { Trip, TripDay } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
 import DaysUntilBadge from '@/components/DaysUntilBadge'
@@ -10,119 +13,127 @@ interface TripSidebarProps {
 
 const HIGHLIGHT_DAYS = [2, 5, 8, 11, 14]
 
-/**
- * Static SVG route map — pinned markers on a simplified Mediterranean backdrop.
- * No API key required. Coordinates projected onto a 280×240 viewport.
- *
- * Real coords (lon, lat):
- *   Casablanca  -7.59, 33.57
- *   Rabat       -6.83, 34.02
- *   Fez         -5.00, 34.03
- *   Lyon         4.83, 45.75
- *   Beaune       4.84, 47.02
- *   Loire/Tours  0.68, 47.39
- *   Paris        2.35, 48.85
- *
- * Map bbox: lon -10..10, lat 30..52  → scaled to 280×240
- */
+// Real route stops — matched to actual DB day data
 const STOPS = [
-  { id: 'casablanca', label: 'Casablanca', lon: -7.59, lat: 33.57, days: 'Days 1–2' },
-  { id: 'rabat',      label: 'Rabat',      lon: -6.83, lat: 34.02, days: 'Days 3–4' },
-  { id: 'fez',        label: 'Fez',        lon: -5.00, lat: 34.03, days: 'Day 5' },
-  { id: 'lyon',       label: 'Lyon',       lon:  4.83, lat: 45.75, days: 'Days 6–7' },
-  { id: 'beaune',     label: 'Beaune',     lon:  4.84, lat: 47.02, days: 'Days 8–10' },
-  { id: 'loire',      label: 'Loire',      lon:  0.68, lat: 47.39, days: 'Days 11–13' },
-  { id: 'paris',      label: 'Paris',      lon:  2.35, lat: 48.85, days: 'Days 14–15' },
+  { id: 'casablanca', label: 'Casablanca', lat: 33.5731, lng: -7.5898 },
+  { id: 'rabat',      label: 'Rabat',      lat: 34.0209, lng: -6.8416 },
+  { id: 'lyon',       label: 'Lyon',       lat: 45.7640, lng: 4.8357  },
+  { id: 'beaune',     label: 'Beaune',     lat: 47.0205, lng: 4.8398  },
+  { id: 'loire',      label: 'Loire Valley', lat: 47.3900, lng: 0.6880 },
+  { id: 'paris',      label: 'Paris',      lat: 48.8566, lng: 2.3522  },
 ]
 
-const MAP_W = 280
-const MAP_H = 240
-const LON_MIN = -10, LON_MAX = 12
-const LAT_MIN = 30, LAT_MAX = 53
-
-function project(lon: number, lat: number): [number, number] {
-  const x = ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * MAP_W
-  const y = MAP_H - ((lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * MAP_H
-  return [Math.round(x), Math.round(y)]
-}
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
 
 function RouteMap() {
-  const pts = STOPS.map((s) => project(s.lon, s.lat))
-  const pathD = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x} ${y}`).join(' ')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!ref.current || !GOOGLE_MAPS_KEY) return
+
+    // Load Google Maps JS API dynamically
+    const scriptId = 'google-maps-script'
+    const init = () => {
+      if (!ref.current) return
+      const google = (window as any).google
+      if (!google) return
+
+      const bounds = new google.maps.LatLngBounds()
+      STOPS.forEach(s => bounds.extend({ lat: s.lat, lng: s.lng }))
+
+      const map = new google.maps.Map(ref.current, {
+        mapTypeId: 'roadmap',
+        disableDefaultUI: true,
+        zoomControl: false,
+        scrollwheel: false,
+        draggable: false,
+        styles: [
+          { featureType: 'all', elementType: 'labels.text.fill', stylers: [{ color: '#1B2B4B' }] },
+          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#dde9f4' }] },
+          { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#f0ede6' }] },
+          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+          { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#e0dbd0' }] },
+          { featureType: 'administrative.country', elementType: 'geometry.stroke', stylers: [{ color: '#c8c0b0' }, { weight: 1 }] },
+          { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+          { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+        ],
+      })
+
+      map.fitBounds(bounds, { top: 24, bottom: 24, left: 24, right: 24 })
+
+      // Draw route polyline
+      const path = new google.maps.Polyline({
+        path: STOPS.map(s => ({ lat: s.lat, lng: s.lng })),
+        geodesic: true,
+        strokeColor: '#C9A84C',
+        strokeOpacity: 0,
+        icons: [{
+          icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.85, scale: 3 },
+          offset: '0',
+          repeat: '12px',
+        }],
+        map,
+      })
+
+      // Place markers
+      STOPS.forEach((stop, i) => {
+        const isEndpoint = i === 0 || i === STOPS.length - 1
+        const marker = new google.maps.Marker({
+          position: { lat: stop.lat, lng: stop.lng },
+          map,
+          title: stop.label,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: isEndpoint ? 7 : 5,
+            fillColor: '#C9A84C',
+            fillOpacity: 0.92,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+          },
+          label: {
+            text: stop.label,
+            color: '#1B2B4B',
+            fontSize: '10px',
+            fontWeight: '600',
+            fontFamily: 'sans-serif',
+          },
+        })
+        // Suppress unused warning
+        void marker
+      })
+    }
+
+    if (!(window as any).google) {
+      if (!document.getElementById(scriptId)) {
+        const script = document.createElement('script')
+        script.id = scriptId
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&callback=__initTripMap`
+        script.async = true
+        ;(window as any).__initTripMap = init
+        document.head.appendChild(script)
+      } else {
+        // Script loading, wait for callback
+        ;(window as any).__initTripMap = init
+      }
+    } else {
+      init()
+    }
+  }, [])
+
+  if (!GOOGLE_MAPS_KEY) {
+    return (
+      <div className="rounded-sm border border-gray-100 flex items-center justify-center" style={{ height: '240px', background: '#f0ede6' }}>
+        <p className="text-ink-muted text-xs">Map unavailable</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="rounded-sm overflow-hidden border border-gray-100" style={{ height: '240px', background: '#f0f4f8', position: 'relative' }}>
-      <svg
-        width={MAP_W}
-        height={MAP_H}
-        viewBox={`0 0 ${MAP_W} ${MAP_H}`}
-        style={{ width: '100%', height: '100%' }}
-        aria-label="Trip route map: Casablanca to Paris"
-      >
-        {/* Simple sea / land fill */}
-        <rect width={MAP_W} height={MAP_H} fill="#dde9f4" />
-
-        {/* Rough landmass polygons — Morocco + Western Europe simplified */}
-        {/* Morocco */}
-        <polygon
-          points="28,90 55,78 72,72 80,80 75,105 60,118 40,120 22,108"
-          fill="#e8e4d8" stroke="#c8c0b0" strokeWidth="0.5"
-        />
-        {/* Iberian Peninsula */}
-        <polygon
-          points="55,42 95,30 115,35 120,55 110,75 90,80 72,72 60,60"
-          fill="#e8e4d8" stroke="#c8c0b0" strokeWidth="0.5"
-        />
-        {/* France + partial Europe */}
-        <polygon
-          points="112,12 155,8 185,15 195,40 180,58 160,60 140,52 125,45 115,35"
-          fill="#e8e4d8" stroke="#c8c0b0" strokeWidth="0.5"
-        />
-        {/* Italy + Alps rough */}
-        <polygon
-          points="168,48 185,38 200,42 210,65 200,80 185,78 172,65"
-          fill="#e8e4d8" stroke="#c8c0b0" strokeWidth="0.5"
-        />
-
-        {/* Strait of Gibraltar label */}
-        <text x="84" y="77" fill="#7a9bba" fontSize="5" textAnchor="middle" opacity="0.7">Gibraltar</text>
-
-        {/* Route arc */}
-        <path d={pathD} fill="none" stroke="#C9A84C" strokeWidth="1.5" strokeDasharray="4 2.5" opacity="0.85" />
-
-        {/* Stop dots + labels */}
-        {STOPS.map((stop, i) => {
-          const [x, y] = pts[i]
-          const isFirst = i === 0
-          const isLast = i === STOPS.length - 1
-          const labelX = x + (x > MAP_W / 2 ? -5 : 5)
-          const anchor = x > MAP_W / 2 ? 'end' : 'start'
-          return (
-            <g key={stop.id}>
-              {/* Pin circle */}
-              <circle cx={x} cy={y} r={isFirst || isLast ? 5 : 4} fill="#C9A84C" opacity="0.9" />
-              <circle cx={x} cy={y} r={isFirst || isLast ? 2.5 : 1.5} fill="white" />
-              {/* Label */}
-              <text
-                x={labelX}
-                y={y - 7}
-                fill="#1B2B4B"
-                fontSize="7"
-                fontWeight="600"
-                textAnchor={anchor}
-                style={{ fontFamily: 'sans-serif' }}
-              >
-                {stop.label}
-              </text>
-            </g>
-          )
-        })}
-
-        {/* Morocco / France country labels */}
-        <text x="55" y="100" fill="#9a8a6a" fontSize="6" fontWeight="500" opacity="0.6" textAnchor="middle" style={{ fontFamily: 'sans-serif', letterSpacing: '0.08em' }}>MOROCCO</text>
-        <text x="148" y="36" fill="#9a8a6a" fontSize="6" fontWeight="500" opacity="0.6" textAnchor="middle" style={{ fontFamily: 'sans-serif', letterSpacing: '0.08em' }}>FRANCE</text>
-      </svg>
-    </div>
+    <div
+      ref={ref}
+      className="rounded-sm overflow-hidden border border-gray-100"
+      style={{ height: '240px' }}
+    />
   )
 }
 
@@ -138,7 +149,7 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
       {/* Route Map */}
       <div>
         <div className="flex items-center gap-4 mb-4">
-          <p className="label shrink-0">Route Map</p>
+          <p className="label shrink-0">Map</p>
           <div className="flex-1 border-t border-gray-100" />
         </div>
         <RouteMap />
@@ -146,15 +157,14 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
         {/* Route stop list */}
         <div className="mt-4 space-y-0">
           {[
-            { label: 'Denver', sub: 'Departure · Jun 9', day: null },
-            { label: 'Casablanca', sub: 'Morocco · Days 1–2', day: 1 },
-            { label: 'Rabat', sub: 'Morocco · Days 3–4', day: 3 },
-            { label: 'Fez', sub: 'Morocco · Day 5', day: 5 },
-            { label: 'Lyon', sub: 'France · Days 6–7', day: 6 },
-            { label: 'Burgundy', sub: 'France · Days 8–10', day: 8 },
-            { label: 'Loire Valley', sub: 'France · Days 11–13', day: 11 },
-            { label: 'Paris', sub: 'Days 14–15', day: 14 },
-            { label: 'Denver', sub: 'Return · Jun 24', day: null },
+            { label: 'Denver',       sub: 'Departure · Jun 8',       day: null },
+            { label: 'Casablanca',   sub: 'Morocco · Days 2–3',      day: 2 },
+            { label: 'Rabat',        sub: 'Morocco · Days 3–5',      day: 3 },
+            { label: 'Lyon',         sub: 'France · Days 6–7',       day: 6 },
+            { label: 'Burgundy',     sub: 'France · Days 7–10',      day: 8 },
+            { label: 'Loire Valley', sub: 'France · Days 10–13',     day: 11 },
+            { label: 'Paris',        sub: 'Days 14–15',              day: 14 },
+            { label: 'Denver',       sub: 'Return · Jun 22',         day: null },
           ].map((stop, i, arr) => {
             const href = stop.day ? `/trip/${trip.web_slug}/day/${stop.day}` : null
             const dot = (

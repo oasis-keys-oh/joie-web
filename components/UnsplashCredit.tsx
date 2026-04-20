@@ -1,3 +1,5 @@
+'use client'
+
 import { UnsplashPhoto } from '@/lib/unsplash'
 
 interface UnsplashCreditProps {
@@ -10,7 +12,12 @@ export default function UnsplashCredit({ photo, variant = 'hero' }: UnsplashCred
   if (variant === 'hero') {
     return (
       <span className="absolute bottom-3 right-4 z-10" style={{ display: 'block' }}>
-        <span style={{ display: 'block', fontSize: '0.58rem', letterSpacing: '0.04em', color: 'rgba(255,255,255,0.45)' }}>
+        <span style={{ display: 'block', fontSize: '0.58rem', letterSpacing: '0.04em', color: 'rgba(255,255,255,0.45)', textAlign: 'right' }}>
+          {photo.subject && (
+            <span style={{ display: 'block', marginBottom: '1px', color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>
+              {photo.subject}
+            </span>
+          )}
           Photo{' '}
           <a
             href={photo.profileUrl}
@@ -35,28 +42,10 @@ export default function UnsplashCredit({ photo, variant = 'hero' }: UnsplashCred
     )
   }
 
-  // card variant — tiny text below image (must use <span> not <p> — rendered inside a <Link>/<a>)
+  // card variant — plain text only (rendered inside a <Link>/<a>, so no nested <a> allowed)
   return (
     <span style={{ display: 'block', fontSize: '0.56rem', letterSpacing: '0.03em', color: '#9ca3af', textAlign: 'right', marginTop: '2px', paddingRight: '2px' }}>
-      <a
-        href={photo.profileUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: 'inherit', textDecoration: 'none' }}
-        onClick={(e) => e.preventDefault()}
-      >
-        {photo.photographerName}
-      </a>
-      {' / '}
-      <a
-        href={`https://unsplash.com?utm_source=joie_oukala&utm_medium=referral`}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: 'inherit', textDecoration: 'none' }}
-        onClick={(e) => e.preventDefault()}
-      >
-        Unsplash
-      </a>
+      {photo.photographerName} / Unsplash
     </span>
   )
 }
