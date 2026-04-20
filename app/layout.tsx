@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { PersonaProvider } from '@/components/PersonaProvider'
 import PersonaSwitcher from '@/components/PersonaSwitcher'
 import NavBreadcrumb from '@/components/NavBreadcrumb'
+import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import './globals.css'
 
 const inter = Inter({
@@ -66,6 +67,7 @@ export default function RootLayout({
           </div>
         </header>
 
+        <ServiceWorkerRegistration />
         <main className="min-h-screen bg-white overflow-x-hidden">
           {children}
         </main>

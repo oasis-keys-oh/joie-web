@@ -11,6 +11,7 @@ import {
   upsertRecAction, deleteRecAction,
   upsertPreTripDropAction, deletePreTripDropAction,
 } from '@/app/admin/actions'
+import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ const TABS = [
   { id: 'recs',      label: 'Recommendations' },
   { id: 'pretripdrops', label: 'Pre-Trip Drops' },
   { id: 'feedback',  label: 'Feedback' },
+  { id: 'health',    label: '🩺 Health' },
 ]
 
 const ROLE_OPTIONS = ['driver', 'guide', 'fixer', 'restaurant_contact', 'other']
@@ -201,6 +203,7 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       {tab === 'recs'          && <RecsTab       trip={trip} recs={recs} />}
       {tab === 'pretripdrops'  && <PreTripDropsTab trip={trip} drops={drops} />}
       {tab === 'feedback'      && <FeedbackTab   days={days} feedback={feedback} />}
+      {tab === 'health'        && <ImageHealthTab days={days} />}
     </div>
   )
 }
@@ -1276,6 +1279,90 @@ function FeedbackTab({ days, feedback }: { days: Day[]; feedback: Feedback[] }) 
           </Card>
         )
       })}
+    </div>
+  )
+}
+
+// ── Image Health Tab ──────────────────────────────────────────────────────────
+
+function ImageHealthTab({ days }: { days: Day[] }) {
+  const defaultIds = new Set(DEFAULT_PHOTOS.map(p => p.id))
+
+  const rows = days.map(day => {
+    const locPool = day.location ? getPhotoPool(day.location) : null
+    const regionPool = getPhotoPool(day.region || '')
+    const resolvedPool = (locPool && locPool !== DEFAULT_PHOTOS) ? locPool : regionPool
+    const isDefault = resolvedPool === DEFAULT_PHOTOS || resolvedPool.every(p => defaultIds.has(p.id))
+
+    // Determine which key matched
+    const matchedVia = (locPool && locPool !== DEFAULT_PHOTOS)
+      ? `location: "${day.location}"`
+      : regionPool !== DEFAULT_PHOTOS
+        ? `region: "${day.region}"`
+        : 'DEFAULT (no match)'
+
+    const photo = getPhotoForDay(day.region || '', day.day_number, 400, 225, 75, day.location)
+
+    return { day, photo, isDefault, matchedVia, poolSize: resolvedPool.length }
+  })
+
+  const defaultCount = rows.filter(r => r.isDefault).length
+  const okCount = rows.length - defaultCount
+
+  return (
+    <div className="space-y-6">
+      {/* Summary bar */}
+      <div className="flex gap-4">
+        <div className="flex-1 bg-green-50 border border-green-200 rounded-sm px-5 py-4 text-center">
+          <p className="font-serif text-2xl font-bold text-green-700">{okCount}</p>
+          <p className="text-xs uppercase tracking-widest text-green-600 mt-1">✓ Matched</p>
+        </div>
+        <div className={`flex-1 rounded-sm px-5 py-4 text-center border ${defaultCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-100'}`}>
+          <p className={`font-serif text-2xl font-bold ${defaultCount > 0 ? 'text-amber-700' : 'text-gray-400'}`}>{defaultCount}</p>
+          <p className={`text-xs uppercase tracking-widest mt-1 ${defaultCount > 0 ? 'text-amber-600' : 'text-gray-400'}`}>⚠ Default Fallback</p>
+        </div>
+        <div className="flex-1 bg-white border border-gray-100 rounded-sm px-5 py-4 text-center">
+          <p className="font-serif text-2xl font-bold text-navy">{rows.length}</p>
+          <p className="text-xs uppercase tracking-widest text-ink-muted mt-1">Total Days</p>
+        </div>
+      </div>
+
+      {/* Day rows */}
+      <div className="space-y-2">
+        {rows.map(({ day, photo, isDefault, matchedVia, poolSize }) => (
+          <div
+            key={day.id}
+            className={`flex items-center gap-4 rounded-sm border px-4 py-3 ${isDefault ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-white'}`}
+          >
+            {/* Thumbnail */}
+            <div className="shrink-0 w-16 h-9 rounded overflow-hidden bg-gray-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo.url.replace('w=1600&h=900', 'w=120&h=68')} alt="" className="w-full h-full object-cover" />
+            </div>
+
+            {/* Day info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-gold" style={{ letterSpacing: '0.12em' }}>Day {day.day_number}</span>
+                <span className="text-xs text-navy font-medium truncate">{day.title}</span>
+              </div>
+              <p className="text-xs text-ink-muted mt-0.5 truncate">{matchedVia} · pool: {poolSize} photos</p>
+            </div>
+
+            {/* Status badge */}
+            <div className={`shrink-0 text-xs px-2 py-1 rounded-sm font-semibold ${isDefault ? 'bg-amber-200 text-amber-800' : 'bg-green-100 text-green-700'}`}>
+              {isDefault ? '⚠ DEFAULT' : '✓ OK'}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {defaultCount > 0 && (
+        <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-4 py-3 leading-relaxed">
+          <strong>Fix:</strong> Update the day&apos;s <code>location</code> or <code>region</code> field in the Days tab to match a keyword in{' '}
+          <code>lib/unsplash.ts</code> POOL_MAP — e.g. <em>casablanca, rabat, fez, lyon, paris, loire, burgundy</em>.
+        </div>
+      )}
     </div>
   )
 }

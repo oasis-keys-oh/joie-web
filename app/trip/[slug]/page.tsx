@@ -5,6 +5,7 @@ import DayCard from '@/components/DayCard'
 import TripSidebar from '@/components/TripSidebar'
 import PhotoFooter from '@/components/PhotoFooter'
 import PreTripDrops from '@/components/PreTripDrops'
+import CuratorThread from '@/components/CuratorThread'
 import { Trip, TripDay } from '@/lib/types'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
@@ -248,6 +249,46 @@ export default async function TripPage({ params }: TripPageProps) {
                     Packing checklist, books &amp; films, money &amp; connectivity, health &amp; safety — everything before departure.
                   </p>
                 </Link>
+
+                <Link
+                  href={`/trip/${params.slug}/photos`}
+                  className="group relative overflow-hidden rounded-sm border border-gray-100 hover:border-gold hover:border-opacity-60 transition-all duration-300 p-6"
+                  style={{ background: 'linear-gradient(135deg, #2d1b4e 0%, #3d2660 100%)' }}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <span style={{ fontSize: '1.8rem' }}>📸</span>
+                    <span className="text-white opacity-40 group-hover:opacity-80 transition-opacity text-sm">→</span>
+                  </div>
+                  <p className="text-gold text-xs tracking-widest uppercase mb-1" style={{ letterSpacing: '0.18em' }}>
+                    The Album
+                  </p>
+                  <h3 className="font-serif font-bold text-white text-xl mb-2" style={{ lineHeight: '1.1' }}>
+                    Our Photos
+                  </h3>
+                  <p className="text-white opacity-50 text-xs leading-relaxed">
+                    Shared memories from the journey, grouped by day — with curator highlights starred.
+                  </p>
+                </Link>
+
+                <Link
+                  href={`/trip/${params.slug}/recap`}
+                  className="group relative overflow-hidden rounded-sm border border-gray-100 hover:border-gold hover:border-opacity-60 transition-all duration-300 p-6"
+                  style={{ background: 'linear-gradient(135deg, #1a3a2a 0%, #234d38 100%)' }}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <span style={{ fontSize: '1.8rem' }}>✨</span>
+                    <span className="text-white opacity-40 group-hover:opacity-80 transition-opacity text-sm">→</span>
+                  </div>
+                  <p className="text-gold text-xs tracking-widest uppercase mb-1" style={{ letterSpacing: '0.18em' }}>
+                    After the Journey
+                  </p>
+                  <h3 className="font-serif font-bold text-white text-xl mb-2" style={{ lineHeight: '1.1' }}>
+                    Trip Recap
+                  </h3>
+                  <p className="text-white opacity-50 text-xs leading-relaxed">
+                    Stats, hunt results, curator picks, and everything you said — assembled after you land.
+                  </p>
+                </Link>
               </div>
             </div>
 
@@ -285,6 +326,14 @@ export default async function TripPage({ params }: TripPageProps) {
 
       {/* Bottom photo showcase — Morocco first, then France */}
       <PhotoFooter region="Morocco" caption="Morocco" />
+
+      {/* Floating curator chat — always visible on trip pages */}
+      <CuratorThread
+        tripId={trip.id}
+        tripSlug={params.slug}
+        curatorWhatsApp="+12125551234"
+        curatorPhone="+12125551234"
+      />
     </>
   )
 }
