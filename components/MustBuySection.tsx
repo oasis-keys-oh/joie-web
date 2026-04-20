@@ -56,6 +56,25 @@ export default function MustBuySection({ items }: Props) {
                   {item.price_range}
                 </span>
               )}
+              {item.amazon_url && (
+                <a
+                  href={item.amazon_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                  style={{
+                    fontSize: '0.62rem',
+                    letterSpacing: '0.1em',
+                    color: '#1B2B4B',
+                    background: 'rgba(201,168,76,0.1)',
+                    border: '1px solid rgba(201,168,76,0.3)',
+                    padding: '2px 7px',
+                    borderRadius: '2px',
+                  }}
+                >
+                  Amazon →
+                </a>
+              )}
             </div>
           </div>
         ))}

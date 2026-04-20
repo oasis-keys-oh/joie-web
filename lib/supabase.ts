@@ -65,6 +65,22 @@ export async function getReferenceItems(tripId: string) {
   return data
 }
 
+export async function getLocalContactsForDay(tripId: string, location: string) {
+  if (!location) return []
+  // Match destination keyword against the day's location string
+  const keywords = location.toLowerCase().split(/[\s→,\/]+/).filter(k => k.length > 2)
+  const { data } = await supabase
+    .from('local_contacts')
+    .select('*')
+    .eq('trip_id', tripId)
+  if (!data) return []
+  // Filter: return contacts whose destination matches any keyword from day's location
+  return data.filter((c: any) => {
+    const dest = (c.destination || '').toLowerCase()
+    return keywords.some((k) => dest.includes(k) || k.includes(dest))
+  })
+}
+
 export async function getHotelForDay(tripId: string, date: string) {
   const { data, error } = await supabase
     .from('reference_items')

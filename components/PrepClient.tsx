@@ -8,13 +8,14 @@ interface PackingItem {
   category: string
   item: string
   notes?: string
-  for_traveler?: string | null
+  reason?: string | null
+  traveler_key?: string | null
   segment?: string
 }
 
 interface Recommendation {
   id: string
-  type: 'book' | 'film' | 'podcast' | 'music' | 'article'
+  type: 'book' | 'audiobook' | 'film' | 'podcast' | 'music' | 'article'
   title: string
   author?: string
   description?: string
@@ -52,6 +53,7 @@ const PACKING_CATEGORIES = [
 
 const REC_TYPES: { id: string; label: string; emoji: string }[] = [
   { id: 'book', label: 'Books', emoji: '📚' },
+  { id: 'audiobook', label: 'Audiobooks', emoji: '🎧' },
   { id: 'film', label: 'Films', emoji: '🎬' },
   { id: 'podcast', label: 'Podcasts', emoji: '🎙️' },
   { id: 'music', label: 'Music', emoji: '🎵' },
@@ -253,10 +255,15 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
     setActiveTab('packing')
   }
 
-  // Filter packing items
+  // Filter packing items by segment and traveler persona
   const filteredItems = packingItems.filter((item) => {
+    // Segment filter: 'all' items always pass; otherwise match segment
     if (segment !== 'all' && item.segment && item.segment !== 'all' && item.segment !== segment) return false
-    if (item.for_traveler && traveler && item.for_traveler !== traveler.key) return false
+    // Traveler filter: 'all' traveler_key items always show; persona-specific only show for matching persona
+    const key = item.traveler_key
+    if (key && key !== 'all') {
+      if (traveler && key !== traveler.key) return false
+    }
     return true
   })
 
@@ -331,6 +338,22 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
             </div>
           )}
 
+          {/* Persona indicator */}
+          {traveler && (
+            <div
+              className="mb-6 px-4 py-3 rounded-sm flex items-center gap-3"
+              style={{ background: `${traveler.color}10`, border: `1px solid ${traveler.color}30` }}
+            >
+              <span style={{ fontSize: '1rem' }}>{traveler.emoji}</span>
+              <span className="text-sm text-navy font-medium">
+                Viewing as <strong>{traveler.name}</strong>
+              </span>
+              <span className="text-xs text-ink-muted ml-1">
+                — showing shared items + yours
+              </span>
+            </div>
+          )}
+
           {/* Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div className="flex gap-2">
@@ -389,9 +412,9 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
                             >
                               {item.item}
                             </span>
-                            {item.notes && (
+                            {(item.reason || item.notes) && (
                               <span className="text-xs text-ink-muted mt-0.5 leading-relaxed" style={{ display: 'block' }}>
-                                {item.notes}
+                                {item.reason || item.notes}
                               </span>
                             )}
                           </span>

@@ -4,6 +4,7 @@ import {
   getTripDay,
   getDayEvents,
   getHotelForDay,
+  getLocalContactsForDay,
 } from '@/lib/supabase'
 import DayHeader from '@/components/DayHeader'
 import DaySidebar from '@/components/DaySidebar'
@@ -16,6 +17,8 @@ import DayNavigation from '@/components/DayNavigation'
 import PhotoFooter from '@/components/PhotoFooter'
 import PersonaDayCallout from '@/components/PersonaDayCallout'
 import FeedbackDrawer from '@/components/FeedbackDrawer'
+import PrintButton from '@/components/PrintButton'
+import LocalContactsSection from '@/components/LocalContactsSection'
 import MustBuySection from '@/components/MustBuySection'
 import WineFoodThread from '@/components/WineFoodThread'
 import PaceIndicator from '@/components/PaceIndicator'
@@ -83,6 +86,7 @@ export default async function DayPage({ params }: DayPageProps) {
   }
 
   const hotel = day.date ? await getHotelForDay(trip.id, day.date) : null
+  const localContacts = await getLocalContactsForDay(trip.id, day.location || day.region || '')
 
   return (
     <>
@@ -147,6 +151,9 @@ export default async function DayPage({ params }: DayPageProps) {
               </div>
             )}
 
+            {/* Who to Call — local contacts for this city */}
+            <LocalContactsSection contacts={localContacts} />
+
             {/* Reservations */}
             {events.length > 0 && (
               <div className="mt-12">
@@ -210,17 +217,20 @@ export default async function DayPage({ params }: DayPageProps) {
             {/* Persona framing */}
             <PersonaDayCallout dayId={day.id} />
 
-            {/* Feedback — leave a note for the curators */}
-            <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between">
-              <p className="text-xs text-ink-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.06em' }}>
-                Have a thought about this day?
-              </p>
-              <FeedbackDrawer
-                tripId={trip.id}
-                dayId={day.id}
-                dayTitle={day.title}
-                dayNumber={day.day_number}
-              />
+            {/* Feedback + Print — bottom utility row */}
+            <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-ink-muted no-print" style={{ fontSize: '0.72rem', letterSpacing: '0.06em' }}>
+                  Have a thought about this day?
+                </p>
+                <FeedbackDrawer
+                  tripId={trip.id}
+                  dayId={day.id}
+                  dayTitle={day.title}
+                  dayNumber={day.day_number}
+                />
+              </div>
+              <PrintButton dayTitle={`${day.title} — Day ${day.day_number}`} />
             </div>
 
             {/* Navigation */}

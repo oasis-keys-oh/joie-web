@@ -59,6 +59,86 @@ h1, h2, h3, h4, h5, h6 {
   transform: scale(1.03);
 }
 
+/* ── Print styles ────────────────────────────────────────── */
+@media print {
+  /* Hide everything except the day content */
+  header,
+  nav,
+  footer,
+  [data-print-hide],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset layout for print */
+  body {
+    font-size: 11pt;
+    color: #000;
+    background: #fff;
+  }
+
+  /* Three-column grid → single column */
+  .print-single-col {
+    display: block !important;
+  }
+  .print-single-col > * {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Day hero — reduce height */
+  [data-day-hero] {
+    height: 180px !important;
+    page-break-after: avoid;
+  }
+
+  /* Content area — full width */
+  [data-day-content] {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Section labels */
+  .label {
+    font-size: 7pt;
+    letter-spacing: 0.2em;
+  }
+
+  /* Narrative timeline — flatten */
+  [data-timeline] {
+    border-left: 1px solid #C9A84C;
+    padding-left: 16px;
+  }
+
+  /* Page breaks */
+  [data-section] {
+    page-break-inside: avoid;
+  }
+
+  /* Links — show URL inline */
+  a[href]::after {
+    content: none;
+  }
+
+  /* Sidebar callout boxes — keep visible */
+  [data-callout-sidebar] {
+    display: block !important;
+    border: 1px solid #eee;
+    margin-top: 12pt;
+    padding: 8pt;
+  }
+
+  /* Print header */
+  [data-print-header] {
+    display: block !important;
+  }
+}
+
+/* Print-only header (hidden on screen) */
+[data-print-header] {
+  display: none;
+}
+
 /* Day card hover underline */
 .link-underline {
   position: relative;

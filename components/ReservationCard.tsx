@@ -113,6 +113,42 @@ export default function ReservationCard({ event }: ReservationCardProps) {
             </p>
           </div>
         )}
+
+        {/* Action links */}
+        {(event.phone || event.booking_url) && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+            {event.booking_url && (
+              <a
+                href={event.booking_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs uppercase tracking-widest transition-all duration-200 hover:opacity-80"
+                style={{
+                  letterSpacing: '0.12em',
+                  color: '#1B2B4B',
+                  border: '1px solid rgba(27,43,75,0.2)',
+                  borderRadius: '2px',
+                }}
+              >
+                View Booking →
+              </a>
+            )}
+            {event.phone && (
+              <a
+                href={`tel:${event.phone.replace(/\s/g, '')}`}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs uppercase tracking-widest transition-all duration-200 hover:opacity-80"
+                style={{
+                  letterSpacing: '0.12em',
+                  color: '#6b7280',
+                  border: '1px solid rgba(27,43,75,0.1)',
+                  borderRadius: '2px',
+                }}
+              >
+                📞 {event.phone}
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

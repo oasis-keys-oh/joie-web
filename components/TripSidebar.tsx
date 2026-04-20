@@ -8,29 +8,126 @@ interface TripSidebarProps {
   days: TripDay[]
 }
 
-const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
-
 const HIGHLIGHT_DAYS = [2, 5, 8, 11, 14]
 
+/**
+ * Static SVG route map — pinned markers on a simplified Mediterranean backdrop.
+ * No API key required. Coordinates projected onto a 280×240 viewport.
+ *
+ * Real coords (lon, lat):
+ *   Casablanca  -7.59, 33.57
+ *   Rabat       -6.83, 34.02
+ *   Fez         -5.00, 34.03
+ *   Lyon         4.83, 45.75
+ *   Beaune       4.84, 47.02
+ *   Loire/Tours  0.68, 47.39
+ *   Paris        2.35, 48.85
+ *
+ * Map bbox: lon -10..10, lat 30..52  → scaled to 280×240
+ */
+const STOPS = [
+  { id: 'casablanca', label: 'Casablanca', lon: -7.59, lat: 33.57, days: 'Days 1–2' },
+  { id: 'rabat',      label: 'Rabat',      lon: -6.83, lat: 34.02, days: 'Days 3–4' },
+  { id: 'fez',        label: 'Fez',        lon: -5.00, lat: 34.03, days: 'Day 5' },
+  { id: 'lyon',       label: 'Lyon',       lon:  4.83, lat: 45.75, days: 'Days 6–7' },
+  { id: 'beaune',     label: 'Beaune',     lon:  4.84, lat: 47.02, days: 'Days 8–10' },
+  { id: 'loire',      label: 'Loire',      lon:  0.68, lat: 47.39, days: 'Days 11–13' },
+  { id: 'paris',      label: 'Paris',      lon:  2.35, lat: 48.85, days: 'Days 14–15' },
+]
 
-// Full trip route as a directions embed — Morocco to France arc
-function buildRouteMapUrl(): string {
-  const key = MAPS_KEY
-  const origin = encodeURIComponent('Casablanca, Morocco')
-  const destination = encodeURIComponent('Paris, France')
-  const waypoints = [
-    'Rabat, Morocco',
-    'Fez, Morocco',
-    'Lyon, France',
-    'Beaune, France',
-  ].map(encodeURIComponent).join('|')
+const MAP_W = 280
+const MAP_H = 240
+const LON_MIN = -10, LON_MAX = 12
+const LAT_MIN = 30, LAT_MAX = 53
 
-  return `https://www.google.com/maps/embed/v1/directions?key=${key}&origin=${origin}&destination=${destination}&waypoints=${waypoints}&mode=driving&zoom=5`
+function project(lon: number, lat: number): [number, number] {
+  const x = ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * MAP_W
+  const y = MAP_H - ((lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * MAP_H
+  return [Math.round(x), Math.round(y)]
+}
+
+function RouteMap() {
+  const pts = STOPS.map((s) => project(s.lon, s.lat))
+  const pathD = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x} ${y}`).join(' ')
+
+  return (
+    <div className="rounded-sm overflow-hidden border border-gray-100" style={{ height: '240px', background: '#f0f4f8', position: 'relative' }}>
+      <svg
+        width={MAP_W}
+        height={MAP_H}
+        viewBox={`0 0 ${MAP_W} ${MAP_H}`}
+        style={{ width: '100%', height: '100%' }}
+        aria-label="Trip route map: Casablanca to Paris"
+      >
+        {/* Simple sea / land fill */}
+        <rect width={MAP_W} height={MAP_H} fill="#dde9f4" />
+
+        {/* Rough landmass polygons — Morocco + Western Europe simplified */}
+        {/* Morocco */}
+        <polygon
+          points="28,90 55,78 72,72 80,80 75,105 60,118 40,120 22,108"
+          fill="#e8e4d8" stroke="#c8c0b0" strokeWidth="0.5"
+        />
+        {/* Iberian Peninsula */}
+        <polygon
+          points="55,42 95,30 115,35 120,55 110,75 90,80 72,72 60,60"
+          fill="#e8e4d8" stroke="#c8c0b0" strokeWidth="0.5"
+        />
+        {/* France + partial Europe */}
+        <polygon
+          points="112,12 155,8 185,15 195,40 180,58 160,60 140,52 125,45 115,35"
+          fill="#e8e4d8" stroke="#c8c0b0" strokeWidth="0.5"
+        />
+        {/* Italy + Alps rough */}
+        <polygon
+          points="168,48 185,38 200,42 210,65 200,80 185,78 172,65"
+          fill="#e8e4d8" stroke="#c8c0b0" strokeWidth="0.5"
+        />
+
+        {/* Strait of Gibraltar label */}
+        <text x="84" y="77" fill="#7a9bba" fontSize="5" textAnchor="middle" opacity="0.7">Gibraltar</text>
+
+        {/* Route arc */}
+        <path d={pathD} fill="none" stroke="#C9A84C" strokeWidth="1.5" strokeDasharray="4 2.5" opacity="0.85" />
+
+        {/* Stop dots + labels */}
+        {STOPS.map((stop, i) => {
+          const [x, y] = pts[i]
+          const isFirst = i === 0
+          const isLast = i === STOPS.length - 1
+          const labelX = x + (x > MAP_W / 2 ? -5 : 5)
+          const anchor = x > MAP_W / 2 ? 'end' : 'start'
+          return (
+            <g key={stop.id}>
+              {/* Pin circle */}
+              <circle cx={x} cy={y} r={isFirst || isLast ? 5 : 4} fill="#C9A84C" opacity="0.9" />
+              <circle cx={x} cy={y} r={isFirst || isLast ? 2.5 : 1.5} fill="white" />
+              {/* Label */}
+              <text
+                x={labelX}
+                y={y - 7}
+                fill="#1B2B4B"
+                fontSize="7"
+                fontWeight="600"
+                textAnchor={anchor}
+                style={{ fontFamily: 'sans-serif' }}
+              >
+                {stop.label}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* Morocco / France country labels */}
+        <text x="55" y="100" fill="#9a8a6a" fontSize="6" fontWeight="500" opacity="0.6" textAnchor="middle" style={{ fontFamily: 'sans-serif', letterSpacing: '0.08em' }}>MOROCCO</text>
+        <text x="148" y="36" fill="#9a8a6a" fontSize="6" fontWeight="500" opacity="0.6" textAnchor="middle" style={{ fontFamily: 'sans-serif', letterSpacing: '0.08em' }}>FRANCE</text>
+      </svg>
+    </div>
+  )
 }
 
 export default function TripSidebar({ trip, days }: TripSidebarProps) {
   const highlights = days.filter((d) => HIGHLIGHT_DAYS.includes(d.day_number) && d.wow_moment)
-  const mapUrl = buildRouteMapUrl()
 
   return (
     <aside className="space-y-8">
@@ -44,18 +141,7 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
           <p className="label shrink-0">Route Map</p>
           <div className="flex-1 border-t border-gray-100" />
         </div>
-        <div className="rounded-sm overflow-hidden border border-gray-100" style={{ height: '240px' }}>
-          <iframe
-            src={mapUrl}
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen={false}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title="Trip route map"
-          />
-        </div>
+        <RouteMap />
 
         {/* Route stop list */}
         <div className="mt-4 space-y-0">
@@ -184,9 +270,9 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { num: '15', label: 'Days' },
-            { num: '2', label: 'Countries' },
-            { num: '8', label: 'Cities' },
+            { num: String(days.length || 15), label: 'Days' },
+            { num: String(new Set(days.map(d => (d.region || '').split('/')[0].trim()).filter(Boolean)).size || 2), label: 'Countries' },
+            { num: String(STOPS.length), label: 'Cities' },
             { num: '4', label: 'Travelers' },
           ].map((stat) => (
             <div key={stat.label} className="text-center py-4 border border-gray-100 rounded-sm">

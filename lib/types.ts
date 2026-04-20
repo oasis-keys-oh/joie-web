@@ -47,6 +47,7 @@ export interface MustBuyItem {
   why?: string;
   where?: string;
   price_range?: string;
+  amazon_url?: string;
 }
 
 export interface WineFoodPick {
@@ -121,9 +122,11 @@ export interface Event {
   title: string;
   time_start?: string;
   address?: string;
+  phone?: string;
   confirmation?: string;
   notes?: string;
   booking_status?: string;
+  booking_url?: string;
   callout_type?: string;
   briefing_card?: BriefingCard;
   traveler_ids?: string[];
@@ -139,6 +142,8 @@ export interface ReferenceItem {
   check_in?: string;
   check_out?: string;
   address?: string;
+  phone?: string;
+  website?: string;
   confirmation?: string;
   notes?: string;
   created_at?: string;
