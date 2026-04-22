@@ -4,8 +4,8 @@ import { logoutAction } from '@/app/admin/actions'
 
 export const metadata = { title: 'Curator — Oukala Journeys' }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const authed = isAdminAuthenticated()
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const authed = await isAdminAuthenticated()
   // Let login page through unauthenticated
   return (
     <div className="min-h-screen" style={{ background: '#f5f2ed' }}>

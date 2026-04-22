@@ -24,7 +24,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default async function IntakeListPage() {
-  if (!isAdminAuthenticated()) redirect('/admin/login')
+  if (!await isAdminAuthenticated()) redirect('/admin/login')
 
   const admin = createAdminClient()
   const { data: records } = await admin

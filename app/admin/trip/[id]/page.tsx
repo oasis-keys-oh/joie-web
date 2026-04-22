@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default async function AdminTripPage({ params, searchParams }: Props) {
-  if (!isAdminAuthenticated()) redirect('/admin/login')
+  if (!await isAdminAuthenticated()) redirect('/admin/login')
 
   const admin = createAdminClient()
   const tripId = params.id

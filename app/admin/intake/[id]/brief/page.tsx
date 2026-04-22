@@ -272,7 +272,7 @@ function generatePrompt(rec: Record<string, any>): string {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function BriefPage({ params }: Props) {
-  if (!isAdminAuthenticated()) redirect('/admin/login')
+  if (!await isAdminAuthenticated()) redirect('/admin/login')
 
   const admin = createAdminClient()
   const { data: record, error } = await admin

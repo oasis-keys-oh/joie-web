@@ -1,6 +1,7 @@
 import { loginAction } from '@/app/admin/actions'
 
-export default function AdminLoginPage({ searchParams }: { searchParams: { error?: string } }) {
+export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> | { error?: string } }) {
+  const params = searchParams instanceof Promise ? await searchParams : searchParams
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#f5f2ed' }}>
       <div className="w-full max-w-sm">
@@ -12,8 +13,8 @@ export default function AdminLoginPage({ searchParams }: { searchParams: { error
         </div>
 
         <form action={loginAction} className="bg-white rounded-sm border border-gray-100 px-8 py-8 shadow-sm">
-          {searchParams.error && (
-            <p className="text-red-600 text-sm mb-5 text-center">{searchParams.error}</p>
+          {params.error && (
+            <p className="text-red-600 text-sm mb-5 text-center">{params.error}</p>
           )}
           <label className="block mb-6">
             <span className="text-xs uppercase tracking-widest text-ink-muted block mb-2" style={{ letterSpacing: '0.16em' }}>

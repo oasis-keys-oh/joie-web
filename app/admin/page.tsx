@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import Link from 'next/link'
 
 export default async function AdminDashboard() {
-  if (!isAdminAuthenticated()) redirect('/admin/login')
+  if (!await isAdminAuthenticated()) redirect('/admin/login')
 
   const admin = createAdminClient()
   const { data: trips } = await admin

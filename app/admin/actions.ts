@@ -15,7 +15,8 @@ export async function loginAction(formData: FormData) {
   if (!valid) {
     redirect('/admin/login?error=Incorrect+password')
   }
-  cookies().set(SESSION_COOKIE, SESSION_VALUE, {
+  const cookieStore = await cookies()
+  cookieStore.set(SESSION_COOKIE, SESSION_VALUE, {
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 60 * 60 * 8, // 8 hours
@@ -25,7 +26,8 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function logoutAction() {
-  cookies().delete(SESSION_COOKIE)
+  const cookieStore = await cookies()
+  cookieStore.delete(SESSION_COOKIE)
   redirect('/admin/login')
 }
 
