@@ -46,10 +46,10 @@ export const MOROCCO_PHOTOS: UnsplashPhoto[] = [
 
 // ─── Casablanca ────────────────────────────────────────────────────────────
 export const CASABLANCA_PHOTOS: UnsplashPhoto[] = [
-  photo('photo-1558618047-f4cde9b8e6f2', 'Tarik Haiga',   'tarik_haiga',    'Hassan II Mosque, Casablanca'),
-  photo('photo-1545518068-15b9d63b4a94', 'Amine M\'Siouri', 'amine_siouri', 'Hassan II Mosque exterior'),
-  photo('photo-1585208798174-6cedd86e019a', 'Calin Stan',  'calinstan',      'Moroccan medina'),
-  photo('photo-1553697388-94e804e2f0f6',   'Erol Ahmed',   'erol_ahmed',     'Atlantic Morocco coast'),
+  photo('photo-1539635278303-d4002c07eae3', 'Jesper Stechmann', 'jesperstechmann', 'Hassan II Mosque, Casablanca'),
+  photo('photo-1548013146-72479768bada',    'Sylvain Guenot',   'sylvain_guenot',  'Hassan II Mosque exterior'),
+  photo('photo-1585208798174-6cedd86e019a', 'Calin Stan',       'calinstan',       'Moroccan medina'),
+  photo('photo-1553697388-94e804e2f0f6',   'Erol Ahmed',        'erol_ahmed',      'Atlantic Morocco coast'),
 ]
 
 // ─── Rabat ────────────────────────────────────────────────────────────────

@@ -18,6 +18,10 @@ const PHOTOS = [
   { pool: 'Morocco', id: 'photo-1553697388-94e804e2f0f6' },
   { pool: 'Morocco', id: 'photo-1528360983277-13d401cdc186' },
 
+  // ── Casablanca ────────────────────────────────────────────────────────────
+  { pool: 'Casablanca', id: 'photo-1539635278303-d4002c07eae3' },
+  { pool: 'Casablanca', id: 'photo-1548013146-72479768bada' },
+
   // ── France (general) ─────────────────────────────────────────────────────
   { pool: 'France',  id: 'photo-1502602898657-3e91760cbb34' },
   { pool: 'France',  id: 'photo-1499856871958-5b9627545d1a' },
@@ -57,7 +61,7 @@ const errors = []
 async function check({ pool, id }) {
   const url = `https://images.unsplash.com/${id}?w=200&q=60`
   try {
-    const res = await fetch(url, { method: 'HEAD' })
+    const res = await fetch(url, { method: 'GET' })
     if (res.ok) {
       passed++
       process.stdout.write('.')
