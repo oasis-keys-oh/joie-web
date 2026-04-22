@@ -7,6 +7,7 @@ import {
   upsertHotelAction, deleteHotelAction,
   upsertChallengeAction, deleteChallengeAction,
   updateDayFieldAction,
+  updateTripFieldAction,
   upsertPackingItemAction, deletePackingItemAction,
   upsertRecAction, deleteRecAction,
   upsertPreTripDropAction, deletePreTripDropAction,
@@ -15,8 +16,8 @@ import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string }
-interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string }
+interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; hero_image_url?: string }
+interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; hero_image_url?: string }
 interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string }
@@ -51,6 +52,7 @@ const TABS = [
   { id: 'pretripdrops', label: 'Pre-Trip Drops' },
   { id: 'feedback',  label: 'Feedback' },
   { id: 'health',    label: '🩺 Health' },
+  { id: 'settings',  label: '⚙️ Settings' },
 ]
 
 const ROLE_OPTIONS = ['driver', 'guide', 'fixer', 'restaurant_contact', 'other']
@@ -204,6 +206,7 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       {tab === 'pretripdrops'  && <PreTripDropsTab trip={trip} drops={drops} />}
       {tab === 'feedback'      && <FeedbackTab   days={days} feedback={feedback} />}
       {tab === 'health'        && <ImageHealthTab days={days} />}
+      {tab === 'settings'      && <SettingsTab   trip={trip} />}
     </div>
   )
 }
@@ -226,7 +229,7 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
   return (
     <div className="space-y-3">
       {days.map(day => (
-        <div key={day.id} className="bg-white border border-gray-100 rounded-sm overflow-hidden">
+        <div key={day.id} data-day={day.id} className="bg-white border border-gray-100 rounded-sm overflow-hidden">
           <button
             type="button"
             onClick={() => setExpanded(expanded === day.id ? null : day.id)}
@@ -290,6 +293,41 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
                 >
                   {pending ? 'Saving…' : 'Save WOW'}
                 </button>
+              </div>
+              <div>
+                <Label>Hero Image URL</Label>
+                <p className="text-xs text-ink-muted mb-2">Paste any image URL (Unsplash, Google Photos share link, etc). Overrides the auto-selected pool photo. Leave blank to use the default pool.</p>
+                <input
+                  name="hero_image_url"
+                  type="url"
+                  defaultValue={day.hero_image_url || ''}
+                  placeholder="https://images.unsplash.com/photo-XXXX?w=800&q=80"
+                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                  style={{ background: '#faf8f4' }}
+                />
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.querySelector(`[data-day="${day.id}"] input[name="hero_image_url"]`) as HTMLInputElement
+                      handleSave(day.id, 'hero_image_url', el?.value || '')
+                    }}
+                    className="text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
+                    style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
+                  >
+                    {pending ? 'Saving…' : 'Save Image'}
+                  </button>
+                  {day.hero_image_url && (
+                    <a
+                      href={day.hero_image_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-gold hover:opacity-75"
+                    >
+                      Preview →
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1360,9 +1398,82 @@ function ImageHealthTab({ days }: { days: Day[] }) {
       {defaultCount > 0 && (
         <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-4 py-3 leading-relaxed">
           <strong>Fix:</strong> Update the day&apos;s <code>location</code> or <code>region</code> field in the Days tab to match a keyword in{' '}
-          <code>lib/unsplash.ts</code> POOL_MAP — e.g. <em>casablanca, rabat, fez, lyon, paris, loire, burgundy</em>.
+          <code>lib/unsplash.ts</code> POOL_MAP — e.g. <em>casablanca, rabat, fez, lyon, paris, loire, burgundy</em>. Or paste a direct Hero Image URL in the Days tab.
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Settings Tab ──────────────────────────────────────────────────────────────
+
+function SettingsTab({ trip }: { trip: Trip }) {
+  const [pending, startTransition] = useTransition()
+  const [saved, setSaved] = useState(false)
+
+  function handleSave(field: string, value: string) {
+    startTransition(async () => {
+      await updateTripFieldAction(trip.id, field, value)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    })
+  }
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      <div>
+        <h3 className="font-serif text-lg font-bold text-navy mb-1">Trip Settings</h3>
+        <p className="text-xs text-ink-muted">Trip-level overrides that take effect immediately — no deploy required.</p>
+      </div>
+
+      <Card>
+        <div>
+          <Label>Trip Hero Image URL</Label>
+          <p className="text-xs text-ink-muted mb-3">
+            Overrides the full-bleed hero on the trip page. Paste any direct image URL — Unsplash, Google Photos, Cloudinary, etc.
+            Leave blank to use the auto-selected pool photo based on the first day&apos;s location.
+          </p>
+          <input
+            id="trip-hero-url"
+            type="url"
+            defaultValue={trip.hero_image_url || ''}
+            placeholder="https://images.unsplash.com/photo-XXXX?w=2400&h=1400&fit=crop&q=90"
+            className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+            style={{ background: '#faf8f4' }}
+          />
+          <div className="flex items-center gap-4 mt-3">
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('trip-hero-url') as HTMLInputElement
+                handleSave('hero_image_url', el?.value || '')
+              }}
+              disabled={pending}
+              className="text-xs uppercase tracking-widest px-5 py-2 text-white rounded-sm disabled:opacity-50"
+              style={{ background: '#1B2B4B', letterSpacing: '0.14em' }}
+            >
+              {pending ? 'Saving…' : 'Save Hero Image'}
+            </button>
+            {saved && <span className="text-xs text-green-600">Saved ✓</span>}
+            {trip.hero_image_url && (
+              <a
+                href={trip.hero_image_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gold hover:opacity-75"
+              >
+                Preview →
+              </a>
+            )}
+          </div>
+          {trip.hero_image_url && (
+            <div className="mt-4 rounded-sm overflow-hidden border border-gray-100" style={{ aspectRatio: '16/5' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={trip.hero_image_url} alt="Hero preview" className="w-full h-full object-cover" />
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   )
 }

@@ -12,13 +12,15 @@ interface DayCardProps {
 
 export default function DayCard({ day, tripSlug }: DayCardProps) {
   const photo = getPhotoForDay(day.region || '', day.day_number, 800, 600, 80, day.location)
+  // Use DB-provided URL if curated, otherwise fall back to Unsplash pool
+  const imageUrl = day.hero_image_url || photo.url
 
   return (
     <Link href={`/trip/${tripSlug}/day/${day.day_number}`} className="block group bg-white">
       {/* Image */}
       <span className="block relative overflow-hidden" style={{ aspectRatio: '4/3' }}>
         <Image
-          src={photo.url}
+          src={imageUrl}
           alt={day.title}
           fill
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
@@ -40,7 +42,8 @@ export default function DayCard({ day, tripSlug }: DayCardProps) {
           </span>
         </span>
       </span>
-      <UnsplashCredit photo={photo} variant="card" />
+      {/* Only show Unsplash credit when using the pool photo, not a DB-curated URL */}
+      {!day.hero_image_url && <UnsplashCredit photo={photo} variant="card" />}
 
       {/* Card text */}
       <span

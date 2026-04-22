@@ -114,6 +114,13 @@ export async function deleteHotelAction(id: string) {
   await admin.from('reference_items').delete().eq('id', id)
 }
 
+// ── Trip fields ──────────────────────────────────────────────────────────────
+
+export async function updateTripFieldAction(tripId: string, field: string, value: string) {
+  const admin = createAdminClient()
+  await admin.from('trips').update({ [field]: value || null }).eq('id', tripId)
+}
+
 // ── Day fields ───────────────────────────────────────────────────────────────
 
 export async function updateDayFieldAction(dayId: string, field: string, value: string) {

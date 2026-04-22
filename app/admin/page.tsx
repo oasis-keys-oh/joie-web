@@ -14,9 +14,18 @@ export default async function AdminDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      <div className="mb-10">
-        <p className="text-xs uppercase tracking-widest text-ink-muted mb-2" style={{ letterSpacing: '0.2em' }}>Dashboard</p>
-        <h1 className="font-serif text-4xl font-bold text-navy">All Trips</h1>
+      <div className="mb-10 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-ink-muted mb-2" style={{ letterSpacing: '0.2em' }}>Dashboard</p>
+          <h1 className="font-serif text-4xl font-bold text-navy">All Trips</h1>
+        </div>
+        <Link
+          href="/admin/intake"
+          className="text-xs uppercase tracking-widest px-5 py-2.5 text-white rounded-sm hover:opacity-85 transition-opacity"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          New Intake →
+        </Link>
       </div>
 
       <div className="space-y-4">

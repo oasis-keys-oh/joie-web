@@ -18,7 +18,8 @@ export default function TripHeader({ trip, imageUrl, firstDestination }: TripHea
   const destination = firstDestination || (trip as any).first_destination || 'morocco'
   const pool = getPhotoPool(destination)
   const heroPhoto: UnsplashPhoto = pool[0]
-  const finalImageUrl = imageUrl || `https://images.unsplash.com/${heroPhoto.id}?w=2400&h=1400&fit=crop&q=90`
+  // Priority: explicit prop override → DB field → Unsplash pool
+  const finalImageUrl = imageUrl || trip.hero_image_url || `https://images.unsplash.com/${heroPhoto.id}?w=2400&h=1400&fit=crop&q=90`
 
   return (
     <div

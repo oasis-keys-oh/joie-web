@@ -79,6 +79,7 @@ export interface Trip {
   has_ef?: boolean;
   has_thread_boxes?: boolean;
   trip_narrative?: string;
+  hero_image_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -99,6 +100,7 @@ export interface TripDay {
   morning_brief?: string;
   itinerary_narrative?: ItineraryNarrativeSegment[];
   unsplash_query?: string;
+  hero_image_url?: string;
   meal_breakfast?: string;
   meal_lunch?: string;
   meal_dinner?: string;
