@@ -19,7 +19,7 @@ import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 
 interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
 interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
-interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; partner_name?: string }
+interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; partner_name?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; wine_preferences?: string; interests?: string; travel_style?: string; allergies?: string; languages?: string; activities?: string; bucket_list?: string; music_preferences?: string; age?: number }
 interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string }
@@ -296,6 +296,30 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
             {expanded === day.id && (
               <div className="border-t border-gray-100 px-6 py-6 space-y-6">
 
+                {/* Day Title */}
+                <div>
+                  <Label>Day Title</Label>
+                  <input
+                    name="title"
+                    type="text"
+                    defaultValue={day.title}
+                    placeholder="e.g. Arrival in Seville"
+                    className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                    style={{ background: '#faf8f4' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.querySelector(`[data-day="${day.id}"] input[name="title"]`) as HTMLInputElement
+                      handleSave(day.id, 'title', el?.value || '')
+                    }}
+                    className="mt-2 text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
+                    style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
+                  >
+                    {pending ? 'Saving…' : 'Save Title'}
+                  </button>
+                </div>
+
                 {/* Morning Brief */}
                 <div>
                   <Label>Morning Brief</Label>
@@ -498,8 +522,12 @@ function TravelersTab({ trip, travelers }: { trip: Trip; travelers: Traveler[] }
               <div><Label>Phone</Label><Input name="phone" placeholder="+1 555 000 0000" /></div>
               <div><Label>Partner / Spouse Name</Label><Input name="partner_name" placeholder="e.g. Omar" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Age</Label><Input name="age" type="number" placeholder="42" /></div>
+              <div><Label>Languages</Label><Input name="languages" placeholder="English (native), French (basic)" /></div>
+            </div>
 
-            {/* Hospitality preferences */}
+            {/* Hospitality */}
             <div className="pt-2 border-t border-gray-100">
               <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Hotel Preferences</p>
               <div className="grid grid-cols-3 gap-3">
@@ -519,18 +547,36 @@ function TravelersTab({ trip, travelers }: { trip: Trip; travelers: Traveler[] }
               </div>
             </div>
 
-            {/* Dietary / mobility */}
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Dietary Notes</Label><Textarea name="dietary_notes" placeholder="Vegetarian-curious, no shellfish…" rows={2} /></div>
-              <div><Label>Mobility Notes</Label><Textarea name="mobility_notes" placeholder="Prefers flat routes, no cobblestones…" rows={2} /></div>
+            {/* Food & drink */}
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Food & Drink</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Allergies</Label><Input name="allergies" placeholder="Shellfish, tree nuts…" /></div>
+                <div><Label>Dietary Notes</Label><Input name="dietary_notes" placeholder="Vegetarian-curious, no pork…" /></div>
+              </div>
+              <div className="mt-3"><Label>Wine & Drink Preferences</Label><Textarea name="wine_preferences" placeholder="Prefers red Burgundy, dry whites. Enjoys local aperitifs." rows={2} /></div>
+            </div>
+
+            {/* Personality */}
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Personality & Travel Style</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Travel Style</Label><Input name="travel_style" placeholder="Slow explorer, needs downtime each afternoon" /></div>
+                <div><Label>Personality / Framing</Label><Input name="personality" placeholder="The planner. Needs the 'why'." /></div>
+              </div>
+              <div className="mt-3"><Label>Interests & Passions</Label><Textarea name="interests" placeholder="Architecture, local markets, food culture, photography…" rows={2} /></div>
+              <div className="mt-3"><Label>Preferred Activities</Label><Textarea name="activities" placeholder="Loves walking tours. Avoids extreme heat." rows={2} /></div>
             </div>
 
             {/* Personal */}
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" /></div>
-              <div><Label>Personality / Framing Note</Label><Input name="personality" placeholder="The planner. Needs the 'why' before the 'what'." /></div>
+            <div className="pt-2 border-t border-gray-100">
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" /></div>
+                <div><Label>Bucket List (this trip)</Label><Input name="bucket_list" placeholder="See the sunrise at the Alhambra" /></div>
+              </div>
+              <div className="mt-3"><Label>Mobility Notes</Label><Textarea name="mobility_notes" placeholder="Prefers flat routes, no cobblestones…" rows={2} /></div>
+              <div className="mt-3"><Label>Curator Notes</Label><Textarea name="notes" placeholder="Any private notes for this traveler…" rows={2} /></div>
             </div>
-            <div><Label>Curator Notes</Label><Textarea name="notes" placeholder="Any other notes for this traveler…" rows={2} /></div>
 
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
@@ -556,19 +602,23 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
           <div className="flex-1 min-w-0">
             {/* Header */}
             <div className="flex items-center gap-3 mb-2">
-              <p className="font-serif font-bold text-navy text-base">{traveler.name}</p>
+              <p className="font-serif font-bold text-navy text-base">{traveler.full_name}</p>
               {traveler.traveler_key && (
                 <span className="text-xs px-2 py-0.5 rounded-sm font-mono" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C' }}>
                   {traveler.traveler_key}
                 </span>
+              )}
+              {traveler.partner_name && (
+                <span className="text-xs text-ink-muted">+ {traveler.partner_name}</span>
               )}
             </div>
             {/* Contact */}
             <div className="flex flex-wrap gap-4 text-xs text-ink-muted mb-3">
               {traveler.email && <span>✉ {traveler.email}</span>}
               {traveler.phone && <span>📞 {traveler.phone}</span>}
+              {traveler.languages && <span>🗣 {traveler.languages}</span>}
             </div>
-            {/* Preferences */}
+            {/* Hospitality preferences */}
             <div className="grid grid-cols-3 gap-x-6 gap-y-1.5 text-xs mb-2">
               {traveler.pillow_firmness && (
                 <div><span className="text-ink-muted">Pillow:</span> <strong className="text-navy">{traveler.pillow_firmness}</strong></div>
@@ -576,15 +626,31 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
               {traveler.coffee_order && (
                 <div><span className="text-ink-muted">Coffee:</span> <strong className="text-navy">{traveler.coffee_order}</strong></div>
               )}
-              {traveler.curtains_preference && (
-                <div><span className="text-ink-muted">Curtains:</span> <strong className="text-navy">{traveler.curtains_preference}</strong></div>
+              {traveler.curtains_arrival && (
+                <div><span className="text-ink-muted">Curtains:</span> <strong className="text-navy">{traveler.curtains_arrival}</strong></div>
               )}
               {traveler.anniversary_date && (
                 <div><span className="text-ink-muted">Anniversary:</span> <strong className="text-navy">{traveler.anniversary_date}</strong></div>
               )}
+              {traveler.travel_style && (
+                <div><span className="text-ink-muted">Style:</span> <strong className="text-navy">{traveler.travel_style}</strong></div>
+              )}
             </div>
+            {/* Dietary / allergies */}
+            {traveler.allergies && (
+              <p className="text-xs text-red-500 mt-1">⚠ Allergies: {traveler.allergies}</p>
+            )}
             {traveler.dietary_notes && (
               <p className="text-xs text-ink-muted mt-1">🥗 {traveler.dietary_notes}</p>
+            )}
+            {traveler.wine_preferences && (
+              <p className="text-xs text-ink-muted mt-0.5">🍷 {traveler.wine_preferences}</p>
+            )}
+            {traveler.interests && (
+              <p className="text-xs text-ink-muted mt-0.5">✦ {traveler.interests}</p>
+            )}
+            {traveler.activities && (
+              <p className="text-xs text-ink-muted mt-0.5">🎯 {traveler.activities}</p>
             )}
             {traveler.mobility_notes && (
               <p className="text-xs text-ink-muted mt-0.5">🚶 {traveler.mobility_notes}</p>
@@ -601,7 +667,7 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
             <DeleteBtn
               pending={pending}
               onClick={() => startTransition(async () => {
-                if (confirm(`Remove ${traveler.name} from this trip? Their profile will be kept for future trips.`)) {
+                if (confirm(`Remove ${traveler.full_name} from this trip? Their profile will be kept for future trips.`)) {
                   await deleteTravelerAction(traveler.id, tripId)
                   window.location.reload()
                 }
@@ -623,16 +689,23 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
           <input type="hidden" name="id" value={traveler.id} />
           <input type="hidden" name="trip_id" value={tripId} />
 
+          {/* Identity */}
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Full Name *</Label><Input name="name" defaultValue={traveler.name} required /></div>
+            <div><Label>Full Name *</Label><Input name="name" defaultValue={traveler.full_name} required /></div>
             <div><Label>Traveler Key</Label><Input name="traveler_key" defaultValue={traveler.traveler_key} placeholder="e.g. kristi" /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div><Label>Email</Label><Input name="email" type="email" defaultValue={traveler.email} /></div>
             <div><Label>Phone</Label><Input name="phone" defaultValue={traveler.phone} /></div>
+            <div><Label>Partner / Spouse</Label><Input name="partner_name" defaultValue={traveler.partner_name} placeholder="e.g. Omar" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Age</Label><Input name="age" type="number" defaultValue={traveler.age?.toString()} placeholder="e.g. 42" /></div>
+            <div><Label>Languages</Label><Input name="languages" defaultValue={traveler.languages} placeholder="English (native), French (basic)" /></div>
           </div>
 
-          <div className="pt-2 border-t border-gray-100">
+          {/* Hospitality */}
+          <div className="pt-3 border-t border-gray-100">
             <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Hotel Preferences</p>
             <div className="grid grid-cols-3 gap-3">
               <div>
@@ -642,8 +715,8 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
                 </select>
               </div>
               <div>
-                <Label>Curtains</Label>
-                <select name="curtains_preference" defaultValue={traveler.curtains_preference || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" style={{ background: '#faf8f4' }}>
+                <Label>Curtains on Arrival</Label>
+                <select name="curtains_preference" defaultValue={traveler.curtains_arrival || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" style={{ background: '#faf8f4' }}>
                   {CURTAINS_OPTIONS.map(o => <option key={o} value={o}>{o || '—'}</option>)}
                 </select>
               </div>
@@ -651,15 +724,37 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Dietary Notes</Label><Textarea name="dietary_notes" defaultValue={traveler.dietary_notes} rows={2} /></div>
-            <div><Label>Mobility Notes</Label><Textarea name="mobility_notes" defaultValue={traveler.mobility_notes} rows={2} /></div>
+          {/* Dietary */}
+          <div className="pt-3 border-t border-gray-100">
+            <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Food & Drink</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Allergies</Label><Input name="allergies" defaultValue={traveler.allergies} placeholder="Shellfish, tree nuts…" /></div>
+              <div><Label>Dietary Notes</Label><Input name="dietary_notes" defaultValue={traveler.dietary_notes} placeholder="Vegetarian-curious, no pork…" /></div>
+            </div>
+            <div className="mt-3"><Label>Wine & Drink Preferences</Label><Textarea name="wine_preferences" defaultValue={traveler.wine_preferences} placeholder="Prefers red Burgundy, dry whites. Enjoys local aperitifs. Doesn't drink spirits." rows={2} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" defaultValue={traveler.anniversary_date?.split('T')[0]} /></div>
-            <div><Label>Personality / Framing Note</Label><Input name="personality" defaultValue={traveler.personality} /></div>
+
+          {/* Personality & Travel */}
+          <div className="pt-3 border-t border-gray-100">
+            <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Personality & Travel Style</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Travel Style</Label><Input name="travel_style" defaultValue={traveler.travel_style} placeholder="Slow explorer, needs downtime each afternoon" /></div>
+              <div><Label>Personality / Framing</Label><Input name="personality" defaultValue={traveler.personality} placeholder="The planner. Needs the 'why' before the 'what'." /></div>
+            </div>
+            <div className="mt-3"><Label>Interests & Passions</Label><Textarea name="interests" defaultValue={traveler.interests} placeholder="Architecture, Moorish history, photography, local markets, contemporary art…" rows={2} /></div>
+            <div className="mt-3"><Label>Preferred Activities</Label><Textarea name="activities" defaultValue={traveler.activities} placeholder="Loves walking tours and cooking classes. Avoids extreme heat, no extreme sports." rows={2} /></div>
+            <div className="mt-3"><Label>Music Preferences</Label><Input name="music_preferences" defaultValue={traveler.music_preferences} placeholder="Jazz, flamenco, ambient. Dislikes EDM." /></div>
           </div>
-          <div><Label>Curator Notes</Label><Textarea name="notes" defaultValue={traveler.notes} rows={2} /></div>
+
+          {/* Dates & notes */}
+          <div className="pt-3 border-t border-gray-100">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" defaultValue={traveler.anniversary_date?.split('T')[0]} /></div>
+              <div><Label>Bucket List (this trip)</Label><Input name="bucket_list" defaultValue={traveler.bucket_list} placeholder="See the sunrise at the Alhambra" /></div>
+            </div>
+            <div className="mt-3"><Label>Mobility Notes</Label><Textarea name="mobility_notes" defaultValue={traveler.mobility_notes} placeholder="Prefers flat routes, no cobblestones…" rows={2} /></div>
+            <div className="mt-3"><Label>Curator Notes</Label><Textarea name="notes" defaultValue={traveler.notes} placeholder="Any private notes for this traveler…" rows={2} /></div>
+          </div>
 
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
@@ -1827,6 +1922,52 @@ function TripImageSlot({ trip, field, label, savedKey }: { trip: Trip; field: st
   )
 }
 
+function TripTextField({ trip, field, label, placeholder, multiline }: { trip: Trip; field: string; label: string; placeholder?: string; multiline?: boolean }) {
+  const [pending, startTransition] = useTransition()
+  const [saved, setSaved] = useState(false)
+  const inputId = `trip-field-${field}`
+  const currentVal = (trip as Record<string, unknown>)[field] as string | undefined
+
+  function handleSave() {
+    const el = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement
+    startTransition(async () => {
+      await updateTripFieldAction(trip.id, field, el?.value || '')
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    })
+  }
+
+  const sharedProps = {
+    id: inputId,
+    defaultValue: currentVal || '',
+    placeholder,
+    className: 'w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold',
+    style: { background: '#faf8f4' } as React.CSSProperties,
+  }
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      {multiline
+        ? <textarea {...sharedProps} rows={4} />
+        : <input {...sharedProps} type="text" />
+      }
+      <div className="flex items-center gap-3 mt-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={pending}
+          className="text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm disabled:opacity-50"
+          style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
+        >
+          {pending ? 'Saving…' : `Save ${label}`}
+        </button>
+        {saved && <span className="text-xs text-green-600">Saved ✓</span>}
+      </div>
+    </div>
+  )
+}
+
 function SettingsTab({ trip }: { trip: Trip }) {
   const curatorCount = TRIP_HERO_SLOTS.filter(s => (trip as Record<string, unknown>)[s.field]).length
 
@@ -1836,6 +1977,20 @@ function SettingsTab({ trip }: { trip: Trip }) {
         <h3 className="font-serif text-lg font-bold text-navy mb-1">Trip Settings</h3>
         <p className="text-xs text-ink-muted">Trip-level overrides that take effect immediately — no deploy required.</p>
       </div>
+
+      {/* Trip name & dates */}
+      <Card>
+        <h4 className="font-semibold text-sm text-navy mb-5">Trip Details</h4>
+        <div className="space-y-5">
+          <TripTextField trip={trip} field="title" label="Trip Title" placeholder="The Andalusian Thread" />
+          <TripTextField trip={trip} field="subtitle" label="Subtitle" placeholder="A journey through southern Spain…" />
+          <TripTextField trip={trip} field="trip_narrative" label="Trip Narrative" placeholder="The story of this journey…" multiline />
+          <div className="grid grid-cols-2 gap-4">
+            <TripTextField trip={trip} field="start_date" label="Start Date" placeholder="2026-10-01" />
+            <TripTextField trip={trip} field="end_date" label="End Date" placeholder="2026-10-14" />
+          </div>
+        </div>
+      </Card>
 
       <Card>
         <div className="space-y-8">
