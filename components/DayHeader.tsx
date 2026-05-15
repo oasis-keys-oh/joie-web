@@ -16,14 +16,26 @@ function sized(photo: UnsplashPhoto, w: number, h: number, q: number): string {
 }
 
 /**
- * Resolve the best photo pool for a day.
- * - Handles transit strings like "Casablanca → Rabat" by preferring the destination (right side).
+ * Build a pool from curator-supplied image URLs (slots 1–4).
+ * Returns an array of URL strings for any non-empty slots.
+ */
+function buildCuratorPool(day: TripDay): string[] {
+  return [
+    day.hero_image_url,
+    day.hero_image_url_2,
+    day.hero_image_url_3,
+    day.hero_image_url_4,
+  ].filter((u): u is string => Boolean(u?.trim()))
+}
+
+/**
+ * Resolve the best Unsplash photo pool for a day (fallback path).
+ * - Handles transit strings like "Casablanca → Rabat" by preferring the destination.
  * - Falls back through: destination city → origin city → region → DEFAULT.
  * - Starting index uses a simple hash of day_number to spread photos across adjacent days.
  */
-function resolvePool(location: string | undefined, region: string | undefined, dayNumber: number) {
+function resolveUnsplashPool(location: string | undefined, region: string | undefined, dayNumber: number) {
   const loc = location || ''
-  // Handle "A → B" or "A - B" transit format — try destination (B) first
   const arrowIdx = loc.indexOf('→')
   const dashIdx = loc.indexOf(' - ')
   const separator = arrowIdx !== -1 ? arrowIdx : dashIdx !== -1 ? dashIdx : -1
@@ -40,50 +52,14 @@ function resolvePool(location: string | undefined, region: string | undefined, d
     pool = getPhotoPool(combined)
   }
 
-  // Spread starting index: use a simple hash so adjacent days in same region
-  // don't all show the same photo (dayNumber * 3 mod pool.length gives a spread)
   const startIndex = (dayNumber * 3) % pool.length
   return { pool, startIndex }
 }
 
-export default function DayHeader({ day }: DayHeaderProps) {
-  const { pool, startIndex } = resolvePool(day.location, day.region, day.day_number)
-  const [index, setIndex] = useState(startIndex)
-  const [fading, setFading] = useState(false)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFading(true)
-      setTimeout(() => {
-        setIndex((i) => (i + 1) % pool.length)
-        setFading(false)
-      }, 600)
-    }, 6000)
-    return () => clearInterval(interval)
-  }, [pool.length])
-
-  const photo = pool[index]
-  const imgUrl = sized(photo, 2000, 900, 85)
-
+/** Shared content overlay rendered over the hero image */
+function HeroOverlay({ day, dots }: { day: TripDay; dots?: React.ReactNode }) {
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: '70vh', minHeight: '480px' }}>
-
-      {/* Cycling image with crossfade */}
-      <div
-        className="absolute inset-0 transition-opacity duration-700"
-        style={{ opacity: fading ? 0 : 1 }}
-      >
-        <Image
-          src={imgUrl}
-          alt={day.title}
-          fill
-          className="object-cover"
-          priority
-          sizes="100vw"
-          unoptimized
-        />
-      </div>
-
+    <>
       {/* Gradient */}
       <div
         className="absolute inset-0"
@@ -143,23 +119,99 @@ export default function DayHeader({ day }: DayHeaderProps) {
         </div>
 
         {/* Dot indicators */}
-        <div className="flex items-center gap-1.5 mt-5">
-          {pool.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => { setFading(true); setTimeout(() => { setIndex(i); setFading(false) }, 600) }}
-              className="w-1.5 h-1.5 rounded-full transition-all duration-300"
-              style={{
-                background: i === index ? '#C9A84C' : 'rgba(255,255,255,0.4)',
-                transform: i === index ? 'scale(1.3)' : 'scale(1)',
-              }}
-              aria-label={`Photo ${i + 1}`}
-            />
-          ))}
-        </div>
+        {dots}
       </div>
+    </>
+  )
+}
 
-      {/* Photo attribution */}
+export default function DayHeader({ day }: DayHeaderProps) {
+  // ── Curator pool (takes priority) ──────────────────────────────────────────
+  const curatorUrls = buildCuratorPool(day)
+  const hasCuratorImages = curatorUrls.length > 0
+
+  // ── Unsplash fallback pool ──────────────────────────────────────────────────
+  const { pool: unsplashPool, startIndex } = resolveUnsplashPool(day.location, day.region, day.day_number)
+
+  // ── Shared cycling state (works for both pools) ────────────────────────────
+  const poolSize = hasCuratorImages ? curatorUrls.length : unsplashPool.length
+  const [index, setIndex] = useState(startIndex % poolSize)
+  const [fading, setFading] = useState(false)
+
+  useEffect(() => {
+    if (poolSize <= 1) return // no cycling needed for single image
+    const interval = setInterval(() => {
+      setFading(true)
+      setTimeout(() => {
+        setIndex((i) => (i + 1) % poolSize)
+        setFading(false)
+      }, 600)
+    }, 6000)
+    return () => clearInterval(interval)
+  }, [poolSize])
+
+  const dots = (
+    <div className="flex items-center gap-1.5 mt-5">
+      {Array.from({ length: poolSize }).map((_, i) => (
+        <button
+          key={i}
+          onClick={() => { setFading(true); setTimeout(() => { setIndex(i); setFading(false) }, 600) }}
+          className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+          style={{
+            background: i === index ? '#C9A84C' : 'rgba(255,255,255,0.4)',
+            transform: i === index ? 'scale(1.3)' : 'scale(1)',
+          }}
+          aria-label={`Photo ${i + 1}`}
+        />
+      ))}
+    </div>
+  )
+
+  // ── Curator images path ────────────────────────────────────────────────────
+  if (hasCuratorImages) {
+    const imgUrl = curatorUrls[index] || curatorUrls[0]
+    return (
+      <div className="relative w-full overflow-hidden" style={{ height: '70vh', minHeight: '480px' }}>
+        <div
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{ opacity: fading ? 0 : 1 }}
+        >
+          <Image
+            src={imgUrl}
+            alt={day.title}
+            fill
+            className="object-cover"
+            priority
+            sizes="100vw"
+            unoptimized
+          />
+        </div>
+        <HeroOverlay day={day} dots={poolSize > 1 ? dots : undefined} />
+      </div>
+    )
+  }
+
+  // ── Unsplash pool path (default) ───────────────────────────────────────────
+  const photo = unsplashPool[index]
+  const imgUrl = sized(photo, 2000, 900, 85)
+
+  return (
+    <div className="relative w-full overflow-hidden" style={{ height: '70vh', minHeight: '480px' }}>
+      <div
+        className="absolute inset-0 transition-opacity duration-700"
+        style={{ opacity: fading ? 0 : 1 }}
+      >
+        <Image
+          src={imgUrl}
+          alt={day.title}
+          fill
+          className="object-cover"
+          priority
+          sizes="100vw"
+          unoptimized
+        />
+      </div>
+      <HeroOverlay day={day} dots={dots} />
       <UnsplashCredit photo={{ ...photo, url: imgUrl }} variant="hero" />
     </div>
   )

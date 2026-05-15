@@ -42,6 +42,27 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
 
   if (!trip) redirect('/admin')
 
+  // Query travelers — tables may not exist yet if migration hasn't run
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let travelers: any[] = []
+  try {
+    const { data: linkRows } = await admin
+      .from('trip_travelers')
+      .select('traveler_profile_id')
+      .eq('trip_id', tripId)
+    if (linkRows && linkRows.length > 0) {
+      const ids = linkRows.map((r) => r.traveler_profile_id)
+      const { data: profiles } = await admin
+        .from('traveler_profiles')
+        .select('*')
+        .in('id', ids)
+        .order('name')
+      travelers = profiles || []
+    }
+  } catch {
+    // traveler_profiles table not yet created — migration pending
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
       {/* Breadcrumb */}
@@ -74,6 +95,7 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
         recs={recs || []}
         drops={drops || []}
         feedback={feedback || []}
+        travelers={travelers}
         activeTab={activeTab}
       />
     </div>

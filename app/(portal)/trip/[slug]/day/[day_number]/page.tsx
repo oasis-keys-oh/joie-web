@@ -264,6 +264,7 @@ export default async function DayPage({ params }: DayPageProps) {
       <PhotoFooter
         region={`${day.location || ''} ${day.region}`}
         caption={`${day.region} · ${day.location || ''}`}
+        overrideUrl={day.footer_image_url}
       />
     </>
   )

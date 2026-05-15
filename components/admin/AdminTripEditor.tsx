@@ -11,13 +11,15 @@ import {
   upsertPackingItemAction, deletePackingItemAction,
   upsertRecAction, deleteRecAction,
   upsertPreTripDropAction, deletePreTripDropAction,
+  upsertTravelerAction, deleteTravelerAction,
 } from '@/app/(portal)/admin/actions'
 import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; hero_image_url?: string }
-interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; hero_image_url?: string }
+interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
+interface Traveler { id: string; traveler_key?: string; name: string; email?: string; phone?: string; pillow_firmness?: string; coffee_order?: string; curtains_preference?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string }
 interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string }
@@ -38,21 +40,23 @@ interface Props {
   recs: Rec[]
   drops: PreTripDrop[]
   feedback: Feedback[]
+  travelers: Traveler[]
   activeTab: string
 }
 
 const TABS = [
-  { id: 'days',      label: 'Days' },
-  { id: 'events',    label: 'Events' },
-  { id: 'contacts',  label: 'Contacts' },
-  { id: 'hotels',    label: 'Hotels' },
-  { id: 'hunt',      label: 'Hunt' },
-  { id: 'packing',   label: 'Packing' },
-  { id: 'recs',      label: 'Recommendations' },
+  { id: 'days',         label: 'Days' },
+  { id: 'events',       label: 'Events' },
+  { id: 'travelers',    label: 'Travelers' },
+  { id: 'contacts',     label: 'Contacts' },
+  { id: 'hotels',       label: 'Hotels' },
+  { id: 'hunt',         label: 'Hunt' },
+  { id: 'packing',      label: 'Packing' },
+  { id: 'recs',         label: 'Recommendations' },
   { id: 'pretripdrops', label: 'Pre-Trip Drops' },
-  { id: 'feedback',  label: 'Feedback' },
-  { id: 'health',    label: '🩺 Health' },
-  { id: 'settings',  label: '⚙️ Settings' },
+  { id: 'feedback',     label: 'Feedback' },
+  { id: 'health',       label: '🩺 Health' },
+  { id: 'settings',     label: '⚙️ Settings' },
 ]
 
 const ROLE_OPTIONS = ['driver', 'guide', 'fixer', 'restaurant_contact', 'other']
@@ -165,7 +169,7 @@ function SectionHeader({ title, onAdd }: { title: string; onAdd?: () => void }) 
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, activeTab: initTab }: Props) {
+export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, travelers, activeTab: initTab }: Props) {
   const [tab, setTab] = useState(initTab)
 
   return (
@@ -196,27 +200,50 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       </div>
 
       {/* Tab content */}
-      {tab === 'days'     && <DaysTab     trip={trip} days={days} />}
-      {tab === 'events'   && <EventsTab   trip={trip} days={days} events={events} />}
-      {tab === 'contacts' && <ContactsTab trip={trip} contacts={contacts} />}
-      {tab === 'hotels'   && <HotelsTab   trip={trip} hotels={hotels} />}
-      {tab === 'hunt'     && <HuntTab     trip={trip} challenges={challenges} />}
-      {tab === 'packing'       && <PackingTab    trip={trip} packing={packing} />}
-      {tab === 'recs'          && <RecsTab       trip={trip} recs={recs} />}
+      {tab === 'days'          && <DaysTab        trip={trip} days={days} />}
+      {tab === 'events'        && <EventsTab      trip={trip} days={days} events={events} />}
+      {tab === 'travelers'     && <TravelersTab   trip={trip} travelers={travelers} />}
+      {tab === 'contacts'      && <ContactsTab    trip={trip} contacts={contacts} />}
+      {tab === 'hotels'        && <HotelsTab      trip={trip} hotels={hotels} />}
+      {tab === 'hunt'          && <HuntTab        trip={trip} challenges={challenges} />}
+      {tab === 'packing'       && <PackingTab     trip={trip} packing={packing} />}
+      {tab === 'recs'          && <RecsTab        trip={trip} recs={recs} />}
       {tab === 'pretripdrops'  && <PreTripDropsTab trip={trip} drops={drops} />}
-      {tab === 'feedback'      && <FeedbackTab   days={days} feedback={feedback} />}
-      {tab === 'health'        && <ImageHealthTab days={days} />}
-      {tab === 'settings'      && <SettingsTab   trip={trip} />}
+      {tab === 'feedback'      && <FeedbackTab    days={days} feedback={feedback} />}
+      {tab === 'health'        && <ImageHealthTab  days={days} />}
+      {tab === 'settings'      && <SettingsTab    trip={trip} />}
     </div>
   )
 }
 
 // ── Days Tab ─────────────────────────────────────────────────────────────────
 
+/** Small inline thumbnail preview for a URL */
+function ImagePreview({ url }: { url?: string }) {
+  if (!url?.trim()) return null
+  return (
+    <div className="mt-2 rounded-sm overflow-hidden border border-gray-100" style={{ aspectRatio: '16/5', maxWidth: '320px' }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="" className="w-full h-full object-cover" />
+    </div>
+  )
+}
+
+const UNSPLASH_HINT = (
+  <p className="text-xs text-ink-muted mb-2 leading-relaxed">
+    Paste any direct image URL.{' '}
+    <strong className="text-navy">Unsplash:</strong> right-click a photo → &ldquo;Copy Image Address&rdquo;.
+    Or open a photo on unsplash.com, copy the hash from the URL, and use:{' '}
+    <code className="text-xs bg-gray-100 px-1 rounded">https://images.unsplash.com/photo-HASH?w=1600&h=900&fit=crop&q=85</code>
+  </p>
+)
+
 function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState<Record<string, boolean>>({})
+  // Track live preview URLs for each day's image slots
+  const [previews, setPreviews] = useState<Record<string, { h1?: string; h2?: string; h3?: string; h4?: string; footer?: string }>>({})
 
   function handleSave(dayId: string, field: string, value: string) {
     startTransition(async () => {
@@ -226,114 +253,420 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
     })
   }
 
+  function updatePreview(dayId: string, slot: 'h1' | 'h2' | 'h3' | 'h4' | 'footer', value: string) {
+    setPreviews(p => ({ ...p, [dayId]: { ...p[dayId], [slot]: value } }))
+  }
+
   return (
     <div className="space-y-3">
-      {days.map(day => (
-        <div key={day.id} data-day={day.id} className="bg-white border border-gray-100 rounded-sm overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setExpanded(expanded === day.id ? null : day.id)}
-            className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-semibold text-gold uppercase tracking-widest" style={{ letterSpacing: '0.16em', minWidth: '48px' }}>
-                Day {day.day_number}
-              </span>
-              <span className="font-serif font-bold text-navy text-sm">{day.title}</span>
-              <span className="text-xs text-ink-muted">{day.location || day.region}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              {saved[day.id] && <span className="text-xs text-green-600">Saved ✓</span>}
-              <a
-                href={`/trip/${trip.web_slug}/day/${day.day_number}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                className="text-xs text-gold hover:opacity-75"
-              >
-                View →
-              </a>
-              <span className="text-ink-muted text-sm">{expanded === day.id ? '▲' : '▼'}</span>
-            </div>
-          </button>
+      {days.map(day => {
+        const dayPreviews = previews[day.id] || {}
+        return (
+          <div key={day.id} data-day={day.id} className="bg-white border border-gray-100 rounded-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setExpanded(expanded === day.id ? null : day.id)}
+              className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-xs font-semibold text-gold uppercase tracking-widest" style={{ letterSpacing: '0.16em', minWidth: '48px' }}>
+                  Day {day.day_number}
+                </span>
+                <span className="font-serif font-bold text-navy text-sm">{day.title}</span>
+                <span className="text-xs text-ink-muted">{day.location || day.region}</span>
+                {(day.hero_image_url || day.hero_image_url_2) && (
+                  <span className="text-xs px-2 py-0.5 rounded-sm" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C' }}>📷 curator</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {saved[day.id] && <span className="text-xs text-green-600">Saved ✓</span>}
+                <a
+                  href={`/trip/${trip.web_slug}/day/${day.day_number}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className="text-xs text-gold hover:opacity-75"
+                >
+                  View →
+                </a>
+                <span className="text-ink-muted text-sm">{expanded === day.id ? '▲' : '▼'}</span>
+              </div>
+            </button>
 
-          {expanded === day.id && (
-            <div className="border-t border-gray-100 px-6 py-6 space-y-5">
-              <div>
-                <Label>Morning Brief</Label>
-                <Textarea
-                  name="morning_brief"
-                  defaultValue={day.morning_brief}
-                  placeholder="What travelers need to know this morning…"
-                  rows={4}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const el = document.querySelector(`[data-day="${day.id}"] textarea[name="morning_brief"]`) as HTMLTextAreaElement
-                    handleSave(day.id, 'morning_brief', el?.value || '')
-                  }}
-                  className="mt-2 text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
-                  style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
-                >
-                  {pending ? 'Saving…' : 'Save Brief'}
-                </button>
-              </div>
-              <div>
-                <Label>WOW Moment</Label>
-                <Textarea name="wow_moment" defaultValue={day.wow_moment} placeholder="The headline moment for this day…" rows={2} />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const el = document.querySelector(`[data-day="${day.id}"] textarea[name="wow_moment"]`) as HTMLTextAreaElement
-                    handleSave(day.id, 'wow_moment', el?.value || '')
-                  }}
-                  className="mt-2 text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
-                  style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
-                >
-                  {pending ? 'Saving…' : 'Save WOW'}
-                </button>
-              </div>
-              <div>
-                <Label>Hero Image URL</Label>
-                <p className="text-xs text-ink-muted mb-2">Paste any image URL (Unsplash, Google Photos share link, etc). Overrides the auto-selected pool photo. Leave blank to use the default pool.</p>
-                <input
-                  name="hero_image_url"
-                  type="url"
-                  defaultValue={day.hero_image_url || ''}
-                  placeholder="https://images.unsplash.com/photo-XXXX?w=800&q=80"
-                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
-                  style={{ background: '#faf8f4' }}
-                />
-                <div className="flex items-center gap-3 mt-2">
+            {expanded === day.id && (
+              <div className="border-t border-gray-100 px-6 py-6 space-y-6">
+
+                {/* Morning Brief */}
+                <div>
+                  <Label>Morning Brief</Label>
+                  <Textarea name="morning_brief" defaultValue={day.morning_brief} placeholder="What travelers need to know this morning…" rows={4} />
                   <button
                     type="button"
                     onClick={() => {
-                      const el = document.querySelector(`[data-day="${day.id}"] input[name="hero_image_url"]`) as HTMLInputElement
-                      handleSave(day.id, 'hero_image_url', el?.value || '')
+                      const el = document.querySelector(`[data-day="${day.id}"] textarea[name="morning_brief"]`) as HTMLTextAreaElement
+                      handleSave(day.id, 'morning_brief', el?.value || '')
                     }}
-                    className="text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
+                    className="mt-2 text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
                     style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
                   >
-                    {pending ? 'Saving…' : 'Save Image'}
+                    {pending ? 'Saving…' : 'Save Brief'}
                   </button>
-                  {day.hero_image_url && (
-                    <a
-                      href={day.hero_image_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-gold hover:opacity-75"
-                    >
-                      Preview →
-                    </a>
-                  )}
                 </div>
+
+                {/* WOW Moment */}
+                <div>
+                  <Label>WOW Moment</Label>
+                  <Textarea name="wow_moment" defaultValue={day.wow_moment} placeholder="The headline moment for this day…" rows={2} />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.querySelector(`[data-day="${day.id}"] textarea[name="wow_moment"]`) as HTMLTextAreaElement
+                      handleSave(day.id, 'wow_moment', el?.value || '')
+                    }}
+                    className="mt-2 text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
+                    style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
+                  >
+                    {pending ? 'Saving…' : 'Save WOW'}
+                  </button>
+                </div>
+
+                {/* ── Hero Images (cycling pool) ── */}
+                <div className="space-y-4">
+                  <div>
+                    <p className="block text-xs font-semibold uppercase tracking-widest text-navy mb-1" style={{ letterSpacing: '0.14em' }}>Hero Images (Cycling Pool)</p>
+                    {UNSPLASH_HINT}
+                    <p className="text-xs text-ink-muted mb-3">
+                      Add up to 4 images — the page will cycle through them. If all are blank, the auto Unsplash pool is used instead.
+                      A <strong className="text-navy">📷 curator</strong> badge on the row header means images are set.
+                    </p>
+                  </div>
+
+                  {/* Image slot 1 */}
+                  {(['hero_image_url', 'hero_image_url_2', 'hero_image_url_3', 'hero_image_url_4'] as const).map((field, idx) => {
+                    const slotKey = (['h1', 'h2', 'h3', 'h4'] as const)[idx]
+                    const currentVal = day[field] || ''
+                    const previewUrl = dayPreviews[slotKey] !== undefined ? dayPreviews[slotKey] : currentVal
+                    return (
+                      <div key={field} className="flex gap-3 items-start">
+                        <div className="flex-1 space-y-1.5">
+                          <Label>Image {idx + 1}{idx === 0 ? ' (primary)' : ''}</Label>
+                          <input
+                            name={field}
+                            type="url"
+                            defaultValue={currentVal}
+                            placeholder="https://images.unsplash.com/photo-HASH?w=1600&h=900&fit=crop&q=85"
+                            className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                            style={{ background: '#faf8f4' }}
+                            onChange={e => updatePreview(day.id, slotKey, e.target.value)}
+                          />
+                          <ImagePreview url={previewUrl} />
+                        </div>
+                        <div className="pt-6 flex flex-col gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const el = document.querySelector(`[data-day="${day.id}"] input[name="${field}"]`) as HTMLInputElement
+                              handleSave(day.id, field, el?.value || '')
+                            }}
+                            className="text-xs uppercase tracking-widest px-3 py-1.5 text-white rounded-sm whitespace-nowrap"
+                            style={{ background: '#1B2B4B', letterSpacing: '0.10em' }}
+                          >
+                            {pending ? '…' : 'Save'}
+                          </button>
+                          {currentVal && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSave(day.id, field, '')
+                                updatePreview(day.id, slotKey, '')
+                              }}
+                              className="text-xs text-red-400 hover:text-red-600 px-3 py-1 border border-red-100 rounded-sm"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* ── Footer Image ── */}
+                <div>
+                  <Label>Footer Image</Label>
+                  <p className="text-xs text-ink-muted mb-2">
+                    Overrides the featured photo in the full-bleed footer section at the bottom of the day page.
+                    Leave blank to use the auto Unsplash pool with the thumbnail strip.
+                  </p>
+                  <input
+                    name="footer_image_url"
+                    type="url"
+                    defaultValue={day.footer_image_url || ''}
+                    placeholder="https://images.unsplash.com/photo-HASH?w=2400&h=900&fit=crop&q=85"
+                    className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                    style={{ background: '#faf8f4' }}
+                    onChange={e => updatePreview(day.id, 'footer', e.target.value)}
+                  />
+                  <ImagePreview url={dayPreviews.footer !== undefined ? dayPreviews.footer : (day.footer_image_url || '')} />
+                  <div className="flex items-center gap-3 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.querySelector(`[data-day="${day.id}"] input[name="footer_image_url"]`) as HTMLInputElement
+                        handleSave(day.id, 'footer_image_url', el?.value || '')
+                      }}
+                      className="text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
+                      style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
+                    >
+                      {pending ? 'Saving…' : 'Save Footer'}
+                    </button>
+                    {day.footer_image_url && (
+                      <button
+                        type="button"
+                        onClick={() => { handleSave(day.id, 'footer_image_url', ''); updatePreview(day.id, 'footer', '') }}
+                        className="text-xs text-red-400 hover:text-red-600"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Travelers Tab ─────────────────────────────────────────────────────────────
+
+const PILLOW_OPTIONS = ['', 'soft', 'medium', 'firm', 'extra-firm']
+const CURTAINS_OPTIONS = ['', 'open', 'closed', 'partial']
+
+function TravelersTab({ trip, travelers }: { trip: Trip; travelers: Traveler[] }) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs text-ink-muted">{travelers.length} traveler{travelers.length !== 1 ? 's' : ''} on this trip.</p>
+          <p className="text-xs text-ink-muted mt-0.5">Profiles are reusable across trips. Preferences power hotel preference emails and per-person packing.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          + Add Traveler
+        </button>
+      </div>
+
+      {travelers.length === 0 && !adding && (
+        <div className="text-center py-16 border border-dashed border-gray-200 rounded-sm">
+          <p className="text-sm text-ink-muted mb-2">No travelers linked to this trip yet.</p>
+          <p className="text-xs text-ink-muted">Run the migration in Supabase first, then add travelers above.</p>
+        </div>
+      )}
+
+      {adding && (
+        <Card>
+          <SectionHeader title="New Traveler" />
+          <form
+            action={async (fd) => {
+              fd.set('trip_id', trip.id)
+              await upsertTravelerAction(fd)
+              setAdding(false)
+              window.location.reload()
+            }}
+            className="space-y-4"
+          >
+            <input type="hidden" name="trip_id" value={trip.id} />
+
+            {/* Identity */}
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Full Name *</Label><Input name="name" required placeholder="e.g. Kristi Hamid" /></div>
+              <div><Label>Traveler Key</Label><Input name="traveler_key" placeholder="kristi (used for packing/persona)" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Email</Label><Input name="email" type="email" placeholder="kristi@example.com" /></div>
+              <div><Label>Phone</Label><Input name="phone" placeholder="+1 555 000 0000" /></div>
+            </div>
+
+            {/* Hospitality preferences */}
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Hotel Preferences</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label>Pillow Firmness</Label>
+                  <select name="pillow_firmness" className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" style={{ background: '#faf8f4' }}>
+                    {PILLOW_OPTIONS.map(o => <option key={o} value={o}>{o || '—'}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label>Curtains</Label>
+                  <select name="curtains_preference" className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" style={{ background: '#faf8f4' }}>
+                    {CURTAINS_OPTIONS.map(o => <option key={o} value={o}>{o || '—'}</option>)}
+                  </select>
+                </div>
+                <div><Label>Coffee Order</Label><Input name="coffee_order" placeholder="Black, no sugar" /></div>
               </div>
             </div>
-          )}
-        </div>
-      ))}
+
+            {/* Dietary / mobility */}
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Dietary Notes</Label><Textarea name="dietary_notes" placeholder="Vegetarian-curious, no shellfish…" rows={2} /></div>
+              <div><Label>Mobility Notes</Label><Textarea name="mobility_notes" placeholder="Prefers flat routes, no cobblestones…" rows={2} /></div>
+            </div>
+
+            {/* Personal */}
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" /></div>
+              <div><Label>Personality / Framing Note</Label><Input name="personality" placeholder="The planner. Needs the 'why' before the 'what'." /></div>
+            </div>
+            <div><Label>Curator Notes</Label><Textarea name="notes" placeholder="Any other notes for this traveler…" rows={2} /></div>
+
+            <div className="flex gap-3">
+              <SaveBtn pending={pending} />
+              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {travelers.map(t => <TravelerRow key={t.id} traveler={t} tripId={trip.id} />)}
     </div>
+  )
+}
+
+function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string }) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <Card>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-2">
+              <p className="font-serif font-bold text-navy text-base">{traveler.name}</p>
+              {traveler.traveler_key && (
+                <span className="text-xs px-2 py-0.5 rounded-sm font-mono" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C' }}>
+                  {traveler.traveler_key}
+                </span>
+              )}
+            </div>
+            {/* Contact */}
+            <div className="flex flex-wrap gap-4 text-xs text-ink-muted mb-3">
+              {traveler.email && <span>✉ {traveler.email}</span>}
+              {traveler.phone && <span>📞 {traveler.phone}</span>}
+            </div>
+            {/* Preferences */}
+            <div className="grid grid-cols-3 gap-x-6 gap-y-1.5 text-xs mb-2">
+              {traveler.pillow_firmness && (
+                <div><span className="text-ink-muted">Pillow:</span> <strong className="text-navy">{traveler.pillow_firmness}</strong></div>
+              )}
+              {traveler.coffee_order && (
+                <div><span className="text-ink-muted">Coffee:</span> <strong className="text-navy">{traveler.coffee_order}</strong></div>
+              )}
+              {traveler.curtains_preference && (
+                <div><span className="text-ink-muted">Curtains:</span> <strong className="text-navy">{traveler.curtains_preference}</strong></div>
+              )}
+              {traveler.anniversary_date && (
+                <div><span className="text-ink-muted">Anniversary:</span> <strong className="text-navy">{traveler.anniversary_date}</strong></div>
+              )}
+            </div>
+            {traveler.dietary_notes && (
+              <p className="text-xs text-ink-muted mt-1">🥗 {traveler.dietary_notes}</p>
+            )}
+            {traveler.mobility_notes && (
+              <p className="text-xs text-ink-muted mt-0.5">🚶 {traveler.mobility_notes}</p>
+            )}
+            {traveler.personality && (
+              <p className="text-xs text-ink-muted mt-0.5 italic">&ldquo;{traveler.personality}&rdquo;</p>
+            )}
+            {traveler.notes && (
+              <p className="text-xs text-ink-muted mt-1 border-l-2 border-gray-200 pl-2">{traveler.notes}</p>
+            )}
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
+            <DeleteBtn
+              pending={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm(`Remove ${traveler.name} from this trip? Their profile will be kept for future trips.`)) {
+                  await deleteTravelerAction(traveler.id, tripId)
+                  window.location.reload()
+                }
+              })}
+            />
+          </div>
+        </div>
+      ) : (
+        <form
+          action={async (fd) => {
+            fd.set('id', traveler.id)
+            fd.set('trip_id', tripId)
+            await upsertTravelerAction(fd)
+            setEditing(false)
+            window.location.reload()
+          }}
+          className="space-y-4"
+        >
+          <input type="hidden" name="id" value={traveler.id} />
+          <input type="hidden" name="trip_id" value={tripId} />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Full Name *</Label><Input name="name" defaultValue={traveler.name} required /></div>
+            <div><Label>Traveler Key</Label><Input name="traveler_key" defaultValue={traveler.traveler_key} placeholder="e.g. kristi" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Email</Label><Input name="email" type="email" defaultValue={traveler.email} /></div>
+            <div><Label>Phone</Label><Input name="phone" defaultValue={traveler.phone} /></div>
+          </div>
+
+          <div className="pt-2 border-t border-gray-100">
+            <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Hotel Preferences</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Pillow Firmness</Label>
+                <select name="pillow_firmness" defaultValue={traveler.pillow_firmness || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" style={{ background: '#faf8f4' }}>
+                  {PILLOW_OPTIONS.map(o => <option key={o} value={o}>{o || '—'}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label>Curtains</Label>
+                <select name="curtains_preference" defaultValue={traveler.curtains_preference || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" style={{ background: '#faf8f4' }}>
+                  {CURTAINS_OPTIONS.map(o => <option key={o} value={o}>{o || '—'}</option>)}
+                </select>
+              </div>
+              <div><Label>Coffee Order</Label><Input name="coffee_order" defaultValue={traveler.coffee_order} placeholder="Black, no sugar" /></div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Dietary Notes</Label><Textarea name="dietary_notes" defaultValue={traveler.dietary_notes} rows={2} /></div>
+            <div><Label>Mobility Notes</Label><Textarea name="mobility_notes" defaultValue={traveler.mobility_notes} rows={2} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" defaultValue={traveler.anniversary_date?.split('T')[0]} /></div>
+            <div><Label>Personality / Framing Note</Label><Input name="personality" defaultValue={traveler.personality} /></div>
+          </div>
+          <div><Label>Curator Notes</Label><Textarea name="notes" defaultValue={traveler.notes} rows={2} /></div>
+
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
+          </div>
+        </form>
+      )}
+    </Card>
   )
 }
 

@@ -101,6 +101,10 @@ export interface TripDay {
   itinerary_narrative?: ItineraryNarrativeSegment[];
   unsplash_query?: string;
   hero_image_url?: string;
+  hero_image_url_2?: string;
+  hero_image_url_3?: string;
+  hero_image_url_4?: string;
+  footer_image_url?: string;
   meal_breakfast?: string;
   meal_lunch?: string;
   meal_dinner?: string;

@@ -8,14 +8,21 @@ import UnsplashCredit from '@/components/UnsplashCredit'
 interface PhotoFooterProps {
   region: string
   caption?: string
+  /** Curator-supplied image URL — overrides the featured photo in the pool. */
+  overrideUrl?: string
 }
 
-export default function PhotoFooter({ region, caption }: PhotoFooterProps) {
+export default function PhotoFooter({ region, caption, overrideUrl }: PhotoFooterProps) {
   const pool = getPhotoPool(region)
-  // Show all photos from the pool as a horizontal strip
   const [active, setActive] = useState(0)
-  const featured = pool[active]
-  const featuredUrl = `https://images.unsplash.com/${featured.id}?w=2400&h=900&fit=crop&q=85`
+
+  // If a curator URL is set, show that as the featured image (no thumbnail strip for it).
+  // The Unsplash pool still shows as the strip for context — or hide entirely if preferred.
+  const hasOverride = Boolean(overrideUrl?.trim())
+  const featured: UnsplashPhoto | null = hasOverride ? null : pool[active]
+  const featuredUrl = hasOverride
+    ? overrideUrl!
+    : `https://images.unsplash.com/${pool[active].id}?w=2400&h=900&fit=crop&q=85`
 
   return (
     <section className="mt-0">
@@ -45,8 +52,8 @@ export default function PhotoFooter({ region, caption }: PhotoFooterProps) {
             </p>
           </div>
         )}
-        {/* Thumbnail strip */}
-        {pool.length > 1 && (
+        {/* Thumbnail strip — only shown for Unsplash pool (not curator override) */}
+        {!hasOverride && pool.length > 1 && (
           <div className="absolute bottom-5 left-0 right-0 flex items-center justify-center gap-2 px-6">
             {pool.map((p, i) => (
               <button
@@ -72,7 +79,10 @@ export default function PhotoFooter({ region, caption }: PhotoFooterProps) {
             ))}
           </div>
         )}
-        <UnsplashCredit photo={{ ...featured, url: featuredUrl }} variant="hero" />
+        {/* Unsplash attribution — only for pool photos */}
+        {!hasOverride && featured && (
+          <UnsplashCredit photo={{ ...featured, url: featuredUrl }} variant="hero" />
+        )}
       </div>
     </section>
   )

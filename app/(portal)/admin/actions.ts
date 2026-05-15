@@ -237,3 +237,53 @@ export async function deletePreTripDropAction(id: string) {
   const admin = createAdminClient()
   await admin.from('pre_trip_content').delete().eq('id', id)
 }
+
+// ── Travelers ─────────────────────────────────────────────────────────────────
+
+export async function upsertTravelerAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const payload = {
+    traveler_key:        formData.get('traveler_key') as string || null,
+    name:                formData.get('name') as string,
+    email:               formData.get('email') as string || null,
+    phone:               formData.get('phone') as string || null,
+    pillow_firmness:     formData.get('pillow_firmness') as string || null,
+    coffee_order:        formData.get('coffee_order') as string || null,
+    curtains_preference: formData.get('curtains_preference') as string || null,
+    dietary_notes:       formData.get('dietary_notes') as string || null,
+    mobility_notes:      formData.get('mobility_notes') as string || null,
+    anniversary_date:    formData.get('anniversary_date') as string || null,
+    personality:         formData.get('personality') as string || null,
+    notes:               formData.get('notes') as string || null,
+  }
+  if (id) {
+    await admin.from('traveler_profiles').update(payload).eq('id', id)
+  } else {
+    const { data: newTraveler } = await admin
+      .from('traveler_profiles')
+      .insert(payload)
+      .select('id')
+      .single()
+    // Link to the trip
+    const tripId = formData.get('trip_id') as string
+    if (newTraveler?.id && tripId) {
+      await admin
+        .from('trip_travelers')
+        .upsert(
+          { trip_id: tripId, traveler_profile_id: newTraveler.id },
+          { onConflict: 'trip_id,traveler_profile_id', ignoreDuplicates: true }
+        )
+    }
+  }
+}
+
+export async function deleteTravelerAction(travelerId: string, tripId: string) {
+  const admin = createAdminClient()
+  // Remove from trip (keep profile for reuse on other trips)
+  await admin
+    .from('trip_travelers')
+    .delete()
+    .eq('traveler_profile_id', travelerId)
+    .eq('trip_id', tripId)
+}
