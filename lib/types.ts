@@ -80,6 +80,9 @@ export interface Trip {
   has_thread_boxes?: boolean;
   trip_narrative?: string;
   hero_image_url?: string;
+  hero_image_url_2?: string;
+  hero_image_url_3?: string;
+  hero_image_url_4?: string;
   created_at?: string;
   updated_at?: string;
 }

@@ -17,7 +17,7 @@ import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; hero_image_url?: string }
+interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
 interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
 interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; partner_name?: string }
 interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string }
@@ -1741,17 +1741,94 @@ function ImageHealthTab({ days }: { days: Day[] }) {
 
 // ── Settings Tab ──────────────────────────────────────────────────────────────
 
-function SettingsTab({ trip }: { trip: Trip }) {
+const TRIP_HERO_SLOTS: { field: string; label: string }[] = [
+  { field: 'hero_image_url',   label: 'Hero Image 1' },
+  { field: 'hero_image_url_2', label: 'Hero Image 2' },
+  { field: 'hero_image_url_3', label: 'Hero Image 3' },
+  { field: 'hero_image_url_4', label: 'Hero Image 4' },
+]
+
+function TripImageSlot({ trip, field, label, savedKey }: { trip: Trip; field: string; label: string; savedKey: string }) {
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
+  const inputId = `trip-${field}`
+  const currentVal = (trip as Record<string, unknown>)[field] as string | undefined
 
-  function handleSave(field: string, value: string) {
+  function handleSave() {
+    const el = document.getElementById(inputId) as HTMLInputElement
+    const val = el?.value || ''
     startTransition(async () => {
-      await updateTripFieldAction(trip.id, field, value)
+      await updateTripFieldAction(trip.id, field, val)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     })
   }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Label>{label}</Label>
+        {currentVal && <span className="text-xs text-gold">📷 set</span>}
+      </div>
+      <p className="text-xs text-ink-muted">
+        Paste a direct image URL. For Unsplash, click <strong>Share → Copy Link</strong>, then replace the URL domain with{' '}
+        <code className="bg-gray-100 px-1 rounded">images.unsplash.com/photo-XXXXX</code>{' '}
+        and append <code className="bg-gray-100 px-1 rounded">?w=2400&h=1400&fit=crop&q=90</code>. Leave blank to skip this slot.
+      </p>
+      <input
+        id={inputId}
+        type="url"
+        defaultValue={currentVal || ''}
+        placeholder="https://images.unsplash.com/photo-XXXX?w=2400&h=1400&fit=crop&q=90"
+        className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+        style={{ background: '#faf8f4' }}
+      />
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={pending}
+          className="text-xs uppercase tracking-widest px-5 py-2 text-white rounded-sm disabled:opacity-50"
+          style={{ background: '#1B2B4B', letterSpacing: '0.14em' }}
+        >
+          {pending ? 'Saving…' : `Save ${label}`}
+        </button>
+        {saved && <span className="text-xs text-green-600">Saved ✓</span>}
+        {currentVal && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById(inputId) as HTMLInputElement
+                if (el) el.value = ''
+                startTransition(async () => {
+                  await updateTripFieldAction(trip.id, field, '')
+                  setSaved(true)
+                  setTimeout(() => setSaved(false), 2000)
+                })
+              }}
+              className="text-xs text-red-400 hover:text-red-600"
+            >
+              Clear
+            </button>
+            <a href={currentVal} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75">
+              Preview →
+            </a>
+          </>
+        )}
+      </div>
+      {currentVal && (
+        <div className="mt-2 rounded-sm overflow-hidden border border-gray-100" style={{ aspectRatio: '16/5' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={currentVal} alt={label} className="w-full h-full object-cover" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SettingsTab({ trip }: { trip: Trip }) {
+  const curatorCount = TRIP_HERO_SLOTS.filter(s => (trip as Record<string, unknown>)[s.field]).length
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -1761,51 +1838,26 @@ function SettingsTab({ trip }: { trip: Trip }) {
       </div>
 
       <Card>
-        <div>
-          <Label>Trip Hero Image URL</Label>
-          <p className="text-xs text-ink-muted mb-3">
-            Overrides the full-bleed hero on the trip page. Paste any direct image URL — Unsplash, Google Photos, Cloudinary, etc.
-            Leave blank to use the auto-selected pool photo based on the first day&apos;s location.
-          </p>
-          <input
-            id="trip-hero-url"
-            type="url"
-            defaultValue={trip.hero_image_url || ''}
-            placeholder="https://images.unsplash.com/photo-XXXX?w=2400&h=1400&fit=crop&q=90"
-            className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
-            style={{ background: '#faf8f4' }}
-          />
-          <div className="flex items-center gap-4 mt-3">
-            <button
-              type="button"
-              onClick={() => {
-                const el = document.getElementById('trip-hero-url') as HTMLInputElement
-                handleSave('hero_image_url', el?.value || '')
-              }}
-              disabled={pending}
-              className="text-xs uppercase tracking-widest px-5 py-2 text-white rounded-sm disabled:opacity-50"
-              style={{ background: '#1B2B4B', letterSpacing: '0.14em' }}
-            >
-              {pending ? 'Saving…' : 'Save Hero Image'}
-            </button>
-            {saved && <span className="text-xs text-green-600">Saved ✓</span>}
-            {trip.hero_image_url && (
-              <a
-                href={trip.hero_image_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-gold hover:opacity-75"
-              >
-                Preview →
-              </a>
-            )}
-          </div>
-          {trip.hero_image_url && (
-            <div className="mt-4 rounded-sm overflow-hidden border border-gray-100" style={{ aspectRatio: '16/5' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={trip.hero_image_url} alt="Hero preview" className="w-full h-full object-cover" />
+        <div className="space-y-8">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h4 className="font-semibold text-sm text-navy">Trip Hero Images</h4>
+              {curatorCount > 0 && (
+                <span className="text-xs bg-gold bg-opacity-15 text-gold px-2 py-0.5 rounded-full">
+                  {curatorCount} slot{curatorCount > 1 ? 's' : ''} set — cycling active
+                </span>
+              )}
             </div>
-          )}
+            <p className="text-xs text-ink-muted mb-6">
+              Add up to 4 images and the hero will cycle through them every 6 seconds (same behaviour as day pages).
+              If all slots are blank, the hero falls back to an auto-selected Unsplash photo based on the first day&apos;s location.
+            </p>
+            <div className="space-y-8">
+              {TRIP_HERO_SLOTS.map(slot => (
+                <TripImageSlot key={slot.field} trip={trip} field={slot.field} label={slot.label} savedKey={slot.field} />
+              ))}
+            </div>
+          </div>
         </div>
       </Card>
     </div>

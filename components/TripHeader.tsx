@@ -1,4 +1,7 @@
+'use client'
+
 import Image from 'next/image'
+import { useState, useEffect } from 'react'
 import { Trip } from '@/lib/types'
 import { getPhotoPool, UnsplashPhoto } from '@/lib/unsplash'
 import UnsplashCredit from '@/components/UnsplashCredit'
@@ -6,38 +9,59 @@ import { formatDate } from '@/lib/utils'
 
 interface TripHeaderProps {
   trip: Trip
-  /** Override hero image URL — e.g. from a custom trip cover photo */
-  imageUrl?: string
   /** First destination region/city to pick a relevant hero photo pool */
   firstDestination?: string
 }
 
-export default function TripHeader({ trip, imageUrl, firstDestination }: TripHeaderProps) {
-  // Derive hero from the trip's first destination (passed from server), not a hardcoded location.
-  // Falls back to a general travel photo if no destination is specified.
+function buildCuratorPool(trip: Trip): string[] {
+  return [trip.hero_image_url, trip.hero_image_url_2, trip.hero_image_url_3, trip.hero_image_url_4]
+    .filter((u): u is string => Boolean(u?.trim()))
+}
+
+export default function TripHeader({ trip, firstDestination }: TripHeaderProps) {
+  const [active, setActive] = useState(0)
+
+  const curatorPool = buildCuratorPool(trip)
+  const hasCuratorImages = curatorPool.length > 0
+
+  // Unsplash fallback — single photo from the destination pool
   const destination = firstDestination || (trip as any).first_destination || 'morocco'
-  const pool = getPhotoPool(destination)
-  const heroPhoto: UnsplashPhoto = pool[0]
-  // Priority: explicit prop override → DB field → Unsplash pool
-  const finalImageUrl = imageUrl || trip.hero_image_url || `https://images.unsplash.com/${heroPhoto.id}?w=2400&h=1400&fit=crop&q=90`
+  const unsplashPool = getPhotoPool(destination)
+  const heroUnsplash: UnsplashPhoto = unsplashPool[0]
+
+  // Cycle through whichever pool is active
+  const poolSize = hasCuratorImages ? curatorPool.length : unsplashPool.length
+  useEffect(() => {
+    if (poolSize <= 1) return
+    const timer = setInterval(() => setActive(i => (i + 1) % poolSize), 6000)
+    return () => clearInterval(timer)
+  }, [poolSize])
+
+  const currentUrl = hasCuratorImages
+    ? curatorPool[active]
+    : `https://images.unsplash.com/${unsplashPool[active].id}?w=2400&h=1400&fit=crop&q=90`
 
   return (
     <div
       className="relative w-full overflow-hidden"
       style={{ height: '100svh', minHeight: '600px' }}
     >
-      {/* Full-bleed image */}
-      <Image
-        src={finalImageUrl}
-        alt={trip.title}
-        fill
-        className="object-cover"
-        priority
-        sizes="100vw"
-        unoptimized
-      />
+      {/* Full-bleed image with crossfade */}
+      {(hasCuratorImages ? curatorPool : unsplashPool.map(p => `https://images.unsplash.com/${p.id}?w=2400&h=1400&fit=crop&q=90`)).map((url, i) => (
+        <Image
+          key={typeof url === 'string' ? url : (url as UnsplashPhoto).id}
+          src={typeof url === 'string' ? url : `https://images.unsplash.com/${(url as UnsplashPhoto).id}?w=2400&h=1400&fit=crop&q=90`}
+          alt={trip.title}
+          fill
+          priority={i === 0}
+          className="object-cover transition-opacity duration-1000"
+          style={{ opacity: i === active ? 1 : 0 }}
+          sizes="100vw"
+          unoptimized
+        />
+      ))}
 
-      {/* Gradient overlay — deep at bottom, light at top */}
+      {/* Gradient overlay */}
       <div
         className="absolute inset-0"
         style={{
@@ -48,16 +72,12 @@ export default function TripHeader({ trip, imageUrl, firstDestination }: TripHea
       {/* Text — anchored to bottom */}
       <div className="absolute inset-0 flex flex-col justify-end">
         <div className="px-8 sm:px-14 pb-16 sm:pb-20 max-w-4xl">
-
-          {/* Label */}
           <p
             className="text-white text-xs font-medium mb-5 tracking-widest uppercase opacity-70"
             style={{ letterSpacing: '0.22em' }}
           >
             Oukala Journeys
           </p>
-
-          {/* Title */}
           <h1
             className="font-serif font-bold text-white mb-4"
             style={{
@@ -68,8 +88,6 @@ export default function TripHeader({ trip, imageUrl, firstDestination }: TripHea
           >
             {trip.title}
           </h1>
-
-          {/* Subtitle */}
           {trip.subtitle && (
             <p
               className="text-white opacity-80 font-light mt-5"
@@ -83,13 +101,8 @@ export default function TripHeader({ trip, imageUrl, firstDestination }: TripHea
               {trip.subtitle}
             </p>
           )}
-
-          {/* Date strip */}
           <div className="flex items-center gap-4 mt-8">
-            <div
-              className="h-px bg-gold opacity-60"
-              style={{ width: '32px' }}
-            />
+            <div className="h-px bg-gold opacity-60" style={{ width: '32px' }} />
             <p
               className="text-white text-xs tracking-widest uppercase opacity-60"
               style={{ letterSpacing: '0.18em' }}
@@ -100,15 +113,14 @@ export default function TripHeader({ trip, imageUrl, firstDestination }: TripHea
         </div>
       </div>
 
-      {/* Photo attribution */}
-      {!imageUrl && <UnsplashCredit photo={heroPhoto} variant="hero" />}
+      {/* Unsplash attribution — only for pool photos */}
+      {!hasCuratorImages && (
+        <UnsplashCredit photo={unsplashPool[active]} variant="hero" />
+      )}
 
       {/* Scroll hint */}
       <div className="absolute bottom-8 right-10 flex flex-col items-center gap-2 opacity-40">
-        <div
-          className="w-px bg-white"
-          style={{ height: '40px' }}
-        />
+        <div className="w-px bg-white" style={{ height: '40px' }} />
         <p
           className="text-white text-xs tracking-widest uppercase"
           style={{ letterSpacing: '0.2em', writingMode: 'vertical-rl' }}
