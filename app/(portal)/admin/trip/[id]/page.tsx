@@ -3,6 +3,7 @@ import { isAdminAuthenticated } from '@/app/(portal)/admin/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import Link from 'next/link'
 import AdminTripEditor from '@/components/admin/AdminTripEditor'
+import QRShareModal from '@/components/admin/QRShareModal'
 
 interface Props {
   params: { id: string }
@@ -66,7 +67,7 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-8 flex-wrap">
         <Link href="/admin" className="text-xs text-ink-muted hover:text-navy uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>
           ← All Trips
         </Link>
@@ -74,14 +75,21 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
         <span className="text-xs text-navy uppercase tracking-widest font-semibold" style={{ letterSpacing: '0.14em' }}>
           {trip.title}
         </span>
-        <a
-          href={`/trip/${trip.web_slug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto text-xs text-gold hover:opacity-75 transition-opacity"
-        >
-          View live →
-        </a>
+        <div className="ml-auto flex items-center gap-3">
+          <QRShareModal
+            tripSlug={trip.web_slug}
+            tripTitle={trip.title}
+            webPassword={trip.web_password}
+          />
+          <a
+            href={`/trip/${trip.web_slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-gold hover:opacity-75 transition-opacity"
+          >
+            View live →
+          </a>
+        </div>
       </div>
 
       <AdminTripEditor

@@ -74,6 +74,7 @@ export interface Trip {
   start_date: string;
   end_date: string;
   web_slug: string;
+  web_password?: string;
   color_theme?: ColorTheme;
   has_phrases?: boolean;
   has_ef?: boolean;
