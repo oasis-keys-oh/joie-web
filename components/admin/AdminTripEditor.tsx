@@ -181,7 +181,7 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-8 border-b border-gray-200 overflow-x-auto">
+      <div className="flex flex-wrap gap-1 mb-8 border-b border-gray-200">
         {TABS.map(t => (
           <button
             key={t.id}
