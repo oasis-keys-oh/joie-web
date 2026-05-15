@@ -46,6 +46,7 @@ interface Props {
 
 const TABS = [
   { id: 'days',         label: 'Days' },
+  { id: 'settings',     label: '✏️ Trip Info' },
   { id: 'events',       label: 'Events' },
   { id: 'travelers',    label: 'Travelers' },
   { id: 'contacts',     label: 'Contacts' },
@@ -56,7 +57,6 @@ const TABS = [
   { id: 'pretripdrops', label: 'Pre-Trip Drops' },
   { id: 'feedback',     label: 'Feedback' },
   { id: 'health',       label: '🩺 Health' },
-  { id: 'settings',     label: '⚙️ Settings' },
 ]
 
 const ROLE_OPTIONS = ['driver', 'guide', 'fixer', 'restaurant_contact', 'other']
@@ -266,7 +266,7 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
             <button
               type="button"
               onClick={() => setExpanded(expanded === day.id ? null : day.id)}
-              className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors text-left"
+              className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors text-left group"
             >
               <div className="flex items-center gap-4">
                 <span className="text-xs font-semibold text-gold uppercase tracking-widest" style={{ letterSpacing: '0.16em', minWidth: '48px' }}>
@@ -289,7 +289,12 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
                 >
                   View →
                 </a>
-                <span className="text-ink-muted text-sm">{expanded === day.id ? '▲' : '▼'}</span>
+                <span
+                  className="text-xs border border-gray-200 px-3 py-1 rounded-sm text-ink-muted group-hover:border-navy group-hover:text-navy transition-colors"
+                  style={{ letterSpacing: '0.08em' }}
+                >
+                  {expanded === day.id ? 'Close' : 'Edit ↓'}
+                </span>
               </div>
             </button>
 
@@ -1974,8 +1979,8 @@ function SettingsTab({ trip }: { trip: Trip }) {
   return (
     <div className="max-w-2xl space-y-8">
       <div>
-        <h3 className="font-serif text-lg font-bold text-navy mb-1">Trip Settings</h3>
-        <p className="text-xs text-ink-muted">Trip-level overrides that take effect immediately — no deploy required.</p>
+        <h3 className="font-serif text-lg font-bold text-navy mb-1">Trip Info</h3>
+        <p className="text-xs text-ink-muted">Edit trip name, dates, narrative, and hero images. Changes take effect immediately.</p>
       </div>
 
       {/* Trip name & dates */}
