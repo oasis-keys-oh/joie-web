@@ -243,19 +243,21 @@ export async function deletePreTripDropAction(id: string) {
 export async function upsertTravelerAction(formData: FormData) {
   const admin = createAdminClient()
   const id = formData.get('id') as string | null
+  // DB uses full_name and curtains_arrival (not name / curtains_preference)
   const payload = {
-    traveler_key:        formData.get('traveler_key') as string || null,
-    name:                formData.get('name') as string,
-    email:               formData.get('email') as string || null,
-    phone:               formData.get('phone') as string || null,
-    pillow_firmness:     formData.get('pillow_firmness') as string || null,
-    coffee_order:        formData.get('coffee_order') as string || null,
-    curtains_preference: formData.get('curtains_preference') as string || null,
-    dietary_notes:       formData.get('dietary_notes') as string || null,
-    mobility_notes:      formData.get('mobility_notes') as string || null,
-    anniversary_date:    formData.get('anniversary_date') as string || null,
-    personality:         formData.get('personality') as string || null,
-    notes:               formData.get('notes') as string || null,
+    traveler_key:     formData.get('traveler_key') as string || null,
+    full_name:        formData.get('name') as string,
+    email:            formData.get('email') as string || null,
+    phone:            formData.get('phone') as string || null,
+    pillow_firmness:  formData.get('pillow_firmness') as string || null,
+    coffee_order:     formData.get('coffee_order') as string || null,
+    curtains_arrival: formData.get('curtains_preference') as string || null,
+    dietary_notes:    formData.get('dietary_notes') as string || null,
+    mobility_notes:   formData.get('mobility_notes') as string || null,
+    anniversary_date: formData.get('anniversary_date') as string || null,
+    personality:      formData.get('personality') as string || null,
+    notes:            formData.get('notes') as string || null,
+    partner_name:     formData.get('partner_name') as string || null,
   }
   if (id) {
     await admin.from('traveler_profiles').update(payload).eq('id', id)
@@ -265,14 +267,14 @@ export async function upsertTravelerAction(formData: FormData) {
       .insert(payload)
       .select('id')
       .single()
-    // Link to the trip
+    // Link to the trip using real FK column: traveler_id
     const tripId = formData.get('trip_id') as string
     if (newTraveler?.id && tripId) {
       await admin
         .from('trip_travelers')
         .upsert(
-          { trip_id: tripId, traveler_profile_id: newTraveler.id },
-          { onConflict: 'trip_id,traveler_profile_id', ignoreDuplicates: true }
+          { trip_id: tripId, traveler_id: newTraveler.id },
+          { onConflict: 'trip_id,traveler_id', ignoreDuplicates: true }
         )
     }
   }
@@ -280,10 +282,10 @@ export async function upsertTravelerAction(formData: FormData) {
 
 export async function deleteTravelerAction(travelerId: string, tripId: string) {
   const admin = createAdminClient()
-  // Remove from trip (keep profile for reuse on other trips)
+  // Remove from trip only (keep profile for reuse on other trips)
   await admin
     .from('trip_travelers')
     .delete()
-    .eq('traveler_profile_id', travelerId)
+    .eq('traveler_id', travelerId)
     .eq('trip_id', tripId)
 }

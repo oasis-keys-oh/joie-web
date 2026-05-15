@@ -19,7 +19,7 @@ import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 
 interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; hero_image_url?: string }
 interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
-interface Traveler { id: string; traveler_key?: string; name: string; email?: string; phone?: string; pillow_firmness?: string; coffee_order?: string; curtains_preference?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string }
+interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; partner_name?: string }
 interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string }
@@ -493,9 +493,10 @@ function TravelersTab({ trip, travelers }: { trip: Trip; travelers: Traveler[] }
               <div><Label>Full Name *</Label><Input name="name" required placeholder="e.g. Kristi Hamid" /></div>
               <div><Label>Traveler Key</Label><Input name="traveler_key" placeholder="kristi (used for packing/persona)" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div><Label>Email</Label><Input name="email" type="email" placeholder="kristi@example.com" /></div>
               <div><Label>Phone</Label><Input name="phone" placeholder="+1 555 000 0000" /></div>
+              <div><Label>Partner / Spouse Name</Label><Input name="partner_name" placeholder="e.g. Omar" /></div>
             </div>
 
             {/* Hospitality preferences */}
@@ -509,7 +510,7 @@ function TravelersTab({ trip, travelers }: { trip: Trip; travelers: Traveler[] }
                   </select>
                 </div>
                 <div>
-                  <Label>Curtains</Label>
+                  <Label>Curtains on Arrival</Label>
                   <select name="curtains_preference" className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" style={{ background: '#faf8f4' }}>
                     {CURTAINS_OPTIONS.map(o => <option key={o} value={o}>{o || '—'}</option>)}
                   </select>

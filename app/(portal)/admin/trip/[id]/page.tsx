@@ -48,15 +48,15 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
   try {
     const { data: linkRows } = await admin
       .from('trip_travelers')
-      .select('traveler_profile_id')
+      .select('traveler_id')
       .eq('trip_id', tripId)
     if (linkRows && linkRows.length > 0) {
-      const ids = linkRows.map((r) => r.traveler_profile_id)
+      const ids = linkRows.map((r) => r.traveler_id)
       const { data: profiles } = await admin
         .from('traveler_profiles')
         .select('*')
         .in('id', ids)
-        .order('name')
+        .order('full_name')
       travelers = profiles || []
     }
   } catch {
