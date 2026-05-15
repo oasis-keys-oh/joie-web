@@ -7,7 +7,7 @@ import {
   upsertIntakeJsonFieldAction,
   generateBriefAction,
   updateIntakeStatusAction,
-} from '@/app/admin/intake/actions'
+} from '@/app/(portal)/admin/intake/actions'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { isAdminAuthenticated } from '@/app/admin/auth'
+import { isAdminAuthenticated } from '@/app/(portal)/admin/auth'
 import { createAdminClient } from '@/lib/supabase-admin'
 import Link from 'next/link'
 import AdminTripEditor from '@/components/admin/AdminTripEditor'

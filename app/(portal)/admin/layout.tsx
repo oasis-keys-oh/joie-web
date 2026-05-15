@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
-import { isAdminAuthenticated } from '@/app/admin/auth'
-import { logoutAction } from '@/app/admin/actions'
+import { isAdminAuthenticated } from '@/app/(portal)/admin/auth'
+import { logoutAction } from '@/app/(portal)/admin/actions'
 
 export const metadata = { title: 'Curator — Oukala Journeys' }
 

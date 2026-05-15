@@ -11,7 +11,7 @@ import {
   upsertPackingItemAction, deletePackingItemAction,
   upsertRecAction, deleteRecAction,
   upsertPreTripDropAction, deletePreTripDropAction,
-} from '@/app/admin/actions'
+} from '@/app/(portal)/admin/actions'
 import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 
 // ── Types ────────────────────────────────────────────────────────────────────

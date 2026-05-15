@@ -1,4 +1,4 @@
-import { loginAction } from '@/app/admin/actions'
+import { loginAction } from '@/app/(portal)/admin/actions'
 
 export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> | { error?: string } }) {
   const params = searchParams instanceof Promise ? await searchParams : searchParams
