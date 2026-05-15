@@ -1847,7 +1847,7 @@ function TripImageSlot({ trip, field, label, savedKey }: { trip: Trip; field: st
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const inputId = `trip-${field}`
-  const currentVal = (trip as Record<string, unknown>)[field] as string | undefined
+  const currentVal = (trip as unknown as Record<string, unknown>)[field] as string | undefined
 
   function handleSave() {
     const el = document.getElementById(inputId) as HTMLInputElement
@@ -1926,7 +1926,7 @@ function TripTextField({ trip, field, label, placeholder, multiline }: { trip: T
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const inputId = `trip-field-${field}`
-  const currentVal = (trip as Record<string, unknown>)[field] as string | undefined
+  const currentVal = (trip as unknown as Record<string, unknown>)[field] as string | undefined
 
   function handleSave() {
     const el = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement
