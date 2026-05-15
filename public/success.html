@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Journey Confirmed — Oukala Journeys</title>
+  <meta name="description" content="Your journey begins here." />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#080808" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#F5F0E8" media="(prefers-color-scheme: light)" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #080808;
+      --surface:      #101010;
+      --border:       rgba(255,255,255,0.07);
+      --gold:         #C4A35A;
+      --gold-dim:     rgba(196,163,90,0.12);
+      --gold-border:  rgba(196,163,90,0.25);
+      --text:         #F0EBE3;
+      --text-muted:   #8A857E;
+      --text-dim:     #3E3A35;
+      --success:      #7EC89A;
+      --serif:  'Cormorant Garamond', Georgia, serif;
+      --sans:   'DM Sans', system-ui, sans-serif;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* Header */
+    header {
+      padding: 2rem clamp(1.5rem, 5vw, 3rem);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: rgba(8,8,8,0.96);
+      backdrop-filter: blur(12px);
+    }
+
+    .logo { display: flex; flex-direction: column; line-height: 1; }
+    .logo-name { font-family: var(--sans); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; }
+    .logo-product { font-family: var(--sans); font-size: 0.6rem; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); margin-top: 0.25rem; }
+
+    /* Main content */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem clamp(1.5rem, 5vw, 3rem);
+    }
+
+    .card {
+      max-width: 560px;
+      width: 100%;
+      text-align: center;
+      animation: fadeIn 0.8s var(--ease);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Loading state */
+    .loading-ring {
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      margin: 0 auto 2.5rem;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Success icon */
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      border: 1px solid var(--gold-border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 2.5rem;
+      background: var(--gold-dim);
+    }
+
+    .success-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: var(--gold);
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .eyebrow {
+      font-family: var(--sans);
+      font-size: 0.625rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(2.25rem, 5vw, 3.25rem);
+      font-weight: 300;
+      line-height: 1.12;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 em { font-style: italic; color: var(--gold); }
+
+    p {
+      font-size: 0.9375rem;
+      font-weight: 300;
+      line-height: 1.8;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .detail-box {
+      display: inline-block;
+      border: 1px solid var(--gold-border);
+      background: var(--gold-dim);
+      padding: 1rem 1.75rem;
+      margin: 1.5rem 0 2.5rem;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .detail-box strong { color: var(--text); font-weight: 400; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      font-family: var(--sans);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      border: 1px solid var(--gold-border);
+      color: var(--gold);
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .btn:hover { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+
+    .arabic {
+      font-size: 2rem;
+      color: var(--gold);
+      opacity: 0.3;
+      margin-top: 4rem;
+    }
+
+    /* Error state */
+    .error-state { display: none; }
+    .error-state .error-icon {
+      width: 72px; height: 72px;
+      border: 1px solid rgba(224,112,112,0.3);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 2.5rem;
+      background: rgba(224,112,112,0.06);
+    }
+
+    .error-state .error-icon svg { width: 28px; height: 28px; stroke: #E07070; fill: none; stroke-width: 1.5; }
+
+    /* Day mode */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #F5F0E8; --surface: #EDE8DF;
+        --border: rgba(0,0,0,0.09);
+        --gold: #8B6828; --gold-dim: rgba(139,104,40,0.10); --gold-border: rgba(139,104,40,0.28);
+        --text: #1A1610; --text-muted: #6B6057; --text-dim: #B5AFA8;
+      }
+      header { background: rgba(245,240,232,0.97); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="/" class="logo">
+      <span class="logo-name">Oukala</span>
+      <span class="logo-product">Journeys</span>
+    </a>
+  </header>
+
+  <main>
+    <!-- Loading state (default) -->
+    <div class="card" id="loadingState">
+      <div class="loading-ring"></div>
+      <p style="color:var(--text-dim);font-size:0.8125rem;letter-spacing:0.05em">Confirming your payment…</p>
+    </div>
+
+    <!-- Success state -->
+    <div class="card" id="successState" style="display:none">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24"><polyline points="5,12 10,17 19,7"/></svg>
+      </div>
+      <div class="eyebrow">Payment Confirmed</div>
+      <h1>Your journey<br><em>has begun.</em></h1>
+      <p>
+        Thank you. Your itinerary design fee has been received and
+        your inquiry is now in our hands.
+      </p>
+      <p>
+        We'll be in touch within 48 hours to begin crafting your journey.
+      </p>
+
+      <div class="detail-box" id="confirmBox">
+        <!-- populated by JS -->
+      </div>
+
+      <a href="/" class="btn">Return Home</a>
+
+      <div class="arabic">وكالة</div>
+    </div>
+
+    <!-- Error state -->
+    <div class="card error-state" id="errorState">
+      <div class="error-icon">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </div>
+      <div class="eyebrow" style="color:#E07070">Something went wrong</div>
+      <h1 style="font-size:clamp(1.75rem,4vw,2.5rem)">We couldn't confirm<br>your payment.</h1>
+      <p>
+        Don't worry — if your card was charged, your inquiry is saved.
+        Please email us at <a href="mailto:hello@oukalajourneys.com" style="color:var(--gold);border-bottom:1px solid var(--gold-border)">hello@oukalajourneys.com</a>
+        and we'll sort it out immediately.
+      </p>
+      <br>
+      <a href="/" class="btn">Return Home</a>
+    </div>
+  </main>
+
+  <script>
+    const SUPABASE_URL  = 'https://khxrhpjmperubjdqxrxq.supabase.co';
+    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoeHJocGptcGVydWJqZHF4cnhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjI5MDMsImV4cCI6MjA5MDEzODkwM30.JiZ97I5FX3bigVn5EfMsb6f2w26WrJQq3Ny3R6BUJ90';
+    const FUNCTIONS_URL = 'https://khxrhpjmperubjdqxrxq.supabase.co/functions/v1';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    const TIER_LABELS = {
+      essentials: 'Essentials — $750',
+      signature:  'Signature — $1,800',
+      atelier:    'Atelier — $2,500+',
+    };
+
+    async function confirmPayment() {
+      const params     = new URLSearchParams(location.search);
+      const sessionId  = params.get('session_id');
+      const inquiryId  = params.get('inquiry_id');
+
+      if (!sessionId || !inquiryId) {
+        showError();
+        return;
+      }
+
+      try {
+        // Update the inquiry in Supabase: mark as paid
+        // We call our Edge Function to do this securely (uses service_role)
+        const res = await fetch(`${FUNCTIONS_URL}/joie-payment-confirm`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ session_id: sessionId, inquiry_id: inquiryId }),
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) throw new Error(result.error || 'Confirmation failed');
+
+        // Show success
+        const { inquiry } = result;
+        showSuccess(inquiry, sessionId);
+
+        // Fire second alert (payment confirmed) — non-blocking
+        fetch(`${FUNCTIONS_URL}/notify-joie-inquiry`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ inquiry_id: inquiryId, event: 'payment_confirmed' }),
+        }).catch(e => console.warn('Payment notify failed (non-blocking):', e));
+
+      } catch (err) {
+        console.error('Payment confirmation error:', err);
+        showError();
+      }
+    }
+
+    function showSuccess(inquiry, sessionId) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('successState').style.display = 'block';
+
+      const tierLabel = TIER_LABELS[inquiry?.preferred_tier] ?? inquiry?.preferred_tier ?? 'Bespoke Journey';
+      const box = document.getElementById('confirmBox');
+      box.innerHTML = `
+        <strong>${inquiry?.first_name ?? ''} ${inquiry?.last_name ?? ''}</strong><br>
+        ${inquiry?.email ?? ''}<br>
+        <span style="color:var(--gold);margin-top:0.5rem;display:block">${tierLabel}</span>
+        ${inquiry?.destination ? `<span style="color:var(--text-dim);font-size:0.8125rem">${inquiry.destination}</span>` : ''}
+      `;
+    }
+
+    function showError() {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorState').style.display   = 'block';
+    }
+
+    // Run on load
+    confirmPayment();
+  </script>
+
+</body>
+</html>

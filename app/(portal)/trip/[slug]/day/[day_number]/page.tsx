@@ -61,8 +61,14 @@ export default async function DayPage({ params }: DayPageProps) {
     allDays = await getTripDays(t.id)
     const d = await getTripDay(t.id, dayNumber)
     day = d
-    events = await getDayEvents(d.id)
-  } catch {
+    try {
+      events = await getDayEvents(d.id)
+    } catch (evErr) {
+      console.error('[DayPage] getDayEvents failed:', evErr)
+      events = []
+    }
+  } catch (err) {
+    console.error('[DayPage] core fetch failed for slug=%s day=%s:', params.slug, dayNumber, err)
     error = 'Day not found'
   }
 

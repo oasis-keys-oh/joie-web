@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Begin Your Journey — Oukala Journeys</title>
+  <meta name="description" content="Tell us about your dream trip. Our team will craft a bespoke itinerary designed around you." />
+  <meta name="theme-color" content="#080808" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#F5F0E8" media="(prefers-color-scheme: light)" />
+  <meta name="robots" content="noindex" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #080808;
+      --surface:      #101010;
+      --surface-2:    #141414;
+      --border:       rgba(255,255,255,0.07);
+      --border-focus: rgba(196,163,90,0.5);
+      --gold:         #C4A35A;
+      --gold-dim:     rgba(196,163,90,0.1);
+      --gold-border:  rgba(196,163,90,0.25);
+      --text:         #F0EBE3;
+      --text-muted:   #8A857E;
+      --text-dim:     #3E3A35;
+      --error:        #E07070;
+      --success:      #7EC89A;
+
+      --serif:  'Cormorant Garamond', Georgia, serif;
+      --sans:   'DM Sans', system-ui, sans-serif;
+
+      --max-w: 760px;
+      --gutter: clamp(1.25rem, 5vw, 2.5rem);
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ─── Header ───────────────────────────────────────────────── */
+    header {
+      padding: 2rem var(--gutter);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(8,8,8,0.96);
+      backdrop-filter: blur(12px);
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      flex-direction: column;
+      line-height: 1;
+    }
+
+    .logo-name {
+      font-family: var(--sans);
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+    }
+
+    .logo-product {
+      font-family: var(--sans);
+      font-size: 0.6rem;
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-top: 0.25rem;
+    }
+
+    .back-link {
+      font-size: 0.6875rem;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    .back-link:hover { color: var(--text); }
+
+    /* ─── Page intro ───────────────────────────────────────────── */
+    .page-intro {
+      padding: 5rem var(--gutter) 4rem;
+      max-width: calc(var(--max-w) + var(--gutter) * 2);
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      font-family: var(--sans);
+      font-size: 0.625rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1.25rem;
+    }
+
+    .page-intro h1 {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 300;
+      line-height: 1.12;
+      margin-bottom: 1.25rem;
+    }
+
+    .page-intro h1 em { font-style: italic; color: var(--gold); }
+
+    .page-intro p {
+      font-size: 0.9375rem;
+      font-weight: 300;
+      line-height: 1.75;
+      color: var(--text-muted);
+      max-width: 480px;
+    }
+
+    /* ─── Progress indicator ───────────────────────────────────── */
+    .progress-bar {
+      max-width: calc(var(--max-w) + var(--gutter) * 2);
+      margin: 0 auto;
+      padding: 0 var(--gutter) 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      flex: 1;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .progress-step::after {
+      content: '';
+      position: absolute;
+      top: 0.875rem;
+      left: 50%;
+      right: -50%;
+      height: 1px;
+      background: var(--border);
+      z-index: 0;
+    }
+
+    .progress-step:last-child::after { display: none; }
+
+    .progress-dot {
+      width: 1.75rem;
+      height: 1.75rem;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.625rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: var(--bg);
+      position: relative;
+      z-index: 1;
+      transition: all 0.3s;
+    }
+
+    .progress-step.active .progress-dot {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--gold-dim);
+    }
+
+    .progress-step.done .progress-dot {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--bg);
+    }
+
+    .progress-label {
+      font-size: 0.5625rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .progress-step.active .progress-label { color: var(--gold); }
+    .progress-step.done .progress-label { color: var(--text-muted); }
+
+    @media (max-width: 480px) {
+      .progress-label { display: none; }
+    }
+
+    /* ─── Form container ───────────────────────────────────────── */
+    .form-wrap {
+      max-width: calc(var(--max-w) + var(--gutter) * 2);
+      margin: 0 auto;
+      padding: 0 var(--gutter) 6rem;
+    }
+
+    /* ─── Form sections ────────────────────────────────────────── */
+    .form-section {
+      display: none;
+      animation: fadeIn 0.4s var(--ease);
+    }
+
+    .form-section.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-label {
+      font-family: var(--sans);
+      font-size: 0.625rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ─── Form fields ──────────────────────────────────────────── */
+    .field-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .field-group.single { grid-template-columns: 1fr; }
+    .field-group.third  { grid-template-columns: 1fr 1fr 1fr; }
+
+    @media (max-width: 560px) {
+      .field-group, .field-group.third { grid-template-columns: 1fr; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .field label {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .field label .req {
+      color: var(--gold);
+      margin-left: 0.25rem;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 0.9375rem;
+      font-weight: 300;
+      padding: 0.875rem 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+      border-radius: 0;
+      width: 100%;
+    }
+
+    .field select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A857E' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+    }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 120px;
+      line-height: 1.65;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--border-focus);
+    }
+
+    .field input::placeholder,
+    .field textarea::placeholder {
+      color: var(--text-dim);
+    }
+
+    .field input.error,
+    .field select.error,
+    .field textarea.error {
+      border-color: var(--error);
+    }
+
+    .field-error {
+      font-size: 0.6875rem;
+      color: var(--error);
+      margin-top: -0.25rem;
+    }
+
+    /* ─── Chip selectors ───────────────────────────────────────── */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .chip input[type="checkbox"],
+    .chip input[type="radio"] {
+      display: none;
+    }
+
+    .chip label {
+      display: inline-block;
+      padding: 0.5rem 1.125rem;
+      border: 1px solid var(--border);
+      font-size: 0.8125rem;
+      font-weight: 300;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.03em;
+    }
+
+    .chip input:checked + label {
+      border-color: var(--gold-border);
+      color: var(--gold);
+      background: var(--gold-dim);
+    }
+
+    .chip label:hover {
+      border-color: rgba(255,255,255,0.15);
+      color: var(--text);
+    }
+
+    /* ─── Range slider ─────────────────────────────────────────── */
+    .budget-options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .budget-option input[type="radio"] { display: none; }
+
+    .budget-option label {
+      display: block;
+      padding: 1.25rem 1.5rem;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .budget-option input:checked + label {
+      border-color: var(--gold-border);
+      background: var(--gold-dim);
+    }
+
+    .budget-option label:hover {
+      border-color: rgba(255,255,255,0.15);
+    }
+
+    .budget-range {
+      font-family: var(--serif);
+      font-size: 1.125rem;
+      font-weight: 400;
+      color: var(--text);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .budget-desc {
+      font-size: 0.75rem;
+      font-weight: 300;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 480px) {
+      .budget-options { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Traveler stepper ─────────────────────────────────────── */
+    .stepper-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      width: fit-content;
+      min-width: 140px;
+    }
+
+    .stepper-btn {
+      width: 2.75rem;
+      height: 2.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.375rem;
+      font-weight: 300;
+      cursor: pointer;
+      transition: color 0.2s, background 0.15s;
+      flex-shrink: 0;
+      font-family: var(--sans);
+      line-height: 1;
+    }
+
+    .stepper-btn:hover { color: var(--gold); background: var(--gold-dim); }
+
+    .stepper-val {
+      flex: 1;
+      text-align: center;
+      font-family: var(--serif);
+      font-size: 1.375rem;
+      font-weight: 300;
+      color: var(--text);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      padding: 0.5rem 0.75rem;
+      min-width: 3rem;
+    }
+
+    /* ─── Form nav buttons ─────────────────────────────────────── */
+    .form-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      font-family: var(--sans);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      border: 1px solid var(--gold-border);
+      color: var(--gold);
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--gold);
+      color: var(--bg);
+      border-color: var(--gold);
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: var(--bg);
+      border-color: var(--gold);
+    }
+
+    .btn-primary:hover { background: #D4B36A; border-color: #D4B36A; }
+
+    .btn-ghost {
+      border-color: var(--border);
+      color: var(--text-muted);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--text-muted);
+      color: var(--text);
+      background: transparent;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn:disabled:hover {
+      background: transparent;
+      color: var(--gold);
+      border-color: var(--gold-border);
+    }
+
+    .btn-primary:disabled:hover {
+      background: var(--gold);
+      color: var(--bg);
+    }
+
+    /* ─── Success state ────────────────────────────────────────── */
+    .success-screen {
+      display: none;
+      text-align: center;
+      padding: 6rem var(--gutter);
+      max-width: calc(var(--max-w) + var(--gutter) * 2);
+      margin: 0 auto;
+      animation: fadeIn 0.6s var(--ease);
+    }
+
+    .success-screen.visible { display: block; }
+
+    .success-icon {
+      width: 4rem;
+      height: 4rem;
+      border: 1px solid var(--gold-border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 2.5rem;
+    }
+
+    .success-icon svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: var(--gold);
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .success-screen h2 {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      font-weight: 300;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+    }
+
+    .success-screen h2 em { font-style: italic; color: var(--gold); }
+
+    .success-screen p {
+      font-size: 0.9375rem;
+      font-weight: 300;
+      line-height: 1.75;
+      color: var(--text-muted);
+      max-width: 400px;
+      margin: 0 auto 3rem;
+    }
+
+    .success-arabic {
+      font-size: 2rem;
+      color: var(--gold);
+      opacity: 0.4;
+      margin-top: 4rem;
+    }
+
+
+    /* ─── Tier banner ──────────────────────────────────────────── */
+    .tier-banner {
+      max-width: calc(var(--max-w) + var(--gutter) * 2);
+      margin: 0 auto;
+      padding: 0 var(--gutter) 1.5rem;
+      display: none;
+    }
+
+    .tier-banner.visible { display: block; }
+
+    .tier-banner-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--gold-border);
+      background: rgba(196,163,90,0.04);
+      padding: 0.875rem 1.25rem;
+    }
+
+    .tier-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .tier-banner-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+      flex-shrink: 0;
+    }
+
+    .tier-banner-name {
+      font-family: var(--serif);
+      font-size: 1.0625rem;
+      font-weight: 300;
+      color: var(--text);
+    }
+
+    .tier-banner-price {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+    }
+
+    .tier-banner-change {
+      font-size: 0.6rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--text-dim);
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      padding: 0;
+      font-family: var(--sans);
+    }
+
+    .tier-banner-change:hover { color: var(--text-muted); border-color: var(--text-muted); }
+
+    /* Inline tier selector (shown when no tier param, or after clicking "change") */
+    .tier-selector {
+      max-width: calc(var(--max-w) + var(--gutter) * 2);
+      margin: 0 auto;
+      padding: 0 var(--gutter) 2rem;
+      display: none;
+    }
+
+    .tier-selector.visible { display: block; }
+
+    .tier-selector-label {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .tier-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .tier-option input[type="radio"] { display: none; }
+
+    .tier-option label {
+      display: block;
+      padding: 1rem 1.25rem;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tier-option input:checked + label {
+      border-color: var(--gold-border);
+      background: rgba(196,163,90,0.04);
+    }
+
+    .tier-option label:hover { border-color: rgba(255,255,255,0.15); }
+
+    .tier-opt-name {
+      font-family: var(--serif);
+      font-size: 1rem;
+      font-weight: 300;
+      color: var(--text);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .tier-opt-price {
+      font-size: 0.75rem;
+      color: var(--gold);
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+
+    .tier-opt-desc {
+      font-size: 0.6875rem;
+      font-weight: 300;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    @media (max-width: 560px) {
+      .tier-options { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Error banner ─────────────────────────────────────────── */
+    .error-banner {
+      display: none;
+      background: rgba(224,112,112,0.08);
+      border: 1px solid rgba(224,112,112,0.25);
+      color: var(--error);
+      padding: 1rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 300;
+      margin-bottom: 1.5rem;
+    }
+    .error-banner.visible { display: block; }
+
+    /* ═══════════════════════════════════════════════════════════
+       DAY MODE
+       ═══════════════════════════════════════════════════════════ */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:           #F5F0E8;
+        --surface:      #EDE8DF;
+        --surface-2:    #E5DFD5;
+        --border:       rgba(0,0,0,0.09);
+        --border-focus: rgba(139,104,40,0.5);
+        --gold:         #8B6828;
+        --gold-dim:     rgba(139,104,40,0.10);
+        --gold-border:  rgba(139,104,40,0.28);
+        --text:         #1A1610;
+        --text-muted:   #6B6057;
+        --text-dim:     #B5AFA8;
+        --error:        #C04040;
+        --success:      #3A8A5A;
+      }
+
+      header { background: rgba(245,240,232,0.97); border-color: rgba(0,0,0,0.07); }
+
+      .field input,
+      .field select,
+      .field textarea { background: var(--surface); color: var(--text); }
+
+      .chip label { color: var(--text-muted); border-color: var(--border); }
+      .chip label:hover { border-color: rgba(0,0,0,0.2); color: var(--text); }
+
+      .budget-option label { border-color: var(--border); }
+      .budget-option label:hover { border-color: rgba(0,0,0,0.2); }
+
+      .tier-option label { border-color: var(--border); }
+      .tier-option label:hover { border-color: rgba(0,0,0,0.2); }
+
+      .tier-banner-inner { background: rgba(139,104,40,0.06); }
+
+      .btn { border-color: var(--gold-border); color: var(--gold); }
+      .btn:hover { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+      .btn-primary { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+      .btn-primary:hover { background: #9D7930; border-color: #9D7930; color: var(--bg); }
+      .btn-ghost { border-color: var(--border); color: var(--text-muted); }
+      .btn-ghost:hover { border-color: rgba(0,0,0,0.2); color: var(--text); background: transparent; }
+
+      .progress-dot { background: var(--bg); border-color: var(--border); }
+
+      .success-icon { border-color: var(--gold-border); }
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header>
+    <a href="/" class="logo">
+      <span class="logo-name">Oukala</span>
+      <span class="logo-product">Journeys</span>
+    </a>
+    <a href="index.html" class="back-link">&larr; Back</a>
+  </header>
+
+  <!-- ── Page intro ─────────────────────────────────────────── -->
+  <div class="page-intro" id="formIntro">
+    <div class="eyebrow">Begin Your Journey</div>
+    <h1>Tell us about your<br><em>dream trip.</em></h1>
+    <p>
+      Every detail you share helps us design something
+      exactly right for you. This takes about five minutes.
+    </p>
+  </div>
+
+  <!-- ── Progress bar ───────────────────────────────────────── -->
+  <div class="progress-bar" id="progressBar">
+    <div class="progress-step active" data-step="1">
+      <div class="progress-dot">1</div>
+      <span class="progress-label">Journey</span>
+    </div>
+    <div class="progress-step" data-step="2">
+      <div class="progress-dot">2</div>
+      <span class="progress-label">Party</span>
+    </div>
+    <div class="progress-step" data-step="3">
+      <div class="progress-dot">3</div>
+      <span class="progress-label">Style</span>
+    </div>
+    <div class="progress-step" data-step="4">
+      <div class="progress-dot">4</div>
+      <span class="progress-label">Vision</span>
+    </div>
+    <div class="progress-step" data-step="5">
+      <div class="progress-dot">5</div>
+      <span class="progress-label">Contact</span>
+    </div>
+  </div>
+
+
+  <!-- ── Tier banner (shown when ?tier= param present) ─────── -->
+  <div class="tier-banner" id="tierBanner">
+    <div class="tier-banner-inner">
+      <div class="tier-banner-left">
+        <div class="tier-banner-dot"></div>
+        <span class="tier-banner-name" id="tierBannerName">Signature</span>
+        <span class="tier-banner-price" id="tierBannerPrice">· Starting from $1,800</span>
+      </div>
+      <button class="tier-banner-change" onclick="showTierSelector()">Change</button>
+    </div>
+  </div>
+
+  <!-- ── Tier selector (shown when no param, or after "change") ─ -->
+  <div class="tier-selector" id="tierSelector">
+    <div class="tier-selector-label">Choose your experience</div>
+    <div class="tier-options">
+      <div class="tier-option">
+        <input type="radio" name="tier" id="tier-essentials" value="essentials">
+        <label for="tier-essentials">
+          <span class="tier-opt-name">Essentials</span>
+          <span class="tier-opt-price">From $750</span>
+          <span class="tier-opt-desc">A complete itinerary, beautifully crafted.</span>
+        </label>
+      </div>
+      <div class="tier-option">
+        <input type="radio" name="tier" id="tier-signature" value="signature">
+        <label for="tier-signature">
+          <span class="tier-opt-name">Signature</span>
+          <span class="tier-opt-price">From $1,800</span>
+          <span class="tier-opt-desc">Itinerary plus a dedicated travel advisor.</span>
+        </label>
+      </div>
+      <div class="tier-option">
+        <input type="radio" name="tier" id="tier-atelier" value="atelier">
+        <label for="tier-atelier">
+          <span class="tier-opt-name">Atelier</span>
+          <span class="tier-opt-price">From $2,500+</span>
+          <span class="tier-opt-desc">Weddings, celebrations &amp; grand journeys.</span>
+        </label>
+      </div>
+      <div class="tier-option">
+        <input type="radio" name="tier" id="tier-test" value="test">
+        <label for="tier-test">
+          <span class="tier-opt-name">Test</span>
+          <span class="tier-opt-price">$0.01</span>
+          <span class="tier-opt-desc">Internal test only.</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Form ───────────────────────────────────────────────── -->
+  <div class="form-wrap" id="formWrap">
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- Section 1: Journey -->
+    <div class="form-section active" id="section-1">
+      <div class="section-label">Your Journey</div>
+
+      <div class="field-group" style="margin-bottom:1.75rem">
+        <div class="field">
+          <label>Where are you dreaming of going?</label>
+          <input type="text" id="destination" placeholder="e.g. Amalfi Coast, Japan, Morocco…" />
+        </div>
+        <div class="field">
+          <label>Departing from</label>
+          <input type="text" id="departureCity" placeholder="e.g. New York, London, Dubai…" />
+        </div>
+      </div>
+
+      <div class="field-group single" style="margin-bottom:1.75rem">
+        <div class="field">
+          <label>What kind of trip? <span style="color:var(--text-dim);font-weight:300;letter-spacing:0;text-transform:none">(Select all that apply)</span></label>
+          <div class="chips" id="tripTypes">
+            <div class="chip"><input type="checkbox" id="tt-culture" value="culture"><label for="tt-culture">Culture &amp; History</label></div>
+            <div class="chip"><input type="checkbox" id="tt-culinary" value="culinary"><label for="tt-culinary">Food &amp; Wine</label></div>
+            <div class="chip"><input type="checkbox" id="tt-relaxation" value="relaxation"><label for="tt-relaxation">Rest &amp; Relaxation</label></div>
+            <div class="chip"><input type="checkbox" id="tt-adventure" value="adventure"><label for="tt-adventure">Adventure</label></div>
+            <div class="chip"><input type="checkbox" id="tt-romance" value="romance"><label for="tt-romance">Romance</label></div>
+            <div class="chip"><input type="checkbox" id="tt-safari" value="safari"><label for="tt-safari">Safari</label></div>
+            <div class="chip"><input type="checkbox" id="tt-family" value="family"><label for="tt-family">Family</label></div>
+            <div class="chip"><input type="checkbox" id="tt-multi" value="multi-destination"><label for="tt-multi">Multi-Destination</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group single" style="margin-bottom:1.75rem">
+        <div class="field">
+          <label>Is this trip for a special occasion?</label>
+          <div class="chips" id="specialOccasion">
+            <div class="chip"><input type="radio" name="occasion" id="oc-none" value="none"><label for="oc-none">No, just a great trip</label></div>
+            <div class="chip"><input type="radio" name="occasion" id="oc-honeymoon" value="honeymoon"><label for="oc-honeymoon">Honeymoon</label></div>
+            <div class="chip"><input type="radio" name="occasion" id="oc-anniversary" value="anniversary"><label for="oc-anniversary">Anniversary</label></div>
+            <div class="chip"><input type="radio" name="occasion" id="oc-birthday" value="birthday"><label for="oc-birthday">Birthday</label></div>
+            <div class="chip"><input type="radio" name="occasion" id="oc-wedding" value="wedding"><label for="oc-wedding">Wedding / Celebration</label></div>
+            <div class="chip"><input type="radio" name="occasion" id="oc-retirement" value="retirement"><label for="oc-retirement">Retirement</label></div>
+            <div class="chip"><input type="radio" name="occasion" id="oc-graduation" value="graduation"><label for="oc-graduation">Graduation</label></div>
+            <div class="chip"><input type="radio" name="occasion" id="oc-other" value="other"><label for="oc-other">Other milestone</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field">
+          <label>When are you thinking of going?</label>
+          <input type="date" id="departureDate" />
+        </div>
+        <div class="field">
+          <label>How flexible are your dates?</label>
+          <select id="dateFlexibility">
+            <option value="">Select</option>
+            <option value="fixed">Fixed — these dates only</option>
+            <option value="few-days">Flexible ± a few days</option>
+            <option value="week">Flexible ± a week or two</option>
+            <option value="very">Very flexible — open to suggestions</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group" style="margin-top:1.25rem">
+        <div class="field">
+          <label>How many nights?</label>
+          <select id="durationNights">
+            <option value="">Select duration</option>
+            <option value="4">Long weekend (4–5 nights)</option>
+            <option value="7">One week (6–8 nights)</option>
+            <option value="10">10–12 nights</option>
+            <option value="14">Two weeks (13–15 nights)</option>
+            <option value="21">Three weeks or more</option>
+            <option value="0">Flexible / not sure yet</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Should we handle flights?</label>
+          <select id="includeFlights">
+            <option value="">Select</option>
+            <option value="yes">Yes — include flights in the plan</option>
+            <option value="no">No — we'll sort flights ourselves</option>
+            <option value="advice">Advice only — help us decide</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-nav">
+        <span></span>
+        <button class="btn btn-primary" onclick="nextSection(1)">Continue &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Section 2: Party -->
+    <div class="form-section" id="section-2">
+      <div class="section-label">Your Party</div>
+
+      <div class="field-group" style="margin-bottom:2rem">
+        <div class="field">
+          <label>How many travelers?</label>
+          <div class="stepper-wrap">
+            <button type="button" class="stepper-btn" id="travelerMinus" onclick="stepTravelers(-1)">−</button>
+            <span class="stepper-val" id="travelerDisplay">2</span>
+            <button type="button" class="stepper-btn" id="travelerPlus" onclick="stepTravelers(1)">+</button>
+            <input type="hidden" id="travelerCount" value="2" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Who's traveling?</label>
+          <div class="chips" style="margin-top:0.25rem">
+            <div class="chip"><input type="radio" name="partyType" id="pt-solo" value="solo"><label for="pt-solo">Solo</label></div>
+            <div class="chip"><input type="radio" name="partyType" id="pt-couple" value="couple"><label for="pt-couple">Couple</label></div>
+            <div class="chip"><input type="radio" name="partyType" id="pt-family-kids" value="family-kids"><label for="pt-family-kids">Family — young children</label></div>
+            <div class="chip"><input type="radio" name="partyType" id="pt-family-teens" value="family-teens"><label for="pt-family-teens">Family — teenagers</label></div>
+            <div class="chip"><input type="radio" name="partyType" id="pt-friends" value="friends"><label for="pt-friends">Friends</label></div>
+            <div class="chip"><input type="radio" name="partyType" id="pt-multigen" value="multi-gen"><label for="pt-multigen">Multi-generational family</label></div>
+            <div class="chip"><input type="radio" name="partyType" id="pt-corporate" value="corporate"><label for="pt-corporate">Corporate / team retreat</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn btn-ghost" onclick="prevSection(2)">&larr; Back</button>
+        <button class="btn btn-primary" onclick="nextSection(2)">Continue &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Section 3: Style & Budget -->
+    <div class="form-section" id="section-3">
+      <div class="section-label">Your Style &amp; Budget</div>
+
+      <div class="field-group single" style="margin-bottom:2rem">
+        <div class="field">
+          <label>Accommodation preference</label>
+          <div class="chips">
+            <div class="chip"><input type="radio" name="accom" id="ac-boutique" value="boutique"><label for="ac-boutique">Boutique Hotels</label></div>
+            <div class="chip"><input type="radio" name="accom" id="ac-resort" value="resort"><label for="ac-resort">Luxury Resorts</label></div>
+            <div class="chip"><input type="radio" name="accom" id="ac-villa" value="villa"><label for="ac-villa">Private Villas</label></div>
+            <div class="chip"><input type="radio" name="accom" id="ac-mix" value="mix"><label for="ac-mix">Mix It Up</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group single" style="margin-bottom:2rem">
+        <div class="field">
+          <label>Travel pace</label>
+          <div class="chips">
+            <div class="chip"><input type="radio" name="pace" id="pace-leisurely" value="leisurely"><label for="pace-leisurely">Leisurely — few commitments, lots of space</label></div>
+            <div class="chip"><input type="radio" name="pace" id="pace-balanced" value="balanced"><label for="pace-balanced">Balanced — a mix of plans and freedom</label></div>
+            <div class="chip"><input type="radio" name="pace" id="pace-full" value="full"><label for="pace-full">Full — see everything, stay busy</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group single" style="margin-bottom:2rem">
+        <div class="field">
+          <label>Travel &amp; rewards memberships <span style="color:var(--text-dim);font-weight:300;letter-spacing:0;text-transform:none">(Select any that apply — we'll leverage your status)</span></label>
+          <div class="chips" id="memberships">
+            <div class="chip"><input type="checkbox" id="mb-amex-plat" value="amex-platinum"><label for="mb-amex-plat">Amex Platinum</label></div>
+            <div class="chip"><input type="checkbox" id="mb-amex-centurion" value="amex-centurion"><label for="mb-amex-centurion">Amex Centurion</label></div>
+            <div class="chip"><input type="checkbox" id="mb-chase-sapphire" value="chase-sapphire"><label for="mb-chase-sapphire">Chase Sapphire</label></div>
+            <div class="chip"><input type="checkbox" id="mb-cap1" value="capital-one-venture"><label for="mb-cap1">Capital One Venture X</label></div>
+            <div class="chip"><input type="checkbox" id="mb-marriott" value="marriott-bonvoy"><label for="mb-marriott">Marriott Bonvoy</label></div>
+            <div class="chip"><input type="checkbox" id="mb-hilton" value="hilton-honors"><label for="mb-hilton">Hilton Honors</label></div>
+            <div class="chip"><input type="checkbox" id="mb-hyatt" value="world-of-hyatt"><label for="mb-hyatt">World of Hyatt</label></div>
+            <div class="chip"><input type="checkbox" id="mb-fourseasons" value="four-seasons"><label for="mb-fourseasons">Four Seasons Preferred</label></div>
+            <div class="chip"><input type="checkbox" id="mb-virtuoso" value="virtuoso"><label for="mb-virtuoso">Virtuoso</label></div>
+            <div class="chip"><input type="checkbox" id="mb-skyteam" value="skyteam-elite"><label for="mb-skyteam">SkyTeam Elite</label></div>
+            <div class="chip"><input type="checkbox" id="mb-staralliance" value="star-alliance-gold"><label for="mb-staralliance">Star Alliance Gold</label></div>
+            <div class="chip"><input type="checkbox" id="mb-oneworld" value="oneworld-emerald"><label for="mb-oneworld">oneworld Emerald</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group single">
+        <div class="field">
+          <label>Budget for accommodations &amp; experiences <span style="color:var(--text-dim);font-weight:300;letter-spacing:0;text-transform:none">(excluding flights, unless included above)</span></label>
+          <div class="budget-options">
+            <div class="budget-option">
+              <input type="radio" name="budget" id="b1" value="$1,500–$3,000">
+              <label for="b1"><span class="budget-range">$1,500 – $3,000</span><span class="budget-desc">Comfortable boutique travel</span></label>
+            </div>
+            <div class="budget-option">
+              <input type="radio" name="budget" id="b2" value="$3,000–$7,500">
+              <label for="b2"><span class="budget-range">$3,000 – $7,500</span><span class="budget-desc">Elevated experiences</span></label>
+            </div>
+            <div class="budget-option">
+              <input type="radio" name="budget" id="b3" value="$7,500–$15,000">
+              <label for="b3"><span class="budget-range">$7,500 – $15,000</span><span class="budget-desc">Luxury without compromise</span></label>
+            </div>
+            <div class="budget-option">
+              <input type="radio" name="budget" id="b4" value="$15,000+">
+              <label for="b4"><span class="budget-range">$15,000+</span><span class="budget-desc">Ultra-luxury, no ceiling</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn btn-ghost" onclick="prevSection(3)">&larr; Back</button>
+        <button class="btn btn-primary" onclick="nextSection(3)">Continue &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Section 4: Vision -->
+    <div class="form-section" id="section-4">
+      <div class="section-label">Your Vision</div>
+
+      <div class="field-group single" style="margin-bottom:1.75rem">
+        <div class="field">
+          <label>Tell us about your dream trip <span class="req">*</span></label>
+          <textarea id="dreamTrip" placeholder="What would make this journey unforgettable? Any must-haves, specific experiences, places you've heard about, restaurants, hotels you love — share whatever feels relevant. The more you tell us, the better." rows="6"></textarea>
+        </div>
+      </div>
+
+      <div class="field-group single" style="margin-bottom:1.75rem">
+        <div class="field">
+          <label>A trip you've loved in the past</label>
+          <textarea id="pastTrips" placeholder="Tell us about a journey that stayed with you — what made it special? Even a fragment helps us understand your taste." rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="field-group single" style="margin-bottom:1.75rem">
+        <div class="field">
+          <label>Anything else we should know?</label>
+          <textarea id="additionalNotes" placeholder="Dietary restrictions, mobility considerations, travel anxieties, must-avoids, languages spoken…" rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="field-group single" style="margin-bottom:1rem">
+        <div class="field">
+          <label>Have you already booked any part of this trip?</label>
+          <div class="chips" style="margin-top:0.25rem">
+            <div class="chip"><input type="radio" name="booking_status" id="bs-no" value="no"><label for="bs-no">No, nothing booked yet</label></div>
+            <div class="chip"><input type="radio" name="booking_status" id="bs-partial" value="partial"><label for="bs-partial">Some things booked</label></div>
+            <div class="chip"><input type="radio" name="booking_status" id="bs-flights" value="flights_only"><label for="bs-flights">Flights only</label></div>
+            <div class="chip"><input type="radio" name="booking_status" id="bs-mostly" value="mostly"><label for="bs-mostly">Mostly booked, need refinement</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group single" id="confirmationField" style="display:none;margin-bottom:1rem">
+        <div class="field">
+          <label>Confirmation details</label>
+          <textarea id="bookingConfirmations" placeholder="Share any confirmation numbers, booking references, hotel names, flight details, or anything already locked in. We'll build around what you have." rows="4"></textarea>
+          <span style="font-size:0.75rem;color:var(--text-muted);margin-top:0.35rem;display:block">You can also forward confirmation emails to <a href="mailto:joie@oukalajourney.com" style="color:var(--gold);border-bottom:1px solid var(--gold-border)">joie@oukalajourney.com</a> after submitting.</span>
+        </div>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn btn-ghost" onclick="prevSection(4)">&larr; Back</button>
+        <button class="btn btn-primary" onclick="nextSection(4)">Continue &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Section 5: Contact -->
+    <div class="form-section" id="section-5">
+      <div class="section-label">Your Contact Details</div>
+
+      <div class="field-group">
+        <div class="field">
+          <label>First name <span class="req">*</span></label>
+          <input type="text" id="firstName" placeholder="First name" autocomplete="given-name" />
+          <span class="field-error" id="err-firstName"></span>
+        </div>
+        <div class="field">
+          <label>Last name <span class="req">*</span></label>
+          <input type="text" id="lastName" placeholder="Last name" autocomplete="family-name" />
+          <span class="field-error" id="err-lastName"></span>
+        </div>
+      </div>
+
+      <div class="field-group" style="margin-top:1.25rem">
+        <div class="field">
+          <label>Email address <span class="req">*</span></label>
+          <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+          <span class="field-error" id="err-email"></span>
+        </div>
+        <div class="field">
+          <label>Phone <span style="color:var(--text-dim);font-weight:300;letter-spacing:0;text-transform:none">(optional)</span></label>
+          <input type="tel" id="phone" placeholder="+1 (555) 000-0000" autocomplete="tel" />
+        </div>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn btn-ghost" onclick="prevSection(5)">&larr; Back</button>
+        <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">
+          Continue to Payment &rarr;
+        </button>
+      </div>
+    </div>
+  </div><!-- /.form-wrap -->
+
+  <!-- ── Success screen ─────────────────────────────────────── -->
+  <div class="success-screen" id="successScreen">
+    <div class="success-icon">
+      <svg viewBox="0 0 20 20"><polyline points="4,10 8,14 16,6"/></svg>
+    </div>
+
+    <div class="eyebrow" style="justify-content:center">Journey Received</div>
+    <h2>We have your<br><em>vision in hand.</em></h2>
+    <p>
+      Thank you. We'll review everything you've shared and
+      be in touch within 48 hours to begin designing your journey.
+    </p>
+    <a href="index.html" class="btn">Return Home</a>
+
+    <div class="success-arabic">وكالة</div>
+  </div>
+
+  <!-- ── Scripts ─────────────────────────────────────────────── -->
+  <script>
+
+    // ── Tier handling ────────────────────────────────────────────
+    const TIER_META = {
+      essentials: { name: 'Essentials', price: 'Starting from $750' },
+      signature:  { name: 'Signature',  price: 'Starting from $1,800' },
+      atelier:    { name: 'Atelier',    price: 'From $2,500+' },
+      test:       { name: 'Test',       price: '$0.50 test charge' },
+    };
+
+    let selectedTier = null;
+
+    function initTier() {
+      const params = new URLSearchParams(location.search);
+      const t = params.get('tier');
+
+      if (t && TIER_META[t]) {
+        selectedTier = t;
+        const meta = TIER_META[t];
+        document.getElementById('tierBannerName').textContent  = meta.name;
+        document.getElementById('tierBannerPrice').textContent = '· ' + meta.price;
+        document.getElementById('tierBanner').classList.add('visible');
+        // Pre-select the radio
+        const radio = document.getElementById('tier-' + t);
+        if (radio) radio.checked = true;
+      } else {
+        // No tier param — show selector
+        document.getElementById('tierSelector').classList.add('visible');
+      }
+
+      // Listen for selector changes
+      document.querySelectorAll('input[name="tier"]').forEach(r => {
+        r.addEventListener('change', () => {
+          selectedTier = r.value;
+          const meta = TIER_META[r.value];
+          document.getElementById('tierBannerName').textContent  = meta.name;
+          document.getElementById('tierBannerPrice').textContent = '· ' + meta.price;
+          document.getElementById('tierBanner').classList.add('visible');
+          document.getElementById('tierSelector').classList.remove('visible');
+        });
+      });
+    }
+
+    function showTierSelector() {
+      document.getElementById('tierSelector').classList.add('visible');
+      document.getElementById('tierBanner').classList.remove('visible');
+    }
+
+    initTier();
+
+    // ── Show/hide confirmation field based on booking status ─────
+    document.querySelectorAll('input[name="booking_status"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const show = r.value !== 'no';
+        document.getElementById('confirmationField').style.display = show ? 'block' : 'none';
+      });
+    });
+
+    // ── Supabase config ──────────────────────────────────────────
+    const SUPABASE_URL  = 'https://khxrhpjmperubjdqxrxq.supabase.co';
+    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoeHJocGptcGVydWJqZHF4cnhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjI5MDMsImV4cCI6MjA5MDEzODkwM30.JiZ97I5FX3bigVn5EfMsb6f2w26WrJQq3Ny3R6BUJ90';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    // ── Section navigation ───────────────────────────────────────
+    let currentSection = 1;
+    const TOTAL = 5;
+
+    function showSection(n) {
+      document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('section-' + n).classList.add('active');
+
+      document.querySelectorAll('.progress-step').forEach((s, i) => {
+        s.classList.remove('active', 'done');
+        if (i + 1 === n) s.classList.add('active');
+        if (i + 1 < n)  s.classList.add('done');
+      });
+
+      currentSection = n;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function nextSection(from) {
+      document.getElementById('errorBanner').classList.remove('visible');
+      showSection(from + 1);
+    }
+
+    function prevSection(from) {
+      showSection(from - 1);
+    }
+
+    // ── Traveler stepper ─────────────────────────────────────────
+    function stepTravelers(delta) {
+      const input   = document.getElementById('travelerCount');
+      const display = document.getElementById('travelerDisplay');
+      let val = parseInt(input.value) || 2;
+      val = Math.max(1, Math.min(50, val + delta));
+      input.value   = val;
+      display.textContent = val;
+      // Dim minus at 1
+      document.getElementById('travelerMinus').style.opacity = val <= 1 ? '0.3' : '1';
+    }
+
+    // ── Collect form data ────────────────────────────────────────
+    function collectData() {
+      const tripTypes = Array.from(
+        document.querySelectorAll('#tripTypes input:checked')
+      ).map(el => el.value);
+
+      const memberships = Array.from(
+        document.querySelectorAll('#memberships input:checked')
+      ).map(el => el.value);
+
+      const accom     = document.querySelector('input[name="accom"]:checked');
+      const pace      = document.querySelector('input[name="pace"]:checked');
+      const budget    = document.querySelector('input[name="budget"]:checked');
+      const partyType = document.querySelector('input[name="partyType"]:checked');
+      const occasion  = document.querySelector('input[name="occasion"]:checked');
+
+      return {
+        first_name:        document.getElementById('firstName').value.trim(),
+        last_name:         document.getElementById('lastName').value.trim(),
+        email:             document.getElementById('email').value.trim(),
+        phone:             document.getElementById('phone').value.trim() || null,
+        destination:       document.getElementById('destination').value.trim() || null,
+        departure_city:    document.getElementById('departureCity').value.trim() || null,
+        trip_types:        tripTypes.length ? tripTypes : null,
+        special_occasion:  occasion ? (occasion.value !== 'none' ? occasion.value : null) : null,
+        departure_date:    document.getElementById('departureDate').value || null,
+        date_flexibility:  document.getElementById('dateFlexibility').value || null,
+        duration_nights:   parseInt(document.getElementById('durationNights').value) || null,
+        include_flights:   document.getElementById('includeFlights').value || null,
+        traveler_count:    parseInt(document.getElementById('travelerCount').value) || null,
+        party_type:        partyType ? partyType.value : null,
+        accommodation_pref: accom ? accom.value : null,
+        travel_pace:       pace ? pace.value : null,
+        loyalty_memberships: memberships.length ? memberships : null,
+        budget_range:      budget ? budget.value : null,
+        dream_trip:            document.getElementById('dreamTrip').value.trim() || null,
+        past_trips:            document.getElementById('pastTrips').value.trim() || null,
+        internal_notes:        document.getElementById('additionalNotes').value.trim() || null,
+        booking_status:        document.querySelector('input[name="booking_status"]:checked')?.value || null,
+        booking_confirmations: document.getElementById('bookingConfirmations').value.trim() || null,
+        status:                'new',
+        preferred_tier:        selectedTier || null,
+      };
+    }
+
+    // ── Validate contact section ─────────────────────────────────
+    function validateContact() {
+      let ok = true;
+      const fields = ['firstName', 'lastName', 'email'];
+
+      fields.forEach(id => {
+        const el  = document.getElementById(id);
+        const err = document.getElementById('err-' + id);
+        if (err) err.textContent = '';
+        el.classList.remove('error');
+      });
+
+      const fn = document.getElementById('firstName');
+      if (!fn.value.trim()) {
+        fn.classList.add('error');
+        document.getElementById('err-firstName').textContent = 'Required';
+        ok = false;
+      }
+
+      const ln = document.getElementById('lastName');
+      if (!ln.value.trim()) {
+        ln.classList.add('error');
+        document.getElementById('err-lastName').textContent = 'Required';
+        ok = false;
+      }
+
+      const em = document.getElementById('email');
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRe.test(em.value.trim())) {
+        em.classList.add('error');
+        document.getElementById('err-email').textContent = 'Please enter a valid email';
+        ok = false;
+      }
+
+      const dv = document.getElementById('dreamTrip');
+      if (!dv.value.trim()) {
+        dv.classList.add('error');
+        ok = false;
+      }
+
+      return ok;
+    }
+
+    // ── Edge Function base URL ───────────────────────────────────
+    const FUNCTIONS_URL = 'https://khxrhpjmperubjdqxrxq.supabase.co/functions/v1';
+
+    // ── Submit ───────────────────────────────────────────────────
+    // Flow:
+    //   1. Save inquiry to Supabase (captures contact even if they abandon)
+    //   2. Fire email alert to Omar (new inquiry)
+    //   3. Create Stripe Checkout session via Edge Function
+    //   4. Redirect to Stripe — on success → success.html, on cancel → cancel.html
+    async function submitForm() {
+      if (!validateContact()) return;
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span style="opacity:0.7">Securing your details…</span>';
+
+      const data = collectData();
+
+      // Resolve tier — fallback to 'essentials' if none selected
+      const tier = selectedTier || 'essentials';
+
+      try {
+        // ── Send everything to the Edge Function ─────────────────
+        // The Edge Function inserts the inquiry using service_role (bypasses RLS)
+        // and creates the Stripe Checkout session in one call.
+        btn.innerHTML = '<span style="opacity:0.7">Preparing payment…</span>';
+
+        const checkoutRes = await fetch(`${FUNCTIONS_URL}/joie-checkout`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ inquiry: data, tier }),
+        });
+
+        const checkoutData = await checkoutRes.json();
+
+        if (!checkoutRes.ok || !checkoutData.checkout_url) {
+          throw new Error(checkoutData.error || 'Could not create payment session');
+        }
+
+        // ── Step 4: Redirect to Stripe ───────────────────────────
+        window.location.href = checkoutData.checkout_url;
+
+      } catch (err) {
+        console.error('Submission error:', err);
+        const banner = document.getElementById('errorBanner');
+        banner.textContent = 'Something went wrong. Please try again or email us at hello@oukalajourneys.com';
+        banner.classList.add('visible');
+        btn.disabled = false;
+        btn.innerHTML = 'Continue to Payment &rarr;';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  </script>
+
+  <!-- version tag: v2026-04-12.7 -->
+  <div style="position:fixed;bottom:4px;right:8px;font-size:9px;color:var(--text-dim);user-select:text;pointer-events:none;font-family:monospace">intake · v2026-04-12.7 · full-fields</div>
+</body>
+</html>

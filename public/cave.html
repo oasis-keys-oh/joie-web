@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cavé — Your Private Wine Cellar</title>
+  <meta name="description" content="Cavé is your private wine cellar, intelligently managed. Track every bottle, meet Margaux your AI sommelier, and always know what to open tonight.">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0b07; color: #e8e0d0; line-height: 1.6; }
+
+    /* Hero */
+    .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 60px 24px; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, rgba(201,168,76,0.08) 0%, transparent 70%); pointer-events: none; }
+    .hero-logo { font-size: 1rem; font-weight: 700; color: #c9a84c; letter-spacing: 0.25em; margin-bottom: 64px; opacity: 0.8; }
+    .hero-title { font-size: clamp(3rem, 8vw, 6rem); font-weight: 300; color: #e8e0d0; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 24px; }
+    .hero-title em { font-style: italic; color: #c9a84c; }
+    .hero-sub { font-size: 1.15rem; color: #8a7a60; max-width: 480px; margin: 0 auto 48px; }
+    .badge { display: inline-flex; align-items: center; gap: 10px; background: #1a1610; border: 1px solid #2a2318; border-radius: 50px; padding: 14px 28px; font-size: 0.95rem; color: #c8bda8; text-decoration: none; transition: border-color 0.2s; }
+    .badge:hover { border-color: #c9a84c; }
+    .badge svg { width: 20px; height: 20px; fill: #c9a84c; }
+
+    /* Features */
+    .section { padding: 100px 24px; max-width: 960px; margin: 0 auto; }
+    .section-label { font-size: 0.75rem; font-weight: 600; color: #c9a84c; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 16px; }
+    .section-title { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 300; color: #e8e0d0; margin-bottom: 20px; line-height: 1.2; }
+    .section-body { font-size: 1.05rem; color: #8a7a60; max-width: 520px; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 2px; margin-top: 64px; }
+    .feature { background: #111009; padding: 36px 32px; }
+    .feature-icon { font-size: 1.5rem; margin-bottom: 16px; }
+    .feature h3 { font-size: 1rem; font-weight: 600; color: #e8e0d0; margin-bottom: 8px; }
+    .feature p { font-size: 0.9rem; color: #5a4e3a; line-height: 1.6; }
+
+    /* Margaux section */
+    .margaux { padding: 100px 24px; text-align: center; border-top: 1px solid #1a1610; border-bottom: 1px solid #1a1610; }
+    .margaux-inner { max-width: 600px; margin: 0 auto; }
+    .margaux-quote { font-size: clamp(1.2rem, 3vw, 1.7rem); font-style: italic; color: #c9a84c; line-height: 1.5; margin-bottom: 24px; font-weight: 300; }
+    .margaux-attr { font-size: 0.85rem; color: #5a4e3a; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    /* Footer */
+    footer { padding: 48px 24px; text-align: center; border-top: 1px solid #1a1610; }
+    .footer-links { display: flex; justify-content: center; gap: 32px; margin-bottom: 24px; flex-wrap: wrap; }
+    .footer-links a { font-size: 0.85rem; color: #5a4e3a; text-decoration: none; }
+    .footer-links a:hover { color: #c9a84c; }
+    .footer-copy { font-size: 0.8rem; color: #3a3028; }
+  </style>
+</head>
+<body>
+
+  <section class="hero">
+    <div class="hero-logo">CAVÉ</div>
+    <h1 class="hero-title">Your cellar,<br><em>intelligently</em> managed.</h1>
+    <p class="hero-sub">Track every bottle. Know what to open tonight. Meet Margaux, your personal AI sommelier.</p>
+    <a href="https://apps.apple.com/app/id6762651533" class="badge">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+      Download on the App Store
+    </a>
+  </section>
+
+  <section class="section">
+    <p class="section-label">The Cellar</p>
+    <h2 class="section-title">Every bottle, exactly where it is.</h2>
+    <p class="section-body">Scan any label or barcode to add wines instantly. Track location by zone, shelf, and position. Monitor drink windows so you always know what's at peak — and what's past it.</p>
+
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-icon">📷</div>
+        <h3>Scan & Identify</h3>
+        <p>Point your camera at any label. Cavé identifies the wine and adds it to your collection automatically.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🍷</div>
+        <h3>Drink Windows</h3>
+        <p>Visual freshness indicators show you exactly when each bottle is at its peak. Never open too early or too late.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <h3>Cellar Health</h3>
+        <p>See what's aging, what's ready, and what needs attention. Your entire collection at a glance.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🗺</div>
+        <h3>Winery Map</h3>
+        <p>Explore your collection on a world map. See where every wine comes from and discover new producers.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🎁</div>
+        <h3>Gifting & Events</h3>
+        <p>Select the perfect bottle for any occasion. Margaux drafts a personal cellar letter to accompany every gift.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <h3>Private by Design</h3>
+        <p>Your collection is yours. End-to-end encrypted, never sold, never shared.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="margaux">
+    <div class="margaux-inner">
+      <p class="section-label">Meet Margaux</p>
+      <p class="margaux-quote">"This Burgundy is at its absolute peak. Open it tonight — with something simple, so the wine can speak."</p>
+      <p class="margaux-attr">Margaux · Your AI Sommelier</p>
+      <p style="margin-top:24px; font-size:0.95rem; color:#5a4e3a;">Bordeaux-born. Trained in private cellars. Honest about vintages, precise about pairings, and entirely focused on you.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-links">
+      <a href="https://apps.apple.com/app/id6762651533">App Store</a>
+      <a href="/support.html">Support</a>
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="mailto:support@oukalaipholdco.com">Contact</a>
+    </div>
+    <p class="footer-copy">© 2026 Oukala IP Holdco LLC. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

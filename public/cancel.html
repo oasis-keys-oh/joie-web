@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Cancelled — Oukala Journeys</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#080808" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#F5F0E8" media="(prefers-color-scheme: light)" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #080808;
+      --border:       rgba(255,255,255,0.07);
+      --gold:         #C4A35A;
+      --gold-dim:     rgba(196,163,90,0.10);
+      --gold-border:  rgba(196,163,90,0.25);
+      --text:         #F0EBE3;
+      --text-muted:   #8A857E;
+      --serif:  'Cormorant Garamond', Georgia, serif;
+      --sans:   'DM Sans', system-ui, sans-serif;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    header {
+      padding: 2rem clamp(1.5rem, 5vw, 3rem);
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: rgba(8,8,8,0.96);
+      backdrop-filter: blur(12px);
+    }
+
+    .logo { display: flex; flex-direction: column; line-height: 1; }
+    .logo-name { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; }
+    .logo-product { font-size: 0.6rem; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); margin-top: 0.25rem; }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem clamp(1.5rem, 5vw, 3rem);
+    }
+
+    .card {
+      max-width: 540px;
+      width: 100%;
+      text-align: center;
+      animation: fadeIn 0.6s var(--ease);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .pause-icon {
+      width: 72px;
+      height: 72px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 2.5rem;
+    }
+
+    .pause-icon svg {
+      width: 24px; height: 24px;
+      stroke: var(--text-muted); fill: none; stroke-width: 1.5;
+    }
+
+    .eyebrow {
+      font-size: 0.625rem; font-weight: 500; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--gold); margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 300;
+      line-height: 1.15;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 em { font-style: italic; color: var(--gold); }
+
+    p {
+      font-size: 0.9375rem;
+      font-weight: 300;
+      line-height: 1.8;
+      color: var(--text-muted);
+      max-width: 400px;
+      margin: 0 auto 1rem;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 2.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      font-family: var(--sans);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      border: 1px solid var(--gold-border);
+      color: var(--gold);
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      text-decoration: none;
+    }
+
+    .btn:hover { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+
+    .btn-ghost {
+      border-color: var(--border);
+      color: var(--text-muted);
+    }
+
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.15); color: var(--text); background: transparent; }
+
+    .reassurance {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .reassurance a { color: var(--gold); border-bottom: 1px solid var(--gold-border); }
+
+    .arabic { font-size: 1.5rem; color: var(--gold); opacity: 0.2; margin-top: 3.5rem; }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #F5F0E8; --border: rgba(0,0,0,0.09);
+        --gold: #8B6828; --gold-dim: rgba(139,104,40,0.10); --gold-border: rgba(139,104,40,0.28);
+        --text: #1A1610; --text-muted: #6B6057;
+      }
+      header { background: rgba(245,240,232,0.97); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="/" class="logo">
+      <span class="logo-name">Oukala</span>
+      <span class="logo-product">Journeys</span>
+    </a>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="pause-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+
+      <div class="eyebrow">Payment Not Completed</div>
+      <h1>Your vision is<br><em>still with us.</em></h1>
+
+      <p>
+        No charge has been made. Your journey details have been saved
+        and we'd love to help you complete this when you're ready.
+      </p>
+
+      <div class="actions">
+        <a href="javascript:history.back()" class="btn">Try Again &rarr;</a>
+        <a href="/" class="btn btn-ghost">Return Home</a>
+      </div>
+
+      <div class="reassurance">
+        Have a question before committing? We're here.<br>
+        <a href="mailto:hello@oukalajourneys.com">hello@oukalajourneys.com</a>
+      </div>
+
+      <div class="arabic">وكالة</div>
+    </div>
+  </main>
+
+  <script>
+    // Mark inquiry as abandoned in Supabase (best-effort, non-blocking)
+    // so Omar can see in the dashboard who dropped off at payment
+    const SUPABASE_URL  = 'https://khxrhpjmperubjdqxrxq.supabase.co';
+    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoeHJocGptcGVydWJqZHF4cnhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjI5MDMsImV4cCI6MjA5MDEzODkwM30.JiZ97I5FX3bigVn5EfMsb6f2w26WrJQq3Ny3R6BUJ90';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    // RLS note: this update won't be permitted for anon users under current policy.
+    // The abandoned status is tracked via payment_status = 'pending' + no paid_at.
+    // Omar can query: SELECT * FROM joie_inquiries WHERE payment_status = 'pending';
+    // A future cron job / webhook can age these out to 'abandoned' automatically.
+
+    const inquiryId = new URLSearchParams(location.search).get('inquiry_id');
+    if (inquiryId) {
+      console.log('Inquiry saved:', inquiryId, '— payment not completed');
+    }
+  </script>
+
+</body>
+</html>

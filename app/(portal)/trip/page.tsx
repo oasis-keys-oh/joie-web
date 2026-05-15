@@ -13,7 +13,18 @@ async function getTrips() {
   return data || []
 }
 
-export default async function Landing() {
+/**
+ * /trip — Portal entry gate
+ *
+ * Shows the persona picker ("Who are you?") and trip listing.
+ * This is the intended landing for all client-facing traffic:
+ *   oukalajourney.com/trip  →  here
+ *   trip.oukalajourney.com  →  also here (via Netlify redirect)
+ *
+ * Future: replace HomePortal with a proper auth gate once
+ * Supabase Auth is wired up. Persona selection becomes login.
+ */
+export default async function TripPortalEntry() {
   const trips = await getTrips()
   return <HomePortal trips={trips} />
 }
