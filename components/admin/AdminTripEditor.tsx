@@ -1969,7 +1969,7 @@ function TripTextField({ trip, field, label, placeholder, multiline }: { trip: T
 }
 
 function SettingsTab({ trip }: { trip: Trip }) {
-  const curatorCount = TRIP_HERO_SLOTS.filter(s => (trip as Record<string, unknown>)[s.field]).length
+  const curatorCount = TRIP_HERO_SLOTS.filter(s => (trip as unknown as Record<string, unknown>)[s.field]).length
 
   return (
     <div className="max-w-2xl space-y-8">
