@@ -5,29 +5,35 @@ import {
   upsertContactAction, deleteContactAction,
   upsertEventAction, deleteEventAction,
   upsertHotelAction, deleteHotelAction,
-  upsertChallengeAction, deleteChallengeAction,
+  upsertChallengeWithCoordsAction, deleteChallengeAction,
   updateDayFieldAction,
   updateTripFieldAction,
   upsertPackingItemAction, deletePackingItemAction,
   upsertRecAction, deleteRecAction,
   upsertPreTripDropAction, deletePreTripDropAction,
   upsertTravelerAction, deleteTravelerAction,
+  upsertRWLAction, deleteRWLAction,
+  upsertHaggleTriggerAction, deleteHaggleTriggerAction,
+  upsertJourneyFactAction, deleteJourneyFactAction,
 } from '@/app/(portal)/admin/actions'
 import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
-interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
+interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; story_image_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
+interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; gpx_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
 interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; partner_name?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; wine_preferences?: string; interests?: string; travel_style?: string; allergies?: string; languages?: string; activities?: string; bucket_list?: string; music_preferences?: string; age?: number }
 interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string }
-interface Challenge { id: string; day_number?: number; title: string; description: string; transliteration?: string; points: number; challenge_type: string }
+interface Challenge { id: string; day_number?: number; title: string; description: string; transliteration?: string; points: number; challenge_type: string; leg?: string; coordinates?: string }
 interface PackingItem { id: string; item: string; category: string; segment?: string; traveler_key?: string; reason?: string; sort_order?: number }
 interface Rec { id: string; type: string; title: string; author?: string; description?: string; why_relevant?: string; when_to_enjoy?: string; amazon_url?: string; streaming_url?: string; streaming_platform?: string; sort_order?: number }
 interface PreTripDrop { id: string; date_offset_days: number; type: string; title?: string; content: string; media_url?: string; sent: boolean }
 interface Feedback { id: string; day_id: string; traveler_name: string; comment: string; created_at: string }
+interface RWLItem { id: string; type: string; title: string; author_director?: string; reason?: string; amazon_url?: string; streaming_url?: string; streaming_platform?: string; cover_image_url?: string; isbn?: string; tmdb_id?: string; display_order?: number }
+interface HaggleTrigger { id: string; trip_id: string; day_id?: string; location_name: string; coordinates?: string; radius_meters?: number; currency?: string; phrases?: Record<string, string>; price_anchors?: Record<string, unknown>; tips?: string[] }
+interface JourneyFact { id: string; trip_id: string; category: string; headline: string; body: string; music_url?: string; music_platform?: string; destinations?: string[]; is_active: boolean; sort_order?: number }
 
 interface Props {
   trip: Trip
@@ -41,6 +47,9 @@ interface Props {
   drops: PreTripDrop[]
   feedback: Feedback[]
   travelers: Traveler[]
+  rwl: RWLItem[]
+  haggle: HaggleTrigger[]
+  facts: JourneyFact[]
   activeTab: string
 }
 
@@ -52,9 +61,12 @@ const TABS = [
   { id: 'contacts',     label: 'Contacts' },
   { id: 'hotels',       label: 'Hotels' },
   { id: 'hunt',         label: 'Hunt' },
+  { id: 'haggle',       label: '🛒 Haggle' },
   { id: 'packing',      label: 'Packing' },
   { id: 'recs',         label: 'Recommendations' },
+  { id: 'rwl',          label: '📚 Read · Watch · Listen' },
   { id: 'pretripdrops', label: 'Pre-Trip Drops' },
+  { id: 'facts',        label: '💡 Journey Facts' },
   { id: 'feedback',     label: 'Feedback' },
   { id: 'health',       label: '🩺 Health' },
 ]
@@ -62,6 +74,7 @@ const TABS = [
 const ROLE_OPTIONS = ['driver', 'guide', 'fixer', 'restaurant_contact', 'other']
 const EVENT_TYPES = ['restaurant', 'activity', 'transport', 'flight', 'hotel', 'experience', 'tour', 'transfer']
 const CHALLENGE_TYPES = ['find', 'photo', 'taste', 'buy', 'ask', 'learn', 'grand_finale']
+const LEG_OPTIONS = ['morocco', 'france']
 
 // ── Shared UI ────────────────────────────────────────────────────────────────
 
@@ -169,7 +182,7 @@ function SectionHeader({ title, onAdd }: { title: string; onAdd?: () => void }) 
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, travelers, activeTab: initTab }: Props) {
+export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, travelers, rwl, haggle, facts, activeTab: initTab }: Props) {
   const [tab, setTab] = useState(initTab)
 
   return (
@@ -200,18 +213,21 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       </div>
 
       {/* Tab content */}
-      {tab === 'days'          && <DaysTab        trip={trip} days={days} />}
-      {tab === 'events'        && <EventsTab      trip={trip} days={days} events={events} />}
-      {tab === 'travelers'     && <TravelersTab   trip={trip} travelers={travelers} />}
-      {tab === 'contacts'      && <ContactsTab    trip={trip} contacts={contacts} />}
-      {tab === 'hotels'        && <HotelsTab      trip={trip} hotels={hotels} />}
-      {tab === 'hunt'          && <HuntTab        trip={trip} challenges={challenges} />}
-      {tab === 'packing'       && <PackingTab     trip={trip} packing={packing} />}
-      {tab === 'recs'          && <RecsTab        trip={trip} recs={recs} />}
+      {tab === 'days'          && <DaysTab         trip={trip} days={days} />}
+      {tab === 'events'        && <EventsTab       trip={trip} days={days} events={events} />}
+      {tab === 'travelers'     && <TravelersTab    trip={trip} travelers={travelers} />}
+      {tab === 'contacts'      && <ContactsTab     trip={trip} contacts={contacts} />}
+      {tab === 'hotels'        && <HotelsTab       trip={trip} hotels={hotels} />}
+      {tab === 'hunt'          && <HuntTab         trip={trip} challenges={challenges} />}
+      {tab === 'haggle'        && <HaggleTab       trip={trip} triggers={haggle} />}
+      {tab === 'packing'       && <PackingTab      trip={trip} packing={packing} />}
+      {tab === 'recs'          && <RecsTab         trip={trip} recs={recs} />}
+      {tab === 'rwl'           && <RWLTab          trip={trip} items={rwl} />}
       {tab === 'pretripdrops'  && <PreTripDropsTab trip={trip} drops={drops} />}
-      {tab === 'feedback'      && <FeedbackTab    days={days} feedback={feedback} />}
+      {tab === 'facts'         && <JourneyFactsTab trip={trip} facts={facts} />}
+      {tab === 'feedback'      && <FeedbackTab     days={days} feedback={feedback} />}
       {tab === 'health'        && <ImageHealthTab  days={days} />}
-      {tab === 'settings'      && <SettingsTab    trip={trip} />}
+      {tab === 'settings'      && <SettingsTab     trip={trip} />}
     </div>
   )
 }
@@ -457,6 +473,51 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
                       >
                         Clear
                       </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── GPX Route URL ── */}
+                <div>
+                  <Label>GPX Route URL</Label>
+                  <p className="text-xs text-ink-muted mb-2">
+                    Optional — upload a <code className="text-xs bg-gray-100 px-1 rounded">.gpx</code> file to Supabase Storage
+                    and paste the public URL here. The app renders it as a route overlay on the day map.
+                    Leave blank for days without a walking/driving route.
+                  </p>
+                  <input
+                    name="gpx_url"
+                    type="url"
+                    defaultValue={day.gpx_url || ''}
+                    placeholder="https://…supabase.co/storage/v1/object/public/joie-media/…/day-1.gpx"
+                    className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                    style={{ background: '#faf8f4' }}
+                  />
+                  <div className="flex items-center gap-3 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.querySelector(`[data-day="${day.id}"] input[name="gpx_url"]`) as HTMLInputElement
+                        handleSave(day.id, 'gpx_url', el?.value || '')
+                      }}
+                      className="text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
+                      style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
+                    >
+                      {pending ? 'Saving…' : 'Save GPX URL'}
+                    </button>
+                    {day.gpx_url && (
+                      <button
+                        type="button"
+                        onClick={() => handleSave(day.id, 'gpx_url', '')}
+                        className="text-xs text-red-400 hover:text-red-600"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    {day.gpx_url && (
+                      <a href={day.gpx_url} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75">
+                        View file →
+                      </a>
                     )}
                   </div>
                 </div>
@@ -1186,21 +1247,27 @@ function HuntTab({ trip, challenges }: { trip: Trip; challenges: Challenge[] }) 
           <form
             action={async (fd) => {
               fd.set('trip_id', trip.id)
-              await upsertChallengeAction(fd)
+              await upsertChallengeWithCoordsAction(fd)
               setAdding(false)
               window.location.reload()
             }}
             className="space-y-3"
           >
             <input type="hidden" name="trip_id" value={trip.id} />
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               <div><Label>Day #</Label><Input name="day_number" placeholder="e.g. 3" /></div>
               <div><Label>Points</Label><Input name="points" defaultValue="10" /></div>
               <div><Label>Type</Label><Select name="challenge_type" options={CHALLENGE_TYPES} /></div>
+              <div><Label>Leg</Label><Select name="leg" options={LEG_OPTIONS} /></div>
             </div>
             <div><Label>Title *</Label><Input name="title" required placeholder="Find the Blue Door" /></div>
             <div><Label>Description *</Label><Textarea name="description" required placeholder="Full challenge text shown to travelers…" rows={3} /></div>
             <div><Label>Transliteration (optional)</Label><Input name="transliteration" placeholder="Arabic/French pronunciation guide…" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Longitude</Label><Input name="coord_lon" placeholder="-7.6114 (lon first)" /></div>
+              <div><Label>Latitude</Label><Input name="coord_lat" placeholder="33.5892" /></div>
+            </div>
+            <p className="text-xs text-ink-muted -mt-1">Get from Google Maps or latlong.net — longitude is the negative number for Morocco (e.g. -7.6114), latitude is positive (e.g. 33.5892).</p>
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
               <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -1231,6 +1298,10 @@ function ChallengeRow({ challenge, tripId }: { challenge: Challenge; tripId: str
             <p className="font-semibold text-navy text-sm">{challenge.title}</p>
             <p className="text-xs text-ink-muted mt-1 line-clamp-2">{challenge.description}</p>
             {challenge.transliteration && <p className="text-xs text-gold mt-0.5 italic">{challenge.transliteration}</p>}
+            {challenge.coordinates
+              ? <p className="text-xs text-green-600 mt-0.5">📍 {challenge.coordinates}</p>
+              : <p className="text-xs text-amber-500 mt-0.5">⚠️ No coordinates set — pin will not appear on map</p>
+            }
           </div>
           <div className="flex gap-2 shrink-0">
             <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
@@ -1250,7 +1321,7 @@ function ChallengeRow({ challenge, tripId }: { challenge: Challenge; tripId: str
           action={async (fd) => {
             fd.set('id', challenge.id)
             fd.set('trip_id', tripId)
-            await upsertChallengeAction(fd)
+            await upsertChallengeWithCoordsAction(fd)
             setEditing(false)
             window.location.reload()
           }}
@@ -1258,14 +1329,34 @@ function ChallengeRow({ challenge, tripId }: { challenge: Challenge; tripId: str
         >
           <input type="hidden" name="id" value={challenge.id} />
           <input type="hidden" name="trip_id" value={tripId} />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <div><Label>Day #</Label><Input name="day_number" defaultValue={String(challenge.day_number || '')} /></div>
             <div><Label>Points</Label><Input name="points" defaultValue={String(challenge.points)} /></div>
             <div><Label>Type</Label><Select name="challenge_type" defaultValue={challenge.challenge_type} options={CHALLENGE_TYPES} /></div>
+            <div><Label>Leg</Label><Select name="leg" defaultValue={challenge.leg || 'morocco'} options={LEG_OPTIONS} /></div>
           </div>
           <div><Label>Title *</Label><Input name="title" defaultValue={challenge.title} required /></div>
           <div><Label>Description *</Label><Textarea name="description" defaultValue={challenge.description} required rows={3} /></div>
           <div><Label>Transliteration</Label><Input name="transliteration" defaultValue={challenge.transliteration} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Longitude</Label>
+              <Input
+                name="coord_lon"
+                defaultValue={challenge.coordinates ? challenge.coordinates.replace(/^\(([^,]+),.+\)$/, '$1') : ''}
+                placeholder="-7.6114"
+              />
+            </div>
+            <div>
+              <Label>Latitude</Label>
+              <Input
+                name="coord_lat"
+                defaultValue={challenge.coordinates ? challenge.coordinates.replace(/^\([^,]+,([^)]+)\)$/, '$1') : ''}
+                placeholder="33.5892"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-ink-muted -mt-1">Longitude first (negative for Morocco), then latitude. Get from Google Maps or latlong.net.</p>
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
             <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -1593,6 +1684,199 @@ function RecRow({ rec, tripId }: { rec: Rec; tripId: string }) {
   )
 }
 
+// ── Read · Watch · Listen Tab (mobile app) ──────────────────────────────────
+
+const RWL_TYPES = ['book', 'film', 'series', 'podcast', 'music', 'documentary', 'other']
+const RWL_STREAMING_PLATFORMS = ['', 'Netflix', 'Apple TV+', 'Amazon Prime', 'Spotify', 'YouTube', 'Disney+', 'Audible', 'Other']
+
+function RWLTab({ trip, items }: { trip: Trip; items: RWLItem[] }) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  const byType = items.reduce((acc, r) => {
+    if (!acc[r.type]) acc[r.type] = []
+    acc[r.type].push(r)
+    return acc
+  }, {} as Record<string, RWLItem[]>)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs text-ink-muted">{items.length} items — feeds the <strong>Read · Watch · Listen</strong> section in the Joie app.</p>
+          <p className="text-xs text-ink-muted mt-1">Books need <code className="bg-gray-100 px-1 rounded">isbn</code>. Films/series need <code className="bg-gray-100 px-1 rounded">tmdb_id</code>. Both are used to auto-fetch cover art.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85 shrink-0"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          + Add Item
+        </button>
+      </div>
+
+      {adding && (
+        <Card>
+          <SectionHeader title="New Read · Watch · Listen Item" />
+          <form
+            action={async (fd) => {
+              fd.set('trip_id', trip.id)
+              await upsertRWLAction(fd)
+              setAdding(false)
+              window.location.reload()
+            }}
+            className="space-y-3"
+          >
+            <input type="hidden" name="trip_id" value={trip.id} />
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Title *</Label><Input name="title" required placeholder="A Moveable Feast" /></div>
+              <div>
+                <Label>Type *</Label>
+                <Select name="type" options={RWL_TYPES} />
+              </div>
+            </div>
+            <div><Label>Author / Director</Label><Input name="author_director" placeholder="Ernest Hemingway" /></div>
+            <div><Label>Why Relevant</Label><Textarea name="reason" placeholder="Why this book or film connects to this journey…" rows={2} /></div>
+            <div className="grid grid-cols-2 gap-3 p-3 rounded-sm border border-gold border-opacity-30" style={{ background: 'rgba(201,168,76,0.05)' }}>
+              <div>
+                <Label>ISBN (books only)</Label>
+                <Input name="isbn" placeholder="9780684833637 — 13-digit ISBN from Amazon or back cover" />
+                <p className="text-xs text-ink-muted mt-1">Used to auto-fetch book cover from Google Books. Always fill for books.</p>
+              </div>
+              <div>
+                <Label>TMDB ID (films & series)</Label>
+                <Input name="tmdb_id" placeholder="840 — from themoviedb.org URL (/movie/840 or /tv/96677)" />
+                <p className="text-xs text-ink-muted mt-1">Used to auto-fetch poster. Always fill for films and series.</p>
+              </div>
+            </div>
+            <div><Label>Cover Image URL (override only)</Label><Input name="cover_image_url" placeholder="Only if ISBN/TMDB auto-fetch fails — direct .jpg or .png URL" /></div>
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label>Amazon URL</Label><Input name="amazon_url" placeholder="https://amazon.com/…" /></div>
+              <div><Label>Streaming URL</Label><Input name="streaming_url" placeholder="https://…" /></div>
+              <div>
+                <Label>Streaming Platform</Label>
+                <select name="streaming_platform" className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
+                  {RWL_STREAMING_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ maxWidth: '160px' }}><Label>Display Order</Label><Input name="display_order" defaultValue="0" placeholder="1" /></div>
+            <p className="text-xs text-ink-muted -mt-1">Lower number = appears first in app. Use sequential integers (1, 2, 3…). Gaps are fine.</p>
+            <div className="flex gap-3">
+              <SaveBtn pending={pending} />
+              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {Object.entries(byType).map(([type, typeItems]) => (
+        <div key={type}>
+          <h3 className="font-serif font-bold text-navy mb-3 capitalize">{type}s</h3>
+          <div className="space-y-3">
+            {typeItems
+              .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+              .map(item => <RWLRow key={item.id} item={item} tripId={trip.id} />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function RWLRow({ item, tripId }: { item: RWLItem; tripId: string }) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  const hasCoverHint = item.isbn || item.tmdb_id
+  const missingCoverHint = !item.isbn && !item.tmdb_id && !item.cover_image_url
+
+  return (
+    <Card>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-xs uppercase tracking-widest px-2 py-0.5 rounded-sm" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C', letterSpacing: '0.1em' }}>{item.type}</span>
+              {item.display_order !== undefined && <span className="text-xs text-ink-muted font-mono">#{item.display_order}</span>}
+              {item.isbn && <span className="text-xs text-green-600">📖 ISBN</span>}
+              {item.tmdb_id && <span className="text-xs text-green-600">🎬 TMDB</span>}
+              {missingCoverHint && <span className="text-xs text-amber-500">⚠️ No ISBN/TMDB — cover will use placeholder</span>}
+            </div>
+            <p className="font-semibold text-navy text-sm">{item.title}</p>
+            {item.author_director && <p className="text-xs text-ink-muted">{item.author_director}</p>}
+            {item.reason && <p className="text-xs text-ink-muted italic mt-1">{item.reason}</p>}
+            <div className="flex gap-3 mt-1 flex-wrap">
+              {item.amazon_url && <a href={item.amazon_url} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75">Amazon →</a>}
+              {item.streaming_url && <a href={item.streaming_url} target="_blank" rel="noopener noreferrer" className="text-xs text-ink-muted hover:text-navy">{item.streaming_platform || 'Stream'} →</a>}
+              {item.cover_image_url && <a href={item.cover_image_url} target="_blank" rel="noopener noreferrer" className="text-xs text-ink-muted hover:text-navy">Cover →</a>}
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
+            <DeleteBtn
+              pending={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm('Delete this item?')) {
+                  await deleteRWLAction(item.id)
+                  window.location.reload()
+                }
+              })}
+            />
+          </div>
+        </div>
+      ) : (
+        <form
+          action={async (fd) => {
+            fd.set('id', item.id)
+            fd.set('trip_id', tripId)
+            await upsertRWLAction(fd)
+            setEditing(false)
+            window.location.reload()
+          }}
+          className="space-y-3"
+        >
+          <input type="hidden" name="id" value={item.id} />
+          <input type="hidden" name="trip_id" value={tripId} />
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Title *</Label><Input name="title" defaultValue={item.title} required /></div>
+            <div><Label>Type</Label><Select name="type" defaultValue={item.type} options={RWL_TYPES} /></div>
+          </div>
+          <div><Label>Author / Director</Label><Input name="author_director" defaultValue={item.author_director} /></div>
+          <div><Label>Why Relevant</Label><Textarea name="reason" defaultValue={item.reason} rows={2} /></div>
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-sm border border-gold border-opacity-30" style={{ background: 'rgba(201,168,76,0.05)' }}>
+            <div>
+              <Label>ISBN (books)</Label>
+              <Input name="isbn" defaultValue={item.isbn} placeholder="9780684833637" />
+            </div>
+            <div>
+              <Label>TMDB ID (films/series)</Label>
+              <Input name="tmdb_id" defaultValue={item.tmdb_id} placeholder="840" />
+            </div>
+          </div>
+          <div><Label>Cover Image URL (override)</Label><Input name="cover_image_url" defaultValue={item.cover_image_url} placeholder="Direct .jpg or .png URL" /></div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Amazon URL</Label><Input name="amazon_url" defaultValue={item.amazon_url} /></div>
+            <div><Label>Streaming URL</Label><Input name="streaming_url" defaultValue={item.streaming_url} /></div>
+            <div>
+              <Label>Streaming Platform</Label>
+              <select name="streaming_platform" defaultValue={item.streaming_platform || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
+                {RWL_STREAMING_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ maxWidth: '160px' }}><Label>Display Order</Label><Input name="display_order" defaultValue={String(item.display_order ?? 0)} /></div>
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
+          </div>
+        </form>
+      )}
+    </Card>
+  )
+}
+
 // ── Pre-Trip Drops Tab ────────────────────────────────────────────────────────
 
 const DROP_TYPES = ['history', 'music', 'phrase', 'weather', 'tip', 'story', 'challenge', 'announcement']
@@ -1839,6 +2123,359 @@ function ImageHealthTab({ days }: { days: Day[] }) {
   )
 }
 
+// ── Haggle Triggers Tab ───────────────────────────────────────────────────────
+
+const CURRENCY_OPTIONS = ['MAD', 'EUR', 'USD', 'TND', 'DZD', 'GBP', 'OTHER']
+
+function HaggleTab({ trip, triggers }: { trip: Trip; triggers: HaggleTrigger[] }) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-serif text-lg font-bold text-navy mb-1">Haggle Triggers</h3>
+          <p className="text-xs text-ink-muted max-w-prose">
+            Geofenced market locations. The app activates the Haggle tab when a traveler is within the trigger radius.
+            Each record needs valid coordinates and a currency — everything else is optional but recommended.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85 shrink-0"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          + Add Location
+        </button>
+      </div>
+
+      {adding && (
+        <Card>
+          <SectionHeader title="New Haggle Location" />
+          <form
+            action={async (fd) => {
+              fd.set('trip_id', trip.id)
+              await upsertHaggleTriggerAction(fd)
+              setAdding(false)
+              window.location.reload()
+            }}
+            className="space-y-4"
+          >
+            <input type="hidden" name="trip_id" value={trip.id} />
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Location Name *</Label><Input name="location_name" required placeholder="Casablanca — Quartier des Habous" /></div>
+              <div>
+                <Label>Currency</Label>
+                <Select name="currency" options={CURRENCY_OPTIONS} />
+              </div>
+            </div>
+            <div>
+              <Label>Coordinates (required) *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Input name="coord_lon" required placeholder="Longitude: -7.5898" />
+                <Input name="coord_lat" required placeholder="Latitude: 33.5731" />
+              </div>
+              <p className="text-xs text-ink-muted mt-1">Get from Google Maps — longitude is negative for Morocco (e.g. -7.5898), latitude is positive (e.g. 33.5731). <strong>Longitude first.</strong></p>
+            </div>
+            <div style={{ maxWidth: '200px' }}><Label>Geofence Radius (metres)</Label><Input name="radius_meters" defaultValue="500" placeholder="500" /></div>
+            <div>
+              <Label>Haggle Tips (one tip per line)</Label>
+              <Textarea name="tips" placeholder={"Start at 40% of asking price\nWalk away if needed — they will call you back\nPay in cash for better rates"} rows={4} />
+              <p className="text-xs text-ink-muted mt-1">Each line becomes a separate tip in the app.</p>
+            </div>
+            <div>
+              <Label>Phrases (JSON)</Label>
+              <Textarea name="phrases" placeholder={'{\n  "opening": "بكم هذا؟",\n  "too_expensive": "هذا غالي جداً",\n  "final_offer": "هذا آخر عرضي",\n  "thank_you": "شكراً"\n}'} rows={5} />
+              <p className="text-xs text-ink-muted mt-1">Key-value JSON. Keys are phrase names; values are the local-language text.</p>
+            </div>
+            <div>
+              <Label>Price Anchors (JSON)</Label>
+              <Textarea name="price_anchors" placeholder={'{\n  "leather_bag": {"low": 80, "mid": 150, "high": 300},\n  "spices_100g": {"low": 10, "mid": 20, "high": 40}\n}'} rows={5} />
+              <p className="text-xs text-ink-muted mt-1">Each key is an item name; value is an object with low/mid/high price range in the local currency.</p>
+            </div>
+            <div className="flex gap-3">
+              <SaveBtn pending={pending} />
+              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {triggers.map(t => <HaggleTriggerRow key={t.id} trigger={t} tripId={trip.id} />)}
+    </div>
+  )
+}
+
+function HaggleTriggerRow({ trigger, tripId }: { trigger: HaggleTrigger; tripId: string }) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  const lonRaw = trigger.coordinates?.replace(/^\(([^,]+),.+\)$/, '$1') || ''
+  const latRaw = trigger.coordinates?.replace(/^\([^,]+,([^)]+)\)$/, '$1') || ''
+  const tipsText = Array.isArray(trigger.tips) ? trigger.tips.join('\n') : ''
+  const phrasesText = trigger.phrases ? JSON.stringify(trigger.phrases, null, 2) : ''
+  const priceAnchorsText = trigger.price_anchors ? JSON.stringify(trigger.price_anchors, null, 2) : ''
+
+  return (
+    <Card>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              {trigger.currency && <span className="text-xs font-mono px-2 py-0.5 rounded-sm" style={{ background: 'rgba(27,43,75,0.1)', color: '#1B2B4B' }}>{trigger.currency}</span>}
+              {trigger.radius_meters && <span className="text-xs text-ink-muted">{trigger.radius_meters}m radius</span>}
+              {trigger.coordinates
+                ? <span className="text-xs text-green-600">📍 {trigger.coordinates}</span>
+                : <span className="text-xs text-red-500">⚠️ No coordinates — trigger will not fire</span>
+              }
+            </div>
+            <p className="font-semibold text-navy text-sm">{trigger.location_name}</p>
+            {Array.isArray(trigger.tips) && trigger.tips.length > 0 && (
+              <p className="text-xs text-ink-muted mt-1">{trigger.tips.length} tips · {Object.keys(trigger.phrases || {}).length} phrases · {Object.keys(trigger.price_anchors || {}).length} price anchors</p>
+            )}
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
+            <DeleteBtn
+              pending={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm(`Delete "${trigger.location_name}"?`)) {
+                  await deleteHaggleTriggerAction(trigger.id)
+                  window.location.reload()
+                }
+              })}
+            />
+          </div>
+        </div>
+      ) : (
+        <form
+          action={async (fd) => {
+            fd.set('id', trigger.id)
+            fd.set('trip_id', tripId)
+            await upsertHaggleTriggerAction(fd)
+            setEditing(false)
+            window.location.reload()
+          }}
+          className="space-y-4"
+        >
+          <input type="hidden" name="id" value={trigger.id} />
+          <input type="hidden" name="trip_id" value={tripId} />
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Location Name *</Label><Input name="location_name" defaultValue={trigger.location_name} required /></div>
+            <div>
+              <Label>Currency</Label>
+              <Select name="currency" defaultValue={trigger.currency || 'MAD'} options={CURRENCY_OPTIONS} />
+            </div>
+          </div>
+          <div>
+            <Label>Coordinates *</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Input name="coord_lon" defaultValue={lonRaw} placeholder="-7.5898" required />
+              <Input name="coord_lat" defaultValue={latRaw} placeholder="33.5731" required />
+            </div>
+          </div>
+          <div style={{ maxWidth: '200px' }}><Label>Radius (metres)</Label><Input name="radius_meters" defaultValue={String(trigger.radius_meters || 500)} /></div>
+          <div>
+            <Label>Tips (one per line)</Label>
+            <Textarea name="tips" defaultValue={tipsText} rows={4} />
+          </div>
+          <div>
+            <Label>Phrases (JSON)</Label>
+            <Textarea name="phrases" defaultValue={phrasesText} rows={5} />
+          </div>
+          <div>
+            <Label>Price Anchors (JSON)</Label>
+            <Textarea name="price_anchors" defaultValue={priceAnchorsText} rows={5} />
+          </div>
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
+          </div>
+        </form>
+      )}
+    </Card>
+  )
+}
+
+// ── Journey Facts Tab ─────────────────────────────────────────────────────────
+
+const FACT_CATEGORIES = ['history', 'culture', 'food', 'language', 'art', 'architecture', 'nature', 'sport', 'music', 'literature', 'religion', 'other']
+const MUSIC_PLATFORMS = ['', 'apple_music', 'spotify']
+
+function JourneyFactsTab({ trip, facts }: { trip: Trip; facts: JourneyFact[] }) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-serif text-lg font-bold text-navy mb-1">Journey Facts</h3>
+          <div className="text-xs text-ink-muted max-w-prose space-y-1">
+            <p>The <strong>&ldquo;Did you know?&rdquo;</strong> rotating facts shown in the Today tab of the Joie app. {facts.length} facts entered.</p>
+            <p className="text-amber-600 font-medium">
+              ⚠️ The app currently reads from hardcoded facts in <code className="bg-gray-100 px-1 rounded">FactService.swift</code>.
+              This table is ready and can be populated — the app migration to read from here will happen in a future sprint.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85 shrink-0"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          + Add Fact
+        </button>
+      </div>
+
+      {adding && (
+        <Card>
+          <SectionHeader title="New Journey Fact" />
+          <form
+            action={async (fd) => {
+              fd.set('trip_id', trip.id)
+              await upsertJourneyFactAction(fd)
+              setAdding(false)
+              window.location.reload()
+            }}
+            className="space-y-3"
+          >
+            <input type="hidden" name="trip_id" value={trip.id} />
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Category</Label>
+                <Select name="category" options={FACT_CATEGORIES} />
+              </div>
+              <div><Label>Sort Order</Label><Input name="sort_order" placeholder="1" /></div>
+              <div>
+                <Label>Active</Label>
+                <Select name="is_active" options={['true', 'false']} />
+              </div>
+            </div>
+            <div><Label>Headline *</Label><Input name="headline" required placeholder="Short hook (~60 chars max)" /></div>
+            <div><Label>Body *</Label><Textarea name="body" required placeholder="Full fact text (2–4 sentences)…" rows={4} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Music URL (optional)</Label><Input name="music_url" placeholder="Apple Music or Spotify link" /></div>
+              <div>
+                <Label>Music Platform</Label>
+                <select name="music_platform" className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
+                  {MUSIC_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label>Destinations (JSON array, optional)</Label>
+              <Input name="destinations" placeholder='["Morocco", "France"]' />
+              <p className="text-xs text-ink-muted mt-1">Controls which trips see this fact. Leave blank to show on all trips.</p>
+            </div>
+            <div className="flex gap-3">
+              <SaveBtn pending={pending} />
+              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {facts.length === 0 && !adding && (
+        <div className="text-center py-12 text-ink-muted text-sm">
+          No facts yet. Add some to build the library for this trip.
+        </div>
+      )}
+
+      {facts
+        .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
+        .map(fact => <JourneyFactRow key={fact.id} fact={fact} tripId={trip.id} />)}
+    </div>
+  )
+}
+
+function JourneyFactRow({ fact, tripId }: { fact: JourneyFact; tripId: string }) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <Card>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-xs uppercase tracking-widest px-2 py-0.5 rounded-sm" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C', letterSpacing: '0.1em' }}>{fact.category}</span>
+              {fact.sort_order !== undefined && fact.sort_order !== null && <span className="text-xs text-ink-muted font-mono">#{fact.sort_order}</span>}
+              {!fact.is_active && <span className="text-xs text-red-400 px-2 py-0.5 rounded-sm border border-red-200">hidden</span>}
+              {fact.music_url && <span className="text-xs text-ink-muted">🎵 {fact.music_platform || 'music'}</span>}
+            </div>
+            <p className="font-semibold text-navy text-sm">{fact.headline}</p>
+            <p className="text-xs text-ink-muted mt-1 line-clamp-3">{fact.body}</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
+            <DeleteBtn
+              pending={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm('Delete this fact?')) {
+                  await deleteJourneyFactAction(fact.id)
+                  window.location.reload()
+                }
+              })}
+            />
+          </div>
+        </div>
+      ) : (
+        <form
+          action={async (fd) => {
+            fd.set('id', fact.id)
+            fd.set('trip_id', tripId)
+            await upsertJourneyFactAction(fd)
+            setEditing(false)
+            window.location.reload()
+          }}
+          className="space-y-3"
+        >
+          <input type="hidden" name="id" value={fact.id} />
+          <input type="hidden" name="trip_id" value={tripId} />
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label>Category</Label>
+              <Select name="category" defaultValue={fact.category} options={FACT_CATEGORIES} />
+            </div>
+            <div><Label>Sort Order</Label><Input name="sort_order" defaultValue={String(fact.sort_order ?? '')} placeholder="1" /></div>
+            <div>
+              <Label>Active</Label>
+              <Select name="is_active" defaultValue={fact.is_active ? 'true' : 'false'} options={['true', 'false']} />
+            </div>
+          </div>
+          <div><Label>Headline *</Label><Input name="headline" defaultValue={fact.headline} required /></div>
+          <div><Label>Body *</Label><Textarea name="body" defaultValue={fact.body} required rows={4} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Music URL</Label><Input name="music_url" defaultValue={fact.music_url} /></div>
+            <div>
+              <Label>Music Platform</Label>
+              <select name="music_platform" defaultValue={fact.music_platform || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
+                {MUSIC_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label>Destinations (JSON array)</Label>
+            <Input
+              name="destinations"
+              defaultValue={fact.destinations ? JSON.stringify(fact.destinations) : ''}
+              placeholder='["Morocco", "France"]'
+            />
+          </div>
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
+          </div>
+        </form>
+      )}
+    </Card>
+  )
+}
+
 // ── Settings Tab ──────────────────────────────────────────────────────────────
 
 const TRIP_HERO_SLOTS: { field: string; label: string }[] = [
@@ -1995,6 +2632,25 @@ function SettingsTab({ trip }: { trip: Trip }) {
             <TripTextField trip={trip} field="end_date" label="End Date" placeholder="2026-10-14" />
           </div>
         </div>
+      </Card>
+
+      {/* Journey tab story banner (mobile app) */}
+      <Card>
+        <h4 className="font-semibold text-sm text-navy mb-1">Journey Tab Banner</h4>
+        <p className="text-xs text-ink-muted mb-5">
+          Full-bleed image shown at the top of the <strong>Journey</strong> tab in the Joie app. Must be set before the trip goes live.
+          High-resolution landscape or portrait editorial photo — landscapes, medinas, markets work best.
+          {!trip.story_image_url && (
+            <span className="ml-2 text-amber-600 font-semibold">⚠️ Not set — app will show a gradient placeholder.</span>
+          )}
+        </p>
+        <TripTextField trip={trip} field="story_image_url" label="Story Image URL" placeholder="https://images.unsplash.com/photo-HASH?w=1600&h=900&fit=crop&q=85" />
+        {trip.story_image_url && (
+          <div className="mt-3 rounded-sm overflow-hidden border border-gray-100" style={{ aspectRatio: '16/9', maxWidth: '400px' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={trip.story_image_url} alt="Story banner preview" className="w-full h-full object-cover" />
+          </div>
+        )}
       </Card>
 
       <Card>

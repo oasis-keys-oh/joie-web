@@ -28,6 +28,9 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
     { data: recs },
     { data: drops },
     { data: feedback },
+    { data: rwl },
+    { data: haggle },
+    { data: facts },
   ] = await Promise.all([
     admin.from('trips').select('*').eq('id', tripId).single(),
     admin.from('trip_days').select('*').eq('trip_id', tripId).order('day_number'),
@@ -39,6 +42,9 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
     admin.from('recommendations').select('*').eq('trip_id', tripId).order('sort_order'),
     admin.from('pre_trip_content').select('*').eq('trip_id', tripId).order('date_offset_days'),
     admin.from('feedback').select('*').eq('trip_id', tripId).order('created_at', { ascending: false }),
+    admin.from('read_watch_listen').select('*').eq('trip_id', tripId).order('display_order'),
+    admin.from('joie_haggle_triggers').select('*').eq('trip_id', tripId).order('location_name'),
+    admin.from('journey_facts').select('*').eq('trip_id', tripId).order('sort_order'),
   ])
 
   if (!trip) redirect('/admin')
@@ -104,6 +110,9 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
         drops={drops || []}
         feedback={feedback || []}
         travelers={travelers}
+        rwl={rwl || []}
+        haggle={haggle || []}
+        facts={facts || []}
         activeTab={activeTab}
       />
     </div>

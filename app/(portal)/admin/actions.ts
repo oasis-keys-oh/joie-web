@@ -302,3 +302,133 @@ export async function deleteTravelerAction(travelerId: string, tripId: string) {
     .eq('traveler_id', travelerId)
     .eq('trip_id', tripId)
 }
+
+// ── Read / Watch / Listen (mobile app) ──────────────────────────────────────
+
+export async function upsertRWLAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const payload = {
+    trip_id:           formData.get('trip_id') as string,
+    type:              formData.get('type') as string,
+    title:             formData.get('title') as string,
+    author_director:   formData.get('author_director') as string || null,
+    reason:            formData.get('reason') as string || null,
+    amazon_url:        formData.get('amazon_url') as string || null,
+    streaming_url:     formData.get('streaming_url') as string || null,
+    streaming_platform: formData.get('streaming_platform') as string || null,
+    cover_image_url:   formData.get('cover_image_url') as string || null,
+    isbn:              formData.get('isbn') as string || null,
+    tmdb_id:           formData.get('tmdb_id') as string || null,
+    display_order:     parseInt(formData.get('display_order') as string) || 0,
+  }
+  if (id) {
+    await admin.from('read_watch_listen').update(payload).eq('id', id)
+  } else {
+    await admin.from('read_watch_listen').insert(payload)
+  }
+}
+
+export async function deleteRWLAction(id: string) {
+  const admin = createAdminClient()
+  await admin.from('read_watch_listen').delete().eq('id', id)
+}
+
+// ── Hunt challenge coordinates ───────────────────────────────────────────────
+// Extends the existing upsertChallengeAction — now includes coordinates
+
+export async function upsertChallengeWithCoordsAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const lon = (formData.get('coord_lon') as string || '').trim()
+  const lat = (formData.get('coord_lat') as string || '').trim()
+  const coordinates = lon && lat ? `(${lon},${lat})` : null
+  const payload: Record<string, unknown> = {
+    trip_id:        formData.get('trip_id') as string,
+    day_number:     parseInt(formData.get('day_number') as string) || null,
+    title:          formData.get('title') as string,
+    description:    formData.get('description') as string,
+    transliteration: formData.get('transliteration') as string || null,
+    points:         parseInt(formData.get('points') as string) || 10,
+    challenge_type: formData.get('challenge_type') as string || 'find',
+    leg:            formData.get('leg') as string || 'morocco',
+    coordinates,
+  }
+  if (id) {
+    await admin.from('hunt_challenges').update(payload).eq('id', id)
+  } else {
+    await admin.from('hunt_challenges').insert(payload)
+  }
+}
+
+// ── Haggle Triggers ──────────────────────────────────────────────────────────
+
+export async function upsertHaggleTriggerAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const lon = (formData.get('coord_lon') as string || '').trim()
+  const lat = (formData.get('coord_lat') as string || '').trim()
+  const coordinates = lon && lat ? `(${lon},${lat})` : null
+
+  // tips is text[] — textarea with one tip per line
+  const tipsRaw = (formData.get('tips') as string || '')
+  const tips = tipsRaw.split('\n').map((s: string) => s.trim()).filter(Boolean)
+
+  // JSONB fields — parse from textarea; default null on parse error
+  let phrases: unknown = null
+  let price_anchors: unknown = null
+  try { phrases = JSON.parse(formData.get('phrases') as string || 'null') } catch { phrases = null }
+  try { price_anchors = JSON.parse(formData.get('price_anchors') as string || 'null') } catch { price_anchors = null }
+
+  const payload = {
+    trip_id:       formData.get('trip_id') as string,
+    day_id:        formData.get('day_id') as string || null,
+    location_name: formData.get('location_name') as string,
+    coordinates,
+    radius_meters: parseInt(formData.get('radius_meters') as string) || 500,
+    currency:      formData.get('currency') as string || null,
+    phrases,
+    price_anchors,
+    tips:          tips.length > 0 ? tips : null,
+  }
+  if (id) {
+    await admin.from('joie_haggle_triggers').update(payload).eq('id', id)
+  } else {
+    await admin.from('joie_haggle_triggers').insert(payload)
+  }
+}
+
+export async function deleteHaggleTriggerAction(id: string) {
+  const admin = createAdminClient()
+  await admin.from('joie_haggle_triggers').delete().eq('id', id)
+}
+
+// ── Journey Facts ────────────────────────────────────────────────────────────
+
+export async function upsertJourneyFactAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  let destinations: unknown = null
+  try { destinations = JSON.parse(formData.get('destinations') as string || 'null') } catch { destinations = null }
+  const payload = {
+    trip_id:        formData.get('trip_id') as string,
+    category:       formData.get('category') as string || 'history',
+    headline:       formData.get('headline') as string,
+    body:           formData.get('body') as string,
+    music_url:      formData.get('music_url') as string || null,
+    music_platform: formData.get('music_platform') as string || null,
+    destinations,
+    is_active:      formData.get('is_active') !== 'false',
+    sort_order:     parseInt(formData.get('sort_order') as string) || null,
+  }
+  if (id) {
+    await admin.from('journey_facts').update(payload).eq('id', id)
+  } else {
+    await admin.from('journey_facts').insert(payload)
+  }
+}
+
+export async function deleteJourneyFactAction(id: string) {
+  const admin = createAdminClient()
+  await admin.from('journey_facts').delete().eq('id', id)
+}
