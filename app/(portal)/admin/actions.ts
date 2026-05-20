@@ -432,3 +432,22 @@ export async function deleteJourneyFactAction(id: string) {
   const admin = createAdminClient()
   await admin.from('journey_facts').delete().eq('id', id)
 }
+
+// ── Bulk delete ──────────────────────────────────────────────────────────────
+// Used by all tabs that have multi-select checkboxes.
+
+type BulkDeleteTable =
+  | 'local_contacts'
+  | 'reference_items'
+  | 'hunt_challenges'
+  | 'packing_items'
+  | 'recommendations'
+  | 'read_watch_listen'
+  | 'joie_haggle_triggers'
+  | 'journey_facts'
+
+export async function bulkDeleteAction(table: BulkDeleteTable, ids: string[]) {
+  if (!ids.length) return
+  const admin = createAdminClient()
+  await admin.from(table).delete().in('id', ids)
+}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useCallback } from 'react'
 import {
   upsertContactAction, deleteContactAction,
   upsertEventAction, deleteEventAction,
@@ -15,12 +15,14 @@ import {
   upsertRWLAction, deleteRWLAction,
   upsertHaggleTriggerAction, deleteHaggleTriggerAction,
   upsertJourneyFactAction, deleteJourneyFactAction,
+  bulkDeleteAction,
 } from '@/app/(portal)/admin/actions'
 import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
+import ImageUploadBtn from '@/components/admin/ImageUploadBtn'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; story_image_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
+interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; web_password?: string; story_image_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
 interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; gpx_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
 interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; partner_name?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; wine_preferences?: string; interests?: string; travel_style?: string; allergies?: string; languages?: string; activities?: string; bucket_list?: string; music_preferences?: string; age?: number }
 interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string }
@@ -76,6 +78,66 @@ const EVENT_TYPES = ['restaurant', 'activity', 'transport', 'flight', 'hotel', '
 const CHALLENGE_TYPES = ['find', 'photo', 'taste', 'buy', 'ask', 'learn', 'grand_finale']
 const LEG_OPTIONS = ['morocco', 'france']
 
+// ── Bulk-select hook & bar ────────────────────────────────────────────────────
+
+function useBulkSelect(ids: string[]) {
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const toggle = useCallback((id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }, [])
+  const toggleAll = useCallback(() => {
+    setSelected(prev => prev.size === ids.length ? new Set() : new Set(ids))
+  }, [ids])
+  const clear = useCallback(() => setSelected(new Set()), [])
+  const allSelected = ids.length > 0 && selected.size === ids.length
+  const someSelected = selected.size > 0 && !allSelected
+  return { selected, toggle, toggleAll, clear, allSelected, someSelected }
+}
+
+type BulkDeleteTable = Parameters<typeof bulkDeleteAction>[0]
+
+function BulkDeleteBar({
+  selected, total, table, label, onDone, onToggleAll,
+}: {
+  selected: Set<string>
+  total: number
+  table: BulkDeleteTable
+  label: string
+  onDone: () => void
+  onToggleAll: () => void
+}) {
+  const [pending, startTransition] = useTransition()
+  if (selected.size === 0) return null
+  const allSelected = selected.size === total
+  return (
+    <div className="flex items-center gap-3 px-4 py-2 bg-navy/5 border border-navy/10 rounded-sm text-xs">
+      <span className="text-navy font-medium">{selected.size} of {total} selected</span>
+      <button type="button" onClick={onToggleAll} className="text-gold hover:underline">
+        {allSelected ? 'Deselect all' : `Select all ${total}`}
+      </button>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          if (!confirm(`Delete ${selected.size} ${label}${selected.size > 1 ? 's' : ''}? This cannot be undone.`)) return
+          startTransition(async () => {
+            await bulkDeleteAction(table, [...selected])
+            onDone()
+            window.location.reload()
+          })
+        }}
+        className="ml-auto px-3 py-1 bg-red-600 text-white rounded-sm hover:bg-red-700 disabled:opacity-50"
+      >
+        {pending ? 'Deleting…' : `Delete ${selected.size}`}
+      </button>
+    </div>
+  )
+}
+
 // ── Shared UI ────────────────────────────────────────────────────────────────
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -95,6 +157,25 @@ function Input({ name, defaultValue, placeholder, type = 'text', required }: {
       className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
       style={{ background: '#faf8f4' }}
     />
+  )
+}
+
+/** URL input paired with an Upload button. Use wherever an image URL is expected. */
+function ImageUrlInput({ name, defaultValue, placeholder, folder = 'general' }: {
+  name: string; defaultValue?: string; placeholder?: string; folder?: string
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        name={name}
+        type="url"
+        defaultValue={defaultValue || ''}
+        placeholder={placeholder || 'https://… or upload →'}
+        className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+        style={{ background: '#faf8f4' }}
+      />
+      <ImageUploadBtn targetInputName={name} folder={folder} />
+    </div>
   )
 }
 
@@ -391,19 +472,32 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
                     const slotKey = (['h1', 'h2', 'h3', 'h4'] as const)[idx]
                     const currentVal = day[field] || ''
                     const previewUrl = dayPreviews[slotKey] !== undefined ? dayPreviews[slotKey] : currentVal
+                    const inputId = `day-${day.id}-${field}`
                     return (
                       <div key={field} className="flex gap-3 items-start">
                         <div className="flex-1 space-y-1.5">
                           <Label>Image {idx + 1}{idx === 0 ? ' (primary)' : ''}</Label>
-                          <input
-                            name={field}
-                            type="url"
-                            defaultValue={currentVal}
-                            placeholder="https://images.unsplash.com/photo-HASH?w=1600&h=900&fit=crop&q=85"
-                            className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
-                            style={{ background: '#faf8f4' }}
-                            onChange={e => updatePreview(day.id, slotKey, e.target.value)}
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              id={inputId}
+                              name={field}
+                              type="url"
+                              defaultValue={currentVal}
+                              placeholder="https://images.unsplash.com/photo-HASH?w=1600&h=900&fit=crop&q=85"
+                              className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                              style={{ background: '#faf8f4' }}
+                              onChange={e => updatePreview(day.id, slotKey, e.target.value)}
+                            />
+                            <ImageUploadBtn
+                              targetInputName={field}
+                              targetInputId={inputId}
+                              folder="trip-media"
+                              onUploaded={url => {
+                                updatePreview(day.id, slotKey, url)
+                                handleSave(day.id, field, url)
+                              }}
+                            />
+                          </div>
                           <ImagePreview url={previewUrl} />
                         </div>
                         <div className="pt-6 flex flex-col gap-2">
@@ -443,15 +537,27 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
                     Overrides the featured photo in the full-bleed footer section at the bottom of the day page.
                     Leave blank to use the auto Unsplash pool with the thumbnail strip.
                   </p>
-                  <input
-                    name="footer_image_url"
-                    type="url"
-                    defaultValue={day.footer_image_url || ''}
-                    placeholder="https://images.unsplash.com/photo-HASH?w=2400&h=900&fit=crop&q=85"
-                    className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
-                    style={{ background: '#faf8f4' }}
-                    onChange={e => updatePreview(day.id, 'footer', e.target.value)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      id={`day-${day.id}-footer_image_url`}
+                      name="footer_image_url"
+                      type="url"
+                      defaultValue={day.footer_image_url || ''}
+                      placeholder="https://images.unsplash.com/photo-HASH?w=2400&h=900&fit=crop&q=85"
+                      className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                      style={{ background: '#faf8f4' }}
+                      onChange={e => updatePreview(day.id, 'footer', e.target.value)}
+                    />
+                    <ImageUploadBtn
+                      targetInputName="footer_image_url"
+                      targetInputId={`day-${day.id}-footer_image_url`}
+                      folder="trip-media"
+                      onUploaded={url => {
+                        updatePreview(day.id, 'footer', url)
+                        handleSave(day.id, 'footer_image_url', url)
+                      }}
+                    />
+                  </div>
                   <ImagePreview url={dayPreviews.footer !== undefined ? dayPreviews.footer : (day.footer_image_url || '')} />
                   <div className="flex items-center gap-3 mt-2">
                     <button
@@ -1003,10 +1109,12 @@ function EventRow({ event, tripId, days }: { event: Event; tripId: string; days:
 function ContactsTab({ trip, contacts }: { trip: Trip; contacts: Contact[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
+  const bulk = useBulkSelect(contacts.map(c => c.id))
 
   return (
     <div className="space-y-4">
       <SectionHeader title={`Who to Call (${contacts.length})`} onAdd={() => setAdding(true)} />
+      <BulkDeleteBar selected={bulk.selected} total={contacts.length} table="local_contacts" label="contact" onDone={bulk.clear} onToggleAll={bulk.toggleAll} />
 
       {adding && (
         <Card>
@@ -1042,7 +1150,12 @@ function ContactsTab({ trip, contacts }: { trip: Trip; contacts: Contact[] }) {
         <p className="text-sm text-ink-muted italic">No contacts yet. Add real contacts above — placeholder data has been removed.</p>
       )}
 
-      {contacts.map(c => <ContactRow key={c.id} contact={c} tripId={trip.id} />)}
+      {contacts.map(c => (
+        <div key={c.id} className="flex items-start gap-2">
+          <input type="checkbox" checked={bulk.selected.has(c.id)} onChange={() => bulk.toggle(c.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
+          <div className="flex-1 min-w-0"><ContactRow contact={c} tripId={trip.id} /></div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -1122,10 +1235,12 @@ function ContactRow({ contact, tripId }: { contact: Contact; tripId: string }) {
 function HotelsTab({ trip, hotels }: { trip: Trip; hotels: Hotel[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
+  const bulk = useBulkSelect(hotels.map(h => h.id))
 
   return (
     <div className="space-y-4">
       <SectionHeader title={`Hotels (${hotels.length})`} onAdd={() => setAdding(true)} />
+      <BulkDeleteBar selected={bulk.selected} total={hotels.length} table="reference_items" label="hotel" onDone={bulk.clear} onToggleAll={bulk.toggleAll} />
 
       {adding && (
         <Card>
@@ -1159,7 +1274,12 @@ function HotelsTab({ trip, hotels }: { trip: Trip; hotels: Hotel[] }) {
         </Card>
       )}
 
-      {hotels.map(h => <HotelRow key={h.id} hotel={h} tripId={trip.id} />)}
+      {hotels.map(h => (
+        <div key={h.id} className="flex items-start gap-2">
+          <input type="checkbox" checked={bulk.selected.has(h.id)} onChange={() => bulk.toggle(h.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
+          <div className="flex-1 min-w-0"><HotelRow hotel={h} tripId={trip.id} /></div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -1237,10 +1357,12 @@ function HuntTab({ trip, challenges }: { trip: Trip; challenges: Challenge[] }) 
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
   const totalPts = challenges.reduce((s, c) => s + (c.points || 0), 0)
+  const bulk = useBulkSelect(challenges.map(c => c.id))
 
   return (
     <div className="space-y-4">
       <SectionHeader title={`Hunt Challenges (${challenges.length} · ${totalPts} pts total)`} onAdd={() => setAdding(true)} />
+      <BulkDeleteBar selected={bulk.selected} total={challenges.length} table="hunt_challenges" label="challenge" onDone={bulk.clear} onToggleAll={bulk.toggleAll} />
 
       {adding && (
         <Card>
@@ -1276,7 +1398,12 @@ function HuntTab({ trip, challenges }: { trip: Trip; challenges: Challenge[] }) 
         </Card>
       )}
 
-      {challenges.map(c => <ChallengeRow key={c.id} challenge={c} tripId={trip.id} />)}
+      {challenges.map(c => (
+        <div key={c.id} className="flex items-start gap-2">
+          <input type="checkbox" checked={bulk.selected.has(c.id)} onChange={() => bulk.toggle(c.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
+          <div className="flex-1 min-w-0"><ChallengeRow challenge={c} tripId={trip.id} /></div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -1376,6 +1503,7 @@ const SEGMENTS = ['', 'cycling', 'evening', 'beach', 'city', 'all']
 function PackingTab({ trip, packing }: { trip: Trip; packing: PackingItem[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
+  const bulk = useBulkSelect(packing.map(p => p.id))
 
   const byCategory = packing.reduce((acc, item) => {
     const cat = item.category || 'Other'
@@ -1397,6 +1525,7 @@ function PackingTab({ trip, packing }: { trip: Trip; packing: PackingItem[] }) {
           + Add Item
         </button>
       </div>
+      <BulkDeleteBar selected={bulk.selected} total={packing.length} table="packing_items" label="item" onDone={bulk.clear} onToggleAll={bulk.toggleAll} />
 
       {adding && (
         <Card>
@@ -1445,7 +1574,12 @@ function PackingTab({ trip, packing }: { trip: Trip; packing: PackingItem[] }) {
         <div key={cat}>
           <h3 className="font-serif font-bold text-navy mb-3">{cat}</h3>
           <div className="space-y-2">
-            {items.map(item => <PackingRow key={item.id} item={item} tripId={trip.id} />)}
+            {items.map(item => (
+              <div key={item.id} className="flex items-start gap-2">
+                <input type="checkbox" checked={bulk.selected.has(item.id)} onChange={() => bulk.toggle(item.id)} className="mt-2.5 shrink-0 accent-navy cursor-pointer" />
+                <div className="flex-1 min-w-0"><PackingRow item={item} tripId={trip.id} /></div>
+              </div>
+            ))}
           </div>
         </div>
       ))}
@@ -1531,6 +1665,7 @@ const STREAMING_PLATFORMS = ['', 'Netflix', 'Apple TV+', 'Amazon Prime', 'Spotif
 function RecsTab({ trip, recs }: { trip: Trip; recs: Rec[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
+  const bulk = useBulkSelect(recs.map(r => r.id))
 
   const byType = recs.reduce((acc, r) => {
     if (!acc[r.type]) acc[r.type] = []
@@ -1540,6 +1675,7 @@ function RecsTab({ trip, recs }: { trip: Trip; recs: Rec[] }) {
 
   return (
     <div className="space-y-6">
+      <BulkDeleteBar selected={bulk.selected} total={recs.length} table="recommendations" label="recommendation" onDone={bulk.clear} onToggleAll={bulk.toggleAll} />
       <div className="flex items-center justify-between">
         <p className="text-xs text-ink-muted">{recs.length} recommendations.</p>
         <button
@@ -1598,7 +1734,12 @@ function RecsTab({ trip, recs }: { trip: Trip; recs: Rec[] }) {
         <div key={type}>
           <h3 className="font-serif font-bold text-navy mb-3 capitalize">{type}s</h3>
           <div className="space-y-3">
-            {items.map(r => <RecRow key={r.id} rec={r} tripId={trip.id} />)}
+            {items.map(r => (
+              <div key={r.id} className="flex items-start gap-2">
+                <input type="checkbox" checked={bulk.selected.has(r.id)} onChange={() => bulk.toggle(r.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
+                <div className="flex-1 min-w-0"><RecRow rec={r} tripId={trip.id} /></div>
+              </div>
+            ))}
           </div>
         </div>
       ))}
@@ -1692,6 +1833,7 @@ const RWL_STREAMING_PLATFORMS = ['', 'Netflix', 'Apple TV+', 'Amazon Prime', 'Sp
 function RWLTab({ trip, items }: { trip: Trip; items: RWLItem[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
+  const bulk = useBulkSelect(items.map(i => i.id))
 
   const byType = items.reduce((acc, r) => {
     if (!acc[r.type]) acc[r.type] = []
@@ -1701,6 +1843,7 @@ function RWLTab({ trip, items }: { trip: Trip; items: RWLItem[] }) {
 
   return (
     <div className="space-y-6">
+      <BulkDeleteBar selected={bulk.selected} total={items.length} table="read_watch_listen" label="item" onDone={bulk.clear} onToggleAll={bulk.toggleAll} />
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs text-ink-muted">{items.length} items — feeds the <strong>Read · Watch · Listen</strong> section in the Joie app.</p>
@@ -1750,7 +1893,7 @@ function RWLTab({ trip, items }: { trip: Trip; items: RWLItem[] }) {
                 <p className="text-xs text-ink-muted mt-1">Used to auto-fetch poster. Always fill for films and series.</p>
               </div>
             </div>
-            <div><Label>Cover Image URL (override only)</Label><Input name="cover_image_url" placeholder="Only if ISBN/TMDB auto-fetch fails — direct .jpg or .png URL" /></div>
+            <div><Label>Cover Image URL (override only)</Label><ImageUrlInput name="cover_image_url" placeholder="Only if ISBN/TMDB auto-fetch fails — direct .jpg or .png URL" folder="trip-media" /></div>
             <div className="grid grid-cols-3 gap-3">
               <div><Label>Amazon URL</Label><Input name="amazon_url" placeholder="https://amazon.com/…" /></div>
               <div><Label>Streaming URL</Label><Input name="streaming_url" placeholder="https://…" /></div>
@@ -1777,7 +1920,12 @@ function RWLTab({ trip, items }: { trip: Trip; items: RWLItem[] }) {
           <div className="space-y-3">
             {typeItems
               .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-              .map(item => <RWLRow key={item.id} item={item} tripId={trip.id} />)}
+              .map(item => (
+                <div key={item.id} className="flex items-start gap-2">
+                  <input type="checkbox" checked={bulk.selected.has(item.id)} onChange={() => bulk.toggle(item.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
+                  <div className="flex-1 min-w-0"><RWLRow item={item} tripId={trip.id} /></div>
+                </div>
+              ))}
           </div>
         </div>
       ))}
@@ -1855,7 +2003,7 @@ function RWLRow({ item, tripId }: { item: RWLItem; tripId: string }) {
               <Input name="tmdb_id" defaultValue={item.tmdb_id} placeholder="840" />
             </div>
           </div>
-          <div><Label>Cover Image URL (override)</Label><Input name="cover_image_url" defaultValue={item.cover_image_url} placeholder="Direct .jpg or .png URL" /></div>
+          <div><Label>Cover Image URL (override)</Label><ImageUrlInput name="cover_image_url" defaultValue={item.cover_image_url} placeholder="Direct .jpg or .png URL" folder="trip-media" /></div>
           <div className="grid grid-cols-3 gap-3">
             <div><Label>Amazon URL</Label><Input name="amazon_url" defaultValue={item.amazon_url} /></div>
             <div><Label>Streaming URL</Label><Input name="streaming_url" defaultValue={item.streaming_url} /></div>
@@ -2130,6 +2278,7 @@ const CURRENCY_OPTIONS = ['MAD', 'EUR', 'USD', 'TND', 'DZD', 'GBP', 'OTHER']
 function HaggleTab({ trip, triggers }: { trip: Trip; triggers: HaggleTrigger[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
+  const bulk = useBulkSelect(triggers.map(t => t.id))
 
   return (
     <div className="space-y-4">
@@ -2150,6 +2299,7 @@ function HaggleTab({ trip, triggers }: { trip: Trip; triggers: HaggleTrigger[] }
           + Add Location
         </button>
       </div>
+      <BulkDeleteBar selected={bulk.selected} total={triggers.length} table="joie_haggle_triggers" label="trigger" onDone={bulk.clear} onToggleAll={bulk.toggleAll} />
 
       {adding && (
         <Card>
@@ -2203,7 +2353,12 @@ function HaggleTab({ trip, triggers }: { trip: Trip; triggers: HaggleTrigger[] }
         </Card>
       )}
 
-      {triggers.map(t => <HaggleTriggerRow key={t.id} trigger={t} tripId={trip.id} />)}
+      {triggers.map(t => (
+        <div key={t.id} className="flex items-start gap-2">
+          <input type="checkbox" checked={bulk.selected.has(t.id)} onChange={() => bulk.toggle(t.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
+          <div className="flex-1 min-w-0"><HaggleTriggerRow trigger={t} tripId={trip.id} /></div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -2307,18 +2462,15 @@ const MUSIC_PLATFORMS = ['', 'apple_music', 'spotify']
 function JourneyFactsTab({ trip, facts }: { trip: Trip; facts: JourneyFact[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
+  const bulk = useBulkSelect(facts.map(f => f.id))
 
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="font-serif text-lg font-bold text-navy mb-1">Journey Facts</h3>
-          <div className="text-xs text-ink-muted max-w-prose space-y-1">
+          <div className="text-xs text-ink-muted max-w-prose">
             <p>The <strong>&ldquo;Did you know?&rdquo;</strong> rotating facts shown in the Today tab of the Joie app. {facts.length} facts entered.</p>
-            <p className="text-amber-600 font-medium">
-              ⚠️ The app currently reads from hardcoded facts in <code className="bg-gray-100 px-1 rounded">FactService.swift</code>.
-              This table is ready and can be populated — the app migration to read from here will happen in a future sprint.
-            </p>
           </div>
         </div>
         <button
@@ -2330,6 +2482,7 @@ function JourneyFactsTab({ trip, facts }: { trip: Trip; facts: JourneyFact[] }) 
           + Add Fact
         </button>
       </div>
+      <BulkDeleteBar selected={bulk.selected} total={facts.length} table="journey_facts" label="fact" onDone={bulk.clear} onToggleAll={bulk.toggleAll} />
 
       {adding && (
         <Card>
@@ -2387,7 +2540,12 @@ function JourneyFactsTab({ trip, facts }: { trip: Trip; facts: JourneyFact[] }) 
 
       {facts
         .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
-        .map(fact => <JourneyFactRow key={fact.id} fact={fact} tripId={trip.id} />)}
+        .map(fact => (
+          <div key={fact.id} className="flex items-start gap-2">
+            <input type="checkbox" checked={bulk.selected.has(fact.id)} onChange={() => bulk.toggle(fact.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
+            <div className="flex-1 min-w-0"><JourneyFactRow fact={fact} tripId={trip.id} /></div>
+          </div>
+        ))}
     </div>
   )
 }
@@ -2512,14 +2670,22 @@ function TripImageSlot({ trip, field, label, savedKey }: { trip: Trip; field: st
         <code className="bg-gray-100 px-1 rounded">images.unsplash.com/photo-XXXXX</code>{' '}
         and append <code className="bg-gray-100 px-1 rounded">?w=2400&h=1400&fit=crop&q=90</code>. Leave blank to skip this slot.
       </p>
-      <input
-        id={inputId}
-        type="url"
-        defaultValue={currentVal || ''}
-        placeholder="https://images.unsplash.com/photo-XXXX?w=2400&h=1400&fit=crop&q=90"
-        className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
-        style={{ background: '#faf8f4' }}
-      />
+      <div className="flex items-center gap-2">
+        <input
+          id={inputId}
+          type="url"
+          defaultValue={currentVal || ''}
+          placeholder="https://images.unsplash.com/photo-XXXX?w=2400&h=1400&fit=crop&q=90"
+          className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+          style={{ background: '#faf8f4' }}
+        />
+        <ImageUploadBtn
+          targetInputName={field}
+          targetInputId={inputId}
+          folder="trip-media"
+          onUploaded={handleSave}
+        />
+      </div>
       <div className="flex items-center gap-4">
         <button
           type="button"
@@ -2564,7 +2730,7 @@ function TripImageSlot({ trip, field, label, savedKey }: { trip: Trip; field: st
   )
 }
 
-function TripTextField({ trip, field, label, placeholder, multiline }: { trip: Trip; field: string; label: string; placeholder?: string; multiline?: boolean }) {
+function TripTextField({ trip, field, label, placeholder, multiline, isImage }: { trip: Trip; field: string; label: string; placeholder?: string; multiline?: boolean; isImage?: boolean }) {
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const inputId = `trip-field-${field}`
@@ -2592,7 +2758,32 @@ function TripTextField({ trip, field, label, placeholder, multiline }: { trip: T
       <Label>{label}</Label>
       {multiline
         ? <textarea {...sharedProps} rows={4} />
-        : <input {...sharedProps} type="text" />
+        : isImage
+          ? (
+            <div className="flex items-center gap-2">
+              <input {...sharedProps} type="url" className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" />
+              <ImageUploadBtn
+                targetInputName={field}
+                targetInputId={inputId}
+                folder="trip-media"
+                onUploaded={url => {
+                  const el = document.getElementById(inputId) as HTMLInputElement | null
+                  if (el) {
+                    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+                    nativeSetter?.call(el, url)
+                    el.dispatchEvent(new Event('input', { bubbles: true }))
+                    el.dispatchEvent(new Event('change', { bubbles: true }))
+                  }
+                  startTransition(async () => {
+                    await updateTripFieldAction(trip.id, field, url)
+                    setSaved(true)
+                    setTimeout(() => setSaved(false), 2000)
+                  })
+                }}
+              />
+            </div>
+          )
+          : <input {...sharedProps} type="text" />
       }
       <div className="flex items-center gap-3 mt-2">
         <button
@@ -2634,6 +2825,22 @@ function SettingsTab({ trip }: { trip: Trip }) {
         </div>
       </Card>
 
+      {/* Access code */}
+      <Card>
+        <h4 className="font-semibold text-sm text-navy mb-1">Trip Access Code</h4>
+        <p className="text-xs text-ink-muted mb-4">
+          This is the <strong>web_password</strong> travelers enter at the join page, and is embedded in the QR code URL.
+          Share it with travelers directly, or just hand them the QR code — the code is pre-filled in the link.
+          {!trip.web_password && <span className="ml-1 text-amber-600 font-medium">⚠️ Not set — QR link is unprotected.</span>}
+        </p>
+        <TripTextField trip={trip} field="web_password" label="Access Code" placeholder="e.g. andalusia2026" />
+        {trip.web_password && (
+          <p className="mt-3 text-xs text-green-600">
+            ✓ Set — QR code URL includes <code className="bg-gray-100 px-1 rounded">?p={trip.web_password}</code>
+          </p>
+        )}
+      </Card>
+
       {/* Journey tab story banner (mobile app) */}
       <Card>
         <h4 className="font-semibold text-sm text-navy mb-1">Journey Tab Banner</h4>
@@ -2644,7 +2851,7 @@ function SettingsTab({ trip }: { trip: Trip }) {
             <span className="ml-2 text-amber-600 font-semibold">⚠️ Not set — app will show a gradient placeholder.</span>
           )}
         </p>
-        <TripTextField trip={trip} field="story_image_url" label="Story Image URL" placeholder="https://images.unsplash.com/photo-HASH?w=1600&h=900&fit=crop&q=85" />
+        <TripTextField trip={trip} field="story_image_url" label="Story Image URL" placeholder="https://images.unsplash.com/photo-HASH?w=1600&h=900&fit=crop&q=85" isImage />
         {trip.story_image_url && (
           <div className="mt-3 rounded-sm overflow-hidden border border-gray-100" style={{ aspectRatio: '16/9', maxWidth: '400px' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
