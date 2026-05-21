@@ -21,7 +21,7 @@ export async function loginAction(formData: FormData) {
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 60 * 60 * 8, // 8 hours
-    path: '/admin',
+    path: '/',
   })
   redirect('/admin')
 }
