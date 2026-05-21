@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { verifyAdminPassword, createAdminClient } from '@/lib/supabase-admin'
 
 const SESSION_COOKIE = 'oukala_admin_session'
@@ -121,13 +122,15 @@ export async function deleteHotelAction(id: string) {
 export async function updateTripFieldAction(tripId: string, field: string, value: string) {
   const admin = createAdminClient()
   await admin.from('trips').update({ [field]: value || null }).eq('id', tripId)
+  revalidatePath(`/admin/trip/${tripId}`)
 }
 
 // ── Day fields ───────────────────────────────────────────────────────────────
 
-export async function updateDayFieldAction(dayId: string, field: string, value: string) {
+export async function updateDayFieldAction(dayId: string, field: string, value: string, tripId?: string) {
   const admin = createAdminClient()
   await admin.from('trip_days').update({ [field]: value || null }).eq('id', dayId)
+  if (tripId) revalidatePath(`/admin/trip/${tripId}`)
 }
 
 // ── Hunt challenges ──────────────────────────────────────────────────────────

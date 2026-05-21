@@ -344,7 +344,7 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
 
   function handleSave(dayId: string, field: string, value: string) {
     startTransition(async () => {
-      await updateDayFieldAction(dayId, field, value)
+      await updateDayFieldAction(dayId, field, value, trip.id)
       setSaved(s => ({ ...s, [dayId]: true }))
       setTimeout(() => setSaved(s => ({ ...s, [dayId]: false })), 2000)
     })
