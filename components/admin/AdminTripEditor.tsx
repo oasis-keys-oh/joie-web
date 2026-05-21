@@ -15,17 +15,35 @@ import {
   upsertRWLAction, deleteRWLAction,
   upsertHaggleTriggerAction, deleteHaggleTriggerAction,
   upsertJourneyFactAction, deleteJourneyFactAction,
+  upsertRouteAction, deleteRouteAction,
   bulkDeleteAction,
 } from '@/app/(portal)/admin/actions'
 import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 import ImageUploadBtn from '@/components/admin/ImageUploadBtn'
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Format a YYYY-MM-DD date string as "Jun 10" */
+function fmtDate(dateStr?: string): string {
+  if (!dateStr) return ''
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+/** Compute the calendar date for a given day number relative to the trip start */
+function dayDate(tripStartDate: string, dayNumber: number): string {
+  const d = new Date(tripStartDate + 'T00:00:00')
+  d.setDate(d.getDate() + dayNumber - 1)
+  return fmtDate(d.toISOString().slice(0, 10))
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; web_password?: string; story_image_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
 interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; gpx_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
 interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; partner_name?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; wine_preferences?: string; interests?: string; travel_style?: string; allergies?: string; languages?: string; activities?: string; bucket_list?: string; music_preferences?: string; age?: number }
-interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string }
+interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string; traveler_keys?: string[] }
+interface DayRoute { id: string; trip_id: string; day_id: string; name?: string; gpx_url: string; traveler_keys?: string[]; sort_order: number }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string }
 interface Challenge { id: string; day_number?: number; title: string; description: string; transliteration?: string; points: number; challenge_type: string; leg?: string; coordinates?: string }
@@ -52,6 +70,7 @@ interface Props {
   rwl: RWLItem[]
   haggle: HaggleTrigger[]
   facts: JourneyFact[]
+  routes: DayRoute[]
   activeTab: string
 }
 
@@ -263,7 +282,7 @@ function SectionHeader({ title, onAdd }: { title: string; onAdd?: () => void }) 
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, travelers, rwl, haggle, facts, activeTab: initTab }: Props) {
+export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, travelers, rwl, haggle, facts, routes, activeTab: initTab }: Props) {
   const [tab, setTab] = useState(initTab)
 
   return (
@@ -294,8 +313,8 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       </div>
 
       {/* Tab content */}
-      {tab === 'days'          && <DaysTab         trip={trip} days={days} />}
-      {tab === 'events'        && <EventsTab       trip={trip} days={days} events={events} />}
+      {tab === 'days'          && <DaysTab         trip={trip} days={days} travelers={travelers} routes={routes} />}
+      {tab === 'events'        && <EventsTab       trip={trip} days={days} events={events} travelers={travelers} />}
       {tab === 'travelers'     && <TravelersTab    trip={trip} travelers={travelers} />}
       {tab === 'contacts'      && <ContactsTab     trip={trip} contacts={contacts} />}
       {tab === 'hotels'        && <HotelsTab       trip={trip} hotels={hotels} />}
@@ -309,6 +328,231 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       {tab === 'feedback'      && <FeedbackTab     days={days} feedback={feedback} />}
       {tab === 'health'        && <ImageHealthTab  days={days} />}
       {tab === 'settings'      && <SettingsTab     trip={trip} />}
+    </div>
+  )
+}
+
+// ── Shared: Traveler Picker ───────────────────────────────────────────────────
+// Renders a row of toggle buttons; each selected one appends a hidden input
+// named "traveler_keys" so the form action picks them up via formData.getAll().
+
+function TravelerPicker({ travelers, selected }: { travelers: Traveler[]; selected: string[] }) {
+  const [active, setActive] = useState<string[]>(selected)
+  const toggle = (key: string) =>
+    setActive(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+
+  const COLORS: Record<string, string> = {
+    omar:  '#1B2B4B',
+    kristi:'#8B5E3C',
+    todd:  '#4A7C59',
+    erica: '#6B4C8A',
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 mt-1">
+        {travelers.map(t => {
+          const key = t.traveler_key || t.full_name.toLowerCase().split(' ')[0]
+          const on = active.includes(key)
+          const color = COLORS[key] || '#4B5563'
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggle(key)}
+              className="text-xs px-3 py-1 rounded-full border transition-all"
+              style={{
+                borderColor: color,
+                background: on ? color : 'white',
+                color: on ? 'white' : color,
+                fontWeight: on ? 600 : 400,
+              }}
+            >
+              {t.full_name.split(' ')[0]}
+            </button>
+          )
+        })}
+      </div>
+      {/* Hidden inputs carry the selection into the FormData */}
+      {active.map(k => <input key={k} type="hidden" name="traveler_keys" value={k} />)}
+      {active.length === 0 && <p className="text-xs text-ink-muted mt-1">All travelers will see this.</p>}
+    </div>
+  )
+}
+
+// ── Shared: Routes Section (replaces single GPX URL per day) ──────────────────
+
+function RoutesSection({ day, tripId, travelers, routes }: {
+  day: Day; tripId: string; travelers: Traveler[]; routes: DayRoute[]
+}) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <Label>GPX Routes</Label>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs text-gold hover:opacity-75 uppercase tracking-widest"
+          style={{ letterSpacing: '0.12em' }}
+        >
+          + Add Route
+        </button>
+      </div>
+      <p className="text-xs text-ink-muted mb-3">
+        Upload <code className="bg-gray-100 px-1 rounded">.gpx</code> files exported from Strava.
+        Add one route per group if travelers are splitting up.
+        Leave blank for days with no walking/driving route.
+      </p>
+
+      {routes.length === 0 && !adding && (
+        <p className="text-xs text-ink-muted italic">No routes for this day.</p>
+      )}
+
+      {/* Existing routes */}
+      <div className="space-y-3">
+        {routes.map((route, idx) => (
+          <RouteRow key={route.id} route={route} tripId={tripId} travelers={travelers} index={idx} />
+        ))}
+      </div>
+
+      {/* Add new route form */}
+      {adding && (
+        <form
+          className="mt-3 p-3 border border-gray-200 rounded-sm space-y-3"
+          style={{ background: '#faf8f4' }}
+          action={async (fd) => {
+            fd.set('trip_id', tripId)
+            fd.set('day_id', day.id)
+            fd.set('sort_order', String(routes.length))
+            await upsertRouteAction(fd)
+            setAdding(false)
+          }}
+        >
+          <div><Label>Route Name (optional)</Label>
+            <Input name="name" placeholder="e.g. Alhambra walk — Omar & Kristi" />
+          </div>
+          <div>
+            <Label>GPX File *</Label>
+            <RouteGpxField inputId={`new-route-${day.id}`} />
+          </div>
+          {travelers.length > 0 && (
+            <div>
+              <Label>Travelers (leave blank = everyone)</Label>
+              <TravelerPicker travelers={travelers} selected={[]} />
+            </div>
+          )}
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
+          </div>
+        </form>
+      )}
+    </div>
+  )
+}
+
+function RouteGpxField({ inputId, defaultValue }: { inputId: string; defaultValue?: string }) {
+  const [url, setUrl] = useState(defaultValue || '')
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        id={inputId}
+        name="gpx_url"
+        type="url"
+        required
+        value={url}
+        onChange={e => setUrl(e.target.value)}
+        placeholder="Upload a .gpx → or paste URL"
+        className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+        style={{ background: 'white' }}
+      />
+      <ImageUploadBtn
+        targetInputId={inputId}
+        targetInputName="gpx_url"
+        folder="gpx"
+        accept=".gpx,application/gpx+xml,application/xml,text/xml"
+        buttonLabel="↑ GPX"
+        onUploaded={url => setUrl(url)}
+      />
+    </div>
+  )
+}
+
+function RouteRow({ route, tripId, travelers, index }: {
+  route: DayRoute; tripId: string; travelers: Traveler[]; index: number
+}) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  const assignedNames = travelers
+    .filter(t => route.traveler_keys?.includes(t.traveler_key || t.full_name.toLowerCase().split(' ')[0]))
+    .map(t => t.full_name.split(' ')[0])
+
+  return (
+    <div className="border border-gray-200 rounded-sm p-3" style={{ background: 'white' }}>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-navy">{route.name || `Route ${index + 1}`}</p>
+            <a href={route.gpx_url} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75 truncate block mt-0.5">
+              View GPX →
+            </a>
+            {assignedNames.length > 0 ? (
+              <div className="flex gap-1 mt-1.5">
+                {assignedNames.map(n => (
+                  <span key={n} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(27,43,75,0.08)', color: '#1B2B4B' }}>{n}</span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-ink-muted mt-1">All travelers</p>
+            )}
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-2 py-1 rounded-sm">Edit</button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm('Delete this route?')) await deleteRouteAction(route.id, tripId)
+              })}
+              className="text-xs text-red-400 hover:text-red-600 border border-red-200 px-2 py-1 rounded-sm disabled:opacity-50"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form
+          className="space-y-3"
+          action={async (fd) => {
+            fd.set('id', route.id)
+            fd.set('trip_id', tripId)
+            fd.set('day_id', route.day_id)
+            fd.set('sort_order', String(route.sort_order))
+            await upsertRouteAction(fd)
+            setEditing(false)
+          }}
+        >
+          <div><Label>Route Name</Label><Input name="name" defaultValue={route.name || ''} placeholder="e.g. Alhambra walk — Omar & Kristi" /></div>
+          <div>
+            <Label>GPX File *</Label>
+            <RouteGpxField inputId={`edit-route-${route.id}`} defaultValue={route.gpx_url} />
+          </div>
+          {travelers.length > 0 && (
+            <div>
+              <Label>Travelers (leave blank = everyone)</Label>
+              <TravelerPicker travelers={travelers} selected={route.traveler_keys ?? []} />
+            </div>
+          )}
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }
@@ -335,7 +579,7 @@ const UNSPLASH_HINT = (
   </p>
 )
 
-function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
+function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; travelers: Traveler[]; routes: DayRoute[] }) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState<Record<string, boolean>>({})
@@ -369,6 +613,7 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
                 <span className="text-xs font-semibold text-gold uppercase tracking-widest" style={{ letterSpacing: '0.16em', minWidth: '48px' }}>
                   Day {day.day_number}
                 </span>
+                <span className="text-xs text-ink-muted">{fmtDate(day.date)}</span>
                 <span className="font-serif font-bold text-navy text-sm">{day.title}</span>
                 <span className="text-xs text-ink-muted">{day.location || day.region}</span>
                 {(day.hero_image_url || day.hero_image_url_2) && (
@@ -583,50 +828,13 @@ function DaysTab({ trip, days }: { trip: Trip; days: Day[] }) {
                   </div>
                 </div>
 
-                {/* ── GPX Route URL ── */}
-                <div>
-                  <Label>GPX Route URL</Label>
-                  <p className="text-xs text-ink-muted mb-2">
-                    Optional — upload a <code className="text-xs bg-gray-100 px-1 rounded">.gpx</code> file to Supabase Storage
-                    and paste the public URL here. The app renders it as a route overlay on the day map.
-                    Leave blank for days without a walking/driving route.
-                  </p>
-                  <input
-                    name="gpx_url"
-                    type="url"
-                    defaultValue={day.gpx_url || ''}
-                    placeholder="https://…supabase.co/storage/v1/object/public/joie-media/…/day-1.gpx"
-                    className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
-                    style={{ background: '#faf8f4' }}
-                  />
-                  <div className="flex items-center gap-3 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const el = document.querySelector(`[data-day="${day.id}"] input[name="gpx_url"]`) as HTMLInputElement
-                        handleSave(day.id, 'gpx_url', el?.value || '')
-                      }}
-                      className="text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
-                      style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
-                    >
-                      {pending ? 'Saving…' : 'Save GPX URL'}
-                    </button>
-                    {day.gpx_url && (
-                      <button
-                        type="button"
-                        onClick={() => handleSave(day.id, 'gpx_url', '')}
-                        className="text-xs text-red-400 hover:text-red-600"
-                      >
-                        Clear
-                      </button>
-                    )}
-                    {day.gpx_url && (
-                      <a href={day.gpx_url} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75">
-                        View file →
-                      </a>
-                    )}
-                  </div>
-                </div>
+                {/* ── GPX Routes ── */}
+                <RoutesSection
+                  day={day}
+                  tripId={trip.id}
+                  travelers={travelers}
+                  routes={routes.filter(r => r.day_id === day.id)}
+                />
 
               </div>
             )}
@@ -940,7 +1148,7 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
 
 // ── Events Tab ───────────────────────────────────────────────────────────────
 
-function EventsTab({ trip, days, events }: { trip: Trip; days: Day[]; events: Event[] }) {
+function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[]; events: Event[]; travelers: Traveler[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -999,6 +1207,12 @@ function EventsTab({ trip, days, events }: { trip: Trip; days: Day[]; events: Ev
               <div><Label>Booking URL</Label><Input name="booking_url" placeholder="https://…" /></div>
             </div>
             <div><Label>Notes</Label><Textarea name="notes" placeholder="Any important notes for travelers…" /></div>
+            {travelers.length > 0 && (
+              <div>
+                <Label>Travelers (leave blank = everyone)</Label>
+                <TravelerPicker travelers={travelers} selected={[]} />
+              </div>
+            )}
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
               <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
@@ -1011,6 +1225,7 @@ function EventsTab({ trip, days, events }: { trip: Trip; days: Day[]; events: Ev
         <div key={day.id}>
           <div className="flex items-center gap-4 mb-3">
             <span className="text-xs font-semibold text-gold uppercase tracking-widest" style={{ letterSpacing: '0.16em' }}>Day {day.day_number}</span>
+            <span className="text-xs text-ink-muted">{fmtDate(day.date)}</span>
             <span className="text-sm font-semibold text-navy">{day.title}</span>
             <div className="flex-1 border-t border-gray-100" />
             <span className="text-xs text-ink-muted">{dayEvents.length} event{dayEvents.length !== 1 ? 's' : ''}</span>
@@ -1020,7 +1235,7 @@ function EventsTab({ trip, days, events }: { trip: Trip; days: Day[]; events: Ev
           )}
           <div className="space-y-3">
             {dayEvents.map(ev => (
-              <EventRow key={ev.id} event={ev} tripId={trip.id} days={days} />
+              <EventRow key={ev.id} event={ev} tripId={trip.id} days={days} travelers={travelers} />
             ))}
           </div>
         </div>
@@ -1029,7 +1244,7 @@ function EventsTab({ trip, days, events }: { trip: Trip; days: Day[]; events: Ev
   )
 }
 
-function EventRow({ event, tripId, days }: { event: Event; tripId: string; days: Day[] }) {
+function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: string; days: Day[]; travelers: Traveler[] }) {
   const [editing, setEditing] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -1047,6 +1262,13 @@ function EventRow({ event, tripId, days }: { event: Event; tripId: string; days:
             {event.address && <p className="text-xs text-ink-muted mt-0.5">{event.address}</p>}
             {event.phone && <p className="text-xs text-ink-muted">{event.phone}</p>}
             {event.notes && <p className="text-xs text-ink-muted mt-1 italic">{event.notes}</p>}
+            {event.traveler_keys && event.traveler_keys.length > 0 && (
+              <div className="flex items-center gap-1 mt-1.5">
+                {event.traveler_keys.map(k => (
+                  <span key={k} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(27,43,75,0.08)', color: '#1B2B4B' }}>{k}</span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex gap-2 shrink-0">
             <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
@@ -1094,6 +1316,12 @@ function EventRow({ event, tripId, days }: { event: Event; tripId: string; days:
             <div><Label>Booking URL</Label><Input name="booking_url" defaultValue={event.booking_url} /></div>
           </div>
           <div><Label>Notes</Label><Textarea name="notes" defaultValue={event.notes} /></div>
+          {travelers.length > 0 && (
+            <div>
+              <Label>Travelers (leave blank = everyone)</Label>
+              <TravelerPicker travelers={travelers} selected={event.traveler_keys ?? []} />
+            </div>
+          )}
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
             <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
@@ -1401,14 +1629,14 @@ function HuntTab({ trip, challenges }: { trip: Trip; challenges: Challenge[] }) 
       {challenges.map(c => (
         <div key={c.id} className="flex items-start gap-2">
           <input type="checkbox" checked={bulk.selected.has(c.id)} onChange={() => bulk.toggle(c.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
-          <div className="flex-1 min-w-0"><ChallengeRow challenge={c} tripId={trip.id} /></div>
+          <div className="flex-1 min-w-0"><ChallengeRow challenge={c} tripId={trip.id} tripStartDate={trip.start_date} /></div>
         </div>
       ))}
     </div>
   )
 }
 
-function ChallengeRow({ challenge, tripId }: { challenge: Challenge; tripId: string }) {
+function ChallengeRow({ challenge, tripId, tripStartDate }: { challenge: Challenge; tripId: string; tripStartDate: string }) {
   const [editing, setEditing] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -1418,7 +1646,7 @@ function ChallengeRow({ challenge, tripId }: { challenge: Challenge; tripId: str
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
-              {challenge.day_number && <span className="text-xs text-gold font-semibold">Day {challenge.day_number}</span>}
+              {challenge.day_number && <span className="text-xs text-gold font-semibold">Day {challenge.day_number} · {dayDate(tripStartDate, challenge.day_number)}</span>}
               <span className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.1em' }}>{challenge.challenge_type}</span>
               <span className="text-xs font-mono text-navy">{challenge.points} pts</span>
             </div>

@@ -63,6 +63,9 @@ export async function deleteContactAction(id: string) {
 export async function upsertEventAction(formData: FormData) {
   const admin = createAdminClient()
   const id = formData.get('id') as string | null
+  // traveler_keys submitted as repeated fields: traveler_keys=omar&traveler_keys=kristi
+  const rawKeys = formData.getAll('traveler_keys') as string[]
+  const travelerKeys = rawKeys.filter(Boolean)
   const payload = {
     trip_id: formData.get('trip_id') as string,
     day_id: formData.get('day_id') as string,
@@ -75,6 +78,7 @@ export async function upsertEventAction(formData: FormData) {
     booking_url: formData.get('booking_url') as string || null,
     booking_status: formData.get('booking_status') as string || 'confirmed',
     notes: formData.get('notes') as string || null,
+    traveler_keys: travelerKeys.length > 0 ? travelerKeys : null,
   }
   if (id) {
     await admin.from('events').update(payload).eq('id', id)
@@ -434,6 +438,36 @@ export async function upsertJourneyFactAction(formData: FormData) {
 export async function deleteJourneyFactAction(id: string) {
   const admin = createAdminClient()
   await admin.from('journey_facts').delete().eq('id', id)
+}
+
+// ── Day routes ───────────────────────────────────────────────────────────────
+
+export async function upsertRouteAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const rawKeys = formData.getAll('traveler_keys') as string[]
+  const travelerKeys = rawKeys.filter(Boolean)
+  const payload = {
+    trip_id: formData.get('trip_id') as string,
+    day_id: formData.get('day_id') as string,
+    name: formData.get('name') as string || null,
+    gpx_url: formData.get('gpx_url') as string,
+    traveler_keys: travelerKeys.length > 0 ? travelerKeys : null,
+    sort_order: parseInt(formData.get('sort_order') as string) || 0,
+  }
+  const tripId = formData.get('trip_id') as string
+  if (id) {
+    await admin.from('day_routes').update(payload).eq('id', id)
+  } else {
+    await admin.from('day_routes').insert(payload)
+  }
+  revalidatePath(`/admin/trip/${tripId}`)
+}
+
+export async function deleteRouteAction(id: string, tripId: string) {
+  const admin = createAdminClient()
+  await admin.from('day_routes').delete().eq('id', id)
+  revalidatePath(`/admin/trip/${tripId}`)
 }
 
 // ── Bulk delete ──────────────────────────────────────────────────────────────

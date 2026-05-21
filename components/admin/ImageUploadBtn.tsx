@@ -16,9 +16,13 @@ interface Props {
    *  or do additional work. Optional — the button also writes directly into
    *  the DOM input so uncontrolled forms pick up the new value. */
   onUploaded?: (url: string) => void
+  /** File types to accept. Defaults to common image formats. */
+  accept?: string
+  /** Button label prefix shown in idle state. Defaults to "↑ Upload". */
+  buttonLabel?: string
 }
 
-export default function ImageUploadBtn({ targetInputName, targetInputId, folder = 'general', onUploaded }: Props) {
+export default function ImageUploadBtn({ targetInputName, targetInputId, folder = 'general', onUploaded, accept, buttonLabel }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
   const [errMsg, setErrMsg] = useState('')
@@ -76,7 +80,7 @@ export default function ImageUploadBtn({ targetInputName, targetInputId, folder 
     state === 'uploading' ? '↑ Uploading…'
     : state === 'done'    ? '✓ Uploaded'
     : state === 'error'   ? '✗ Failed'
-    : '↑ Upload'
+    : (buttonLabel ?? '↑ Upload')
 
   const color =
     state === 'uploading' ? '#9ca3af'
@@ -106,7 +110,7 @@ export default function ImageUploadBtn({ targetInputName, targetInputId, folder 
       <input
         ref={fileRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+        accept={accept ?? 'image/jpeg,image/png,image/webp,image/gif,image/avif'}
         className="hidden"
         onChange={handleChange}
       />
