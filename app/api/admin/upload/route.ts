@@ -30,6 +30,19 @@ export async function POST(req: NextRequest) {
     .slice(0, 60)
   const path = `${folder}/${Date.now()}-${base}.${ext}`
 
+  // Browsers often send GPX (and other XML-based formats) as application/octet-stream.
+  // Resolve the correct MIME type from the file extension when the browser can't.
+  const MIME_OVERRIDES: Record<string, string> = {
+    gpx: 'application/gpx+xml',
+    kml: 'application/vnd.google-earth.kml+xml',
+    geojson: 'application/geo+json',
+    svg: 'image/svg+xml',
+  }
+  const contentType =
+    (file.type && file.type !== 'application/octet-stream')
+      ? file.type
+      : (MIME_OVERRIDES[ext] ?? 'application/octet-stream')
+
   const arrayBuffer = await file.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
 
@@ -37,7 +50,7 @@ export async function POST(req: NextRequest) {
   const { error } = await admin.storage
     .from(BUCKET)
     .upload(path, buffer, {
-      contentType: file.type,
+      contentType,
       upsert: false,
     })
 
