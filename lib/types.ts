@@ -160,6 +160,19 @@ export interface ReferenceItem {
   updated_at?: string;
 }
 
+// GPX walking/driving route assigned to a specific day.
+// Stored in the day_routes table — used by web and iOS/iPad app.
+export interface DayRoute {
+  id: string;
+  trip_id: string;
+  day_id: string;
+  name?: string;
+  gpx_url: string;
+  traveler_keys?: string[] | null; // null / empty = all travelers
+  sort_order: number;
+  created_at?: string;
+}
+
 export interface TripWithDays extends Trip {
   trip_days?: TripDay[];
 }

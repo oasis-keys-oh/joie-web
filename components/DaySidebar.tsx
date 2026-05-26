@@ -1,12 +1,14 @@
 import Link from 'next/link'
-import { TripDay } from '@/lib/types'
+import { TripDay, DayRoute } from '@/lib/types'
 import { formatDateShort } from '@/lib/utils'
 import WeatherWidget from '@/components/WeatherWidget'
+import DayRouteMap from '@/components/DayRouteMap'
 
 interface DaySidebarProps {
   days: TripDay[]
   currentDayNumber: number
   tripSlug: string
+  routes?: DayRoute[]
 }
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
@@ -68,31 +70,24 @@ function buildOsmUrl(day: TripDay): string {
   return `https://www.openstreetmap.org/export/embed.html?bbox=-8%2C30%2C3%2C50&layer=mapnik`
 }
 
-export default function DaySidebar({ days, currentDayNumber, tripSlug }: DaySidebarProps) {
+export default function DaySidebar({ days, currentDayNumber, tripSlug, routes = [] }: DaySidebarProps) {
   const currentDay = days.find((d) => d.day_number === currentDayNumber)
+  // Only build the iframe URL for the fallback inside DayRouteMap
   const mapUrl = currentDay ? buildMapUrl(currentDay) : null
+  const dayRoutes = routes.filter(r => currentDay && r.day_id === currentDay.id)
 
   return (
     <aside className="space-y-7">
 
-      {/* Day map */}
-      {mapUrl && (
+      {/* Day map — shows GPX route when available, falls back to location embed */}
+      {(mapUrl || dayRoutes.length > 0) && currentDay && (
         <div>
           <div className="flex items-center gap-4 mb-3">
-            <p className="label shrink-0">Today&apos;s Location</p>
+            <p className="label shrink-0">{dayRoutes.length > 0 ? "Today's Route" : "Today's Location"}</p>
             <div className="flex-1 border-t border-gray-100" />
           </div>
-          <div className="rounded-sm overflow-hidden border border-gray-100" style={{ height: '190px' }}>
-            <iframe
-              src={mapUrl}
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen={false}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title={`Map for Day ${currentDayNumber}`}
-            />
+          <div className="rounded-sm overflow-hidden" style={{ height: '190px' }}>
+            <DayRouteMap routes={dayRoutes} day={currentDay} />
           </div>
           {currentDay?.location && (
             <p className="text-ink-muted text-center mt-2" style={{ fontSize: '0.68rem', letterSpacing: '0.06em' }}>

@@ -81,6 +81,22 @@ export async function getLocalContactsForDay(tripId: string, location: string) {
   })
 }
 
+// GPX routes for a specific day — used by day page (web) and iOS/iPad app.
+// iOS: query `day_routes` table filtered by day_id; filter traveler_keys client-side by persona.
+export async function getDayRoutes(dayId: string) {
+  const { data, error } = await supabase
+    .from('day_routes')
+    .select('*')
+    .eq('day_id', dayId)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    console.error('[getDayRoutes]', error)
+    return []
+  }
+  return (data || []) as import('./types').DayRoute[]
+}
+
 export async function getHotelForDay(tripId: string, date: string) {
   const { data, error } = await supabase
     .from('reference_items')

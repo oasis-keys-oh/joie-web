@@ -5,6 +5,7 @@ import {
   getDayEvents,
   getHotelForDay,
   getLocalContactsForDay,
+  getDayRoutes,
 } from '@/lib/supabase'
 import DayHeader from '@/components/DayHeader'
 import DaySidebar from '@/components/DaySidebar'
@@ -94,6 +95,7 @@ export default async function DayPage({ params }: DayPageProps) {
 
   const hotel = day.date ? await getHotelForDay(trip.id, day.date) : null
   const localContacts = await getLocalContactsForDay(trip.id, day.location || day.region || '')
+  const routes = await getDayRoutes(day.id)
 
   return (
     <>
@@ -113,6 +115,7 @@ export default async function DayPage({ params }: DayPageProps) {
               days={allDays}
               currentDayNumber={dayNumber}
               tripSlug={params.slug}
+              routes={routes}
             />
           </div>
 
