@@ -8,7 +8,7 @@ import type { DayRoute, TripDay } from '@/lib/types'
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
 
 // Oukala-branded map style (matches TripSidebar)
-const MAP_STYLES: google.maps.MapTypeStyle[] = [
+const MAP_STYLES = [
   { featureType: 'all',                    elementType: 'labels.text.fill',   stylers: [{ color: '#1B2B4B' }] },
   { featureType: 'water',                  elementType: 'geometry',            stylers: [{ color: '#dde9f4' }] },
   { featureType: 'landscape',              elementType: 'geometry',            stylers: [{ color: '#f0ede6' }] },
@@ -68,7 +68,7 @@ function loadGoogleMaps(key: string): Promise<void> {
 
 // ── GPX parser ────────────────────────────────────────────────────────────────
 
-async function fetchAndParseGpx(url: string): Promise<google.maps.LatLngLiteral[]> {
+async function fetchAndParseGpx(url: string): Promise<{ lat: number; lng: number }[]> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`GPX fetch failed: ${res.status}`)
   const text = await res.text()
@@ -171,7 +171,7 @@ export default function DayRouteMap({ routes, day }: Props) {
         if (cancelled || !mapRef.current) return
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const google = (window as any).google as typeof globalThis.google
+        const google = (window as any).google as any
 
         const map = new google.maps.Map(mapRef.current, {
           zoom: 14,
