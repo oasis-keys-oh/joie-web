@@ -298,7 +298,7 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
         {TABS.map(t => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => { setTab(t.id); window.history.replaceState(null, '', `?tab=${t.id}`) }}
             className="px-4 py-3 text-xs uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 -mb-px"
             style={{
               letterSpacing: '0.14em',
