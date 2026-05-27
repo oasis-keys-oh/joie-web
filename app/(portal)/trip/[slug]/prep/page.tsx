@@ -35,12 +35,21 @@ async function getRecommendations(tripId: string) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
+  // Source of truth is read_watch_listen (the admin "📚 Read · Watch · Listen" tab).
+  // The older `recommendations` table is legacy seed data — do not read from it.
   const { data } = await supabase
-    .from('recommendations')
+    .from('read_watch_listen')
     .select('*')
     .eq('trip_id', tripId)
-    .order('type', { ascending: true })
-  return data || []
+    .order('display_order', { ascending: true })
+
+  // Normalise field names to match the Recommendation interface in PrepClient
+  // (read_watch_listen uses author_director/reason; PrepClient expects author/why_relevant)
+  return (data || []).map((item) => ({
+    ...item,
+    author: item.author_director ?? item.author ?? null,
+    why_relevant: item.reason ?? item.why_relevant ?? null,
+  }))
 }
 
 export default async function PrepPage({ params }: PrepPageProps) {

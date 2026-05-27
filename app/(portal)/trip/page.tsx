@@ -1,30 +1,21 @@
-import { createClient } from '@supabase/supabase-js'
-import HomePortal from '@/components/HomePortal'
-
-async function getTrips() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-  const { data } = await supabase
-    .from('trips')
-    .select('id, title, subtitle, start_date, end_date, web_slug')
-    .order('start_date', { ascending: false })
-  return data || []
-}
+import { redirect } from 'next/navigation'
 
 /**
  * /trip — Portal entry gate
  *
- * Shows the persona picker ("Who are you?") and trip listing.
- * This is the intended landing for all client-facing traffic:
- *   oukalajourney.com/trip  →  here
- *   trip.oukalajourney.com  →  also here (via Netlify redirect)
+ * Only one trip exists today (hamid-andalusia-2026), so we redirect
+ * straight to it. The persona picker fires on the trip page itself,
+ * so the traveler-selection flow is unchanged.
  *
- * Future: replace HomePortal with a proper auth gate once
- * Supabase Auth is wired up. Persona selection becomes login.
+ * When multiple trips exist, replace this with the HomePortal:
+ *
+ *   import { createClient } from '@supabase/supabase-js'
+ *   import HomePortal from '@/components/HomePortal'
+ *   export default async function TripPortalEntry() {
+ *     const trips = await getTrips()
+ *     return <HomePortal trips={trips} />
+ *   }
  */
-export default async function TripPortalEntry() {
-  const trips = await getTrips()
-  return <HomePortal trips={trips} />
+export default function TripPortalEntry() {
+  redirect('/trip/hamid-andalusia-2026')
 }

@@ -40,3 +40,12 @@
   from   = "/support"
   to     = "/support.html"
   status = 200
+
+# ── Browser favicon fallback ─────────────────────────────────────────────────
+# Browsers request /favicon.ico automatically even when <link rel="icon"> is
+# set. Serve icon.svg in its place so DevTools doesn't log a 404.
+
+[[redirects]]
+  from   = "/favicon.ico"
+  to     = "/icon.svg"
+  status = 200

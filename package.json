@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "check:images": "node scripts/check-images.mjs"
+    "check:images": "node scripts/check-images.mjs",
+    "check:links": "node scripts/check-rwl-links.mjs"
   },
   "dependencies": {
     "react": "^18.2.0",
