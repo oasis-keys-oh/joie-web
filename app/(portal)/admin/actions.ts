@@ -109,17 +109,21 @@ export async function deleteEventAction(id: string) {
 export async function upsertHotelAction(formData: FormData) {
   const admin = createAdminClient()
   const id = formData.get('id') as string | null
+  const travelerKeys = formData.getAll('traveler_keys') as string[]
   const payload = {
-    trip_id:      formData.get('trip_id') as string,
-    type:         'hotel',
-    name:         formData.get('name') as string,
-    check_in:     formData.get('check_in') as string || null,
-    check_out:    formData.get('check_out') as string || null,
-    address:      formData.get('address') as string || null,
-    phone:        formData.get('phone') as string || null,
-    website:      formData.get('website') as string || null,
-    confirmation: formData.get('confirmation') as string || null,
-    notes:        formData.get('notes') as string || null,
+    trip_id:         formData.get('trip_id') as string,
+    type:            'hotel',
+    name:            formData.get('name') as string,
+    check_in:        formData.get('check_in') as string || null,
+    check_in_time:   formData.get('check_in_time') as string || null,
+    check_out:       formData.get('check_out') as string || null,
+    check_out_time:  formData.get('check_out_time') as string || null,
+    address:         formData.get('address') as string || null,
+    phone:           formData.get('phone') as string || null,
+    website:         formData.get('website') as string || null,
+    confirmation:    formData.get('confirmation') as string || null,
+    notes:           formData.get('notes') as string || null,
+    traveler_keys:   travelerKeys.length > 0 ? travelerKeys : null,
   }
   if (id) {
     sbOk(await admin.from('reference_items').update(payload).eq('id', id))

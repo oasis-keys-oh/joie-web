@@ -50,7 +50,7 @@ interface Traveler { id: string; traveler_key?: string; full_name: string; email
 interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string; traveler_keys?: string[] }
 interface DayRoute { id: string; trip_id: string; day_id: string; name?: string; gpx_url: string; traveler_keys?: string[]; sort_order: number }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
-interface Hotel { id: string; name: string; check_in?: string; check_out?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string }
+interface Hotel { id: string; name: string; check_in?: string; check_out?: string; check_in_time?: string; check_out_time?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string; traveler_keys?: string[] }
 interface Challenge { id: string; day_number?: number; title: string; description: string; transliteration?: string; points: number; challenge_type: string; leg?: string; coordinates?: string }
 interface PackingItem { id: string; item: string; category: string; segment?: string; traveler_key?: string; reason?: string; sort_order?: number }
 interface Rec { id: string; type: string; title: string; author?: string; description?: string; why_relevant?: string; when_to_enjoy?: string; amazon_url?: string; streaming_url?: string; streaming_platform?: string; sort_order?: number }
@@ -184,7 +184,7 @@ function Input({ name, defaultValue, placeholder, type = 'text', required, db }:
         className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
         style={{ background: '#faf8f4' }}
       />
-      {db && <FieldHint value={db} />}
+      <FieldHint value={db ?? name} auto={!db} />
     </>
   )
 }
@@ -206,7 +206,7 @@ function ImageUrlInput({ name, defaultValue, placeholder, folder = 'general', db
         />
         <ImageUploadBtn targetInputName={name} folder={folder} />
       </div>
-      {db && <FieldHint value={db} />}
+      <FieldHint value={db ?? name} auto={!db} />
     </>
   )
 }
@@ -225,7 +225,7 @@ function Textarea({ name, defaultValue, placeholder, rows = 3, required, db }: {
         className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold resize-y"
         style={{ background: '#faf8f4' }}
       />
-      {db && <FieldHint value={db} />}
+      <FieldHint value={db ?? name} auto={!db} />
     </>
   )
 }
@@ -241,7 +241,7 @@ function Select({ name, defaultValue, options, db }: { name: string; defaultValu
       >
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
-      {db && <FieldHint value={db} />}
+      <FieldHint value={db ?? name} auto={!db} />
     </>
   )
 }
@@ -285,9 +285,9 @@ function Card({ children }: { children: React.ReactNode }) {
 // Shown below-right of every editable field so curators know exactly which
 // DB column they're writing to. Pass db="table.column" to Input/Textarea/Select.
 
-function FieldHint({ value }: { value: string }) {
+function FieldHint({ value, auto }: { value: string; auto?: boolean }) {
   return (
-    <p className="text-right text-[10px] font-mono mt-0.5 select-none" style={{ color: '#c8c8c8', letterSpacing: '0.02em' }}>
+    <p className="text-right text-[10px] font-mono mt-0.5 select-none" style={{ color: auto ? '#d97706' : '#c8c8c8', letterSpacing: '0.02em' }}>
       {value}
     </p>
   )
@@ -469,7 +469,7 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       {tab === 'events'        && <EventsTab       trip={trip} days={days} events={events} travelers={travelers} />}
       {tab === 'travelers'     && <TravelersTab    trip={trip} travelers={travelers} />}
       {tab === 'contacts'      && <ContactsTab     trip={trip} contacts={contacts} />}
-      {tab === 'hotels'        && <HotelsTab       trip={trip} hotels={hotels} />}
+      {tab === 'hotels'        && <HotelsTab       trip={trip} hotels={hotels} travelers={travelers} />}
       {tab === 'hunt'          && <HuntTab         trip={trip} challenges={challenges} />}
       {tab === 'haggle'        && <HaggleTab       trip={trip} triggers={haggle} />}
       {tab === 'packing'       && <PackingTab      trip={trip} packing={packing} />}
@@ -1840,7 +1840,16 @@ function ContactRow({ contact, tripId }: { contact: Contact; tripId: string }) {
 
 // ── Hotels Tab ───────────────────────────────────────────────────────────────
 
-function HotelsTab({ trip, hotels }: { trip: Trip; hotels: Hotel[] }) {
+/** Derive day number from a date string relative to trip start (for timezone lookup) */
+function hotelDayNumber(tripStartDate: string, hotelDate?: string): number | null {
+  if (!hotelDate) return null
+  const start = new Date(tripStartDate + 'T00:00:00')
+  const date  = new Date(hotelDate.split('T')[0] + 'T00:00:00')
+  const diff  = Math.round((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  return diff + 1
+}
+
+function HotelsTab({ trip, hotels, travelers }: { trip: Trip; hotels: Hotel[]; travelers: Traveler[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
   const bulk = useBulkSelect(hotels.map(h => h.id))
@@ -1862,18 +1871,35 @@ function HotelsTab({ trip, hotels }: { trip: Trip; hotels: Hotel[] }) {
             className="space-y-3"
           >
             <input type="hidden" name="trip_id" value={trip.id} />
-            <div><Label>Hotel Name *</Label><Input name="name" required placeholder="Villa Sahrai" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Check-in</Label><Input name="check_in" type="date" /></div>
-              <div><Label>Check-out</Label><Input name="check_out" type="date" /></div>
+            <div><Label>Hotel Name *</Label><Input name="name" required placeholder="Villa Sahrai" db="reference_items.name" /></div>
+            <div className="grid grid-cols-4 gap-3">
+              <div><Label>Check-in Date</Label><Input name="check_in" type="date" db="reference_items.check_in" /></div>
+              <div>
+                <Label>Check-in Time (local)</Label>
+                <Input name="check_in_time" placeholder="15:00" db="reference_items.check_in_time" />
+                <p className="text-xs text-ink-muted -mt-1">HH:MM in destination local time</p>
+              </div>
+              <div><Label>Check-out Date</Label><Input name="check_out" type="date" db="reference_items.check_out" /></div>
+              <div>
+                <Label>Check-out Time (local)</Label>
+                <Input name="check_out_time" placeholder="12:00" db="reference_items.check_out_time" />
+                <p className="text-xs text-ink-muted -mt-1">HH:MM in destination local time</p>
+              </div>
             </div>
-            <div><Label>Confirmation #</Label><Input name="confirmation" placeholder="ABC-123456" /></div>
-            <div><Label>Address</Label><Input name="address" /></div>
+            <div><Label>Confirmation #</Label><Input name="confirmation" placeholder="ABC-123456" db="reference_items.confirmation" /></div>
+            <div><Label>Address</Label><Input name="address" db="reference_items.address" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Phone</Label><Input name="phone" /></div>
-              <div><Label>Website</Label><Input name="website" placeholder="https://…" /></div>
+              <div><Label>Phone</Label><Input name="phone" db="reference_items.phone" /></div>
+              <div><Label>Website</Label><Input name="website" placeholder="https://…" db="reference_items.website" /></div>
             </div>
-            <div><Label>Notes</Label><Textarea name="notes" /></div>
+            <div><Label>Notes</Label><Textarea name="notes" db="reference_items.notes" /></div>
+            {travelers.length > 0 && (
+              <div>
+                <Label>Travelers (leave blank = everyone)</Label>
+                <TravelerPicker travelers={travelers} selected={[]} />
+                <FieldHint value="reference_items.traveler_keys" />
+              </div>
+            )}
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
               <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -1885,16 +1911,29 @@ function HotelsTab({ trip, hotels }: { trip: Trip; hotels: Hotel[] }) {
       {hotels.map(h => (
         <div key={h.id} className="flex items-start gap-2">
           <input type="checkbox" checked={bulk.selected.has(h.id)} onChange={() => bulk.toggle(h.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
-          <div className="flex-1 min-w-0"><HotelRow hotel={h} tripId={trip.id} /></div>
+          <div className="flex-1 min-w-0"><HotelRow hotel={h} tripId={trip.id} tripStartDate={trip.start_date} travelers={travelers} /></div>
         </div>
       ))}
     </div>
   )
 }
 
-function HotelRow({ hotel, tripId }: { hotel: Hotel; tripId: string }) {
+function HotelRow({ hotel, tripId, tripStartDate, travelers }: { hotel: Hotel; tripId: string; tripStartDate: string; travelers: Traveler[] }) {
   const [editing, setEditing] = useState(false)
   const [pending, startTransition] = useTransition()
+
+  const checkInDay  = hotelDayNumber(tripStartDate, hotel.check_in)
+  const checkOutDay = hotelDayNumber(tripStartDate, hotel.check_out)
+
+  const checkInMtn  = hotel.check_in_time  && checkInDay  ? toViewerTime(hotel.check_in_time,  checkInDay)  : null
+  const checkOutMtn = hotel.check_out_time && checkOutDay ? toViewerTime(hotel.check_out_time, checkOutDay) : null
+
+  const checkInTz   = checkInDay  ? destTzLabel(checkInDay)  : null
+  const checkOutTz  = checkOutDay ? destTzLabel(checkOutDay) : null
+
+  const assignedNames = travelers
+    .filter(t => hotel.traveler_keys?.includes(t.traveler_key || t.full_name.toLowerCase().split(' ')[0]))
+    .map(t => t.full_name.split(' ')[0])
 
   return (
     <Card>
@@ -1902,14 +1941,43 @@ function HotelRow({ hotel, tripId }: { hotel: Hotel; tripId: string }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-serif font-bold text-navy text-lg">{hotel.name}</p>
-            <div className="flex gap-6 mt-1">
-              {hotel.check_in && <span className="text-xs text-ink-muted">Check-in: <strong className="text-navy">{hotel.check_in}</strong></span>}
-              {hotel.check_out && <span className="text-xs text-ink-muted">Check-out: <strong className="text-navy">{hotel.check_out}</strong></span>}
+            <div className="flex gap-6 mt-1 flex-wrap">
+              {hotel.check_in && (
+                <span className="text-xs text-ink-muted">
+                  Check-in: <strong className="text-navy">{hotel.check_in.split('T')[0]}</strong>
+                  {hotel.check_in_time && (
+                    <span className="ml-1">
+                      <strong className="text-navy">{hotel.check_in_time}</strong>
+                      {checkInTz && <span className="text-ink-muted"> {checkInTz}</span>}
+                      {checkInMtn && <span className="text-gold ml-1">({checkInMtn} MT)</span>}
+                    </span>
+                  )}
+                </span>
+              )}
+              {hotel.check_out && (
+                <span className="text-xs text-ink-muted">
+                  Check-out: <strong className="text-navy">{hotel.check_out.split('T')[0]}</strong>
+                  {hotel.check_out_time && (
+                    <span className="ml-1">
+                      <strong className="text-navy">{hotel.check_out_time}</strong>
+                      {checkOutTz && <span className="text-ink-muted"> {checkOutTz}</span>}
+                      {checkOutMtn && <span className="text-gold ml-1">({checkOutMtn} MT)</span>}
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
             {hotel.confirmation && <p className="text-xs font-mono text-navy mt-1 bg-gray-50 inline-block px-2 py-0.5 rounded-sm">{hotel.confirmation}</p>}
             {hotel.address && <p className="text-xs text-ink-muted mt-1">{hotel.address}</p>}
             {hotel.phone && <p className="text-xs text-ink-muted">{hotel.phone}</p>}
             {hotel.website && <a href={hotel.website} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75">{hotel.website}</a>}
+            {assignedNames.length > 0 && (
+              <div className="flex gap-1 mt-2">
+                {assignedNames.map(n => (
+                  <span key={n} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(27,43,75,0.08)', color: '#1B2B4B' }}>{n}</span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex gap-2 shrink-0">
             <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
@@ -1937,18 +2005,35 @@ function HotelRow({ hotel, tripId }: { hotel: Hotel; tripId: string }) {
         >
           <input type="hidden" name="id" value={hotel.id} />
           <input type="hidden" name="trip_id" value={tripId} />
-          <div><Label>Hotel Name *</Label><Input name="name" defaultValue={hotel.name} required /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Check-in</Label><Input name="check_in" type="date" defaultValue={hotel.check_in?.split('T')[0]} /></div>
-            <div><Label>Check-out</Label><Input name="check_out" type="date" defaultValue={hotel.check_out?.split('T')[0]} /></div>
+          <div><Label>Hotel Name *</Label><Input name="name" defaultValue={hotel.name} required db="reference_items.name" /></div>
+          <div className="grid grid-cols-4 gap-3">
+            <div><Label>Check-in Date</Label><Input name="check_in" type="date" defaultValue={hotel.check_in?.split('T')[0]} db="reference_items.check_in" /></div>
+            <div>
+              <Label>Check-in Time (local)</Label>
+              <Input name="check_in_time" defaultValue={hotel.check_in_time} placeholder="15:00" db="reference_items.check_in_time" />
+              {checkInTz && <p className="text-xs text-ink-muted -mt-1">{checkInTz} local — Mountain shown in card</p>}
+            </div>
+            <div><Label>Check-out Date</Label><Input name="check_out" type="date" defaultValue={hotel.check_out?.split('T')[0]} db="reference_items.check_out" /></div>
+            <div>
+              <Label>Check-out Time (local)</Label>
+              <Input name="check_out_time" defaultValue={hotel.check_out_time} placeholder="12:00" db="reference_items.check_out_time" />
+              {checkOutTz && <p className="text-xs text-ink-muted -mt-1">{checkOutTz} local — Mountain shown in card</p>}
+            </div>
           </div>
-          <div><Label>Confirmation #</Label><Input name="confirmation" defaultValue={hotel.confirmation} /></div>
-          <div><Label>Address</Label><Input name="address" defaultValue={hotel.address} /></div>
+          <div><Label>Confirmation #</Label><Input name="confirmation" defaultValue={hotel.confirmation} db="reference_items.confirmation" /></div>
+          <div><Label>Address</Label><Input name="address" defaultValue={hotel.address} db="reference_items.address" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Phone</Label><Input name="phone" defaultValue={hotel.phone} /></div>
-            <div><Label>Website</Label><Input name="website" defaultValue={hotel.website} /></div>
+            <div><Label>Phone</Label><Input name="phone" defaultValue={hotel.phone} db="reference_items.phone" /></div>
+            <div><Label>Website</Label><Input name="website" defaultValue={hotel.website} db="reference_items.website" /></div>
           </div>
-          <div><Label>Notes</Label><Textarea name="notes" defaultValue={hotel.notes} /></div>
+          <div><Label>Notes</Label><Textarea name="notes" defaultValue={hotel.notes} db="reference_items.notes" /></div>
+          {travelers.length > 0 && (
+            <div>
+              <Label>Travelers (leave blank = everyone)</Label>
+              <TravelerPicker travelers={travelers} selected={hotel.traveler_keys ?? []} />
+              <FieldHint value="reference_items.traveler_keys" />
+            </div>
+          )}
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
             <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -2553,18 +2638,47 @@ function RWLTab({ trip, items }: { trip: Trip; items: RWLItem[] }) {
   )
 }
 
+interface RWLCheckResult {
+  isbn_ok?: boolean | null; isbn_error?: string
+  google_title?: string; google_author?: string; google_cover?: string | null
+  amazon_ok?: boolean | null; cover_ok?: boolean | null
+}
+
 function RWLRow({ item, tripId }: { item: RWLItem; tripId: string }) {
   const [editing, setEditing] = useState(false)
   const [pending, startTransition] = useTransition()
   const [editError, setEditError] = useState<string | null>(null)
+  const [checkResult, setCheckResult] = useState<RWLCheckResult | null>(null)
+  const [checking, setChecking] = useState(false)
 
-  const hasCoverHint = item.isbn || item.tmdb_id
+  async function runCheck() {
+    setChecking(true)
+    const params = new URLSearchParams()
+    if (item.isbn)            params.set('isbn',       item.isbn)
+    if (item.amazon_url)      params.set('amazon_url', item.amazon_url)
+    if (item.cover_image_url) params.set('cover_url',  item.cover_image_url)
+    try {
+      const res = await fetch(`/api/admin/validate-books?${params}`)
+      setCheckResult(await res.json())
+    } catch { /* non-fatal */ }
+    setChecking(false)
+  }
+
   const missingCoverHint = !item.isbn && !item.tmdb_id && !item.cover_image_url
+  const displayCover = checkResult?.google_cover || item.cover_image_url
 
   return (
     <Card>
       {!editing ? (
         <div className="flex items-start justify-between gap-4">
+          {/* Cover thumbnail */}
+          {displayCover && (
+            <div className="shrink-0 w-10 h-14 rounded overflow-hidden border border-gray-100 mt-0.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={displayCover} alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
+
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-xs uppercase tracking-widest px-2 py-0.5 rounded-sm" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C', letterSpacing: '0.1em' }}>{item.type}</span>
@@ -2576,10 +2690,32 @@ function RWLRow({ item, tripId }: { item: RWLItem; tripId: string }) {
             <p className="font-semibold text-navy text-sm">{item.title}</p>
             {item.author_director && <p className="text-xs text-ink-muted">{item.author_director}</p>}
             {item.reason && <p className="text-xs text-ink-muted italic mt-1">{item.reason}</p>}
-            <div className="flex gap-3 mt-1 flex-wrap">
+
+            {/* Inline check result */}
+            {checkResult && (
+              <div className="mt-2 space-y-0.5 text-xs">
+                {checkResult.isbn_ok === true && <span className="text-green-600">✓ ISBN verified — <em>{checkResult.google_title}</em> by {checkResult.google_author}</span>}
+                {checkResult.isbn_ok === false && <span className="text-red-600 block">✗ {checkResult.isbn_error}</span>}
+                {checkResult.amazon_ok === true && <span className="text-green-600 block">✓ Amazon URL resolves</span>}
+                {checkResult.amazon_ok === false && <span className="text-red-600 block">✗ Amazon URL broken</span>}
+                {checkResult.google_cover && !item.cover_image_url && <span className="text-gold block">⚡ Google cover found — run Book Check to auto-save</span>}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-2 flex-wrap items-center">
               {item.amazon_url && <a href={item.amazon_url} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:opacity-75">Amazon →</a>}
               {item.streaming_url && <a href={item.streaming_url} target="_blank" rel="noopener noreferrer" className="text-xs text-ink-muted hover:text-navy">{item.streaming_platform || 'Stream'} →</a>}
               {item.cover_image_url && <a href={item.cover_image_url} target="_blank" rel="noopener noreferrer" className="text-xs text-ink-muted hover:text-navy">Cover →</a>}
+              {(item.isbn || item.amazon_url || item.cover_image_url) && (
+                <button
+                  type="button"
+                  onClick={runCheck}
+                  disabled={checking}
+                  className="text-xs px-2 py-0.5 border border-gray-200 rounded-sm text-ink-muted hover:text-navy hover:border-navy transition-colors disabled:opacity-40"
+                >
+                  {checking ? '…' : '🔍 Check'}
+                </button>
+              )}
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -3557,6 +3693,46 @@ function BookCheckTab({ trip }: { trip: Trip }) {
     r.status === 'done' && r.isbn_ok !== false && r.amazon_ok !== false && r.cover_ok !== false
   ).length
 
+  async function checkOneItem(item: BookValidationItem): Promise<Partial<BookResult>> {
+    const params = new URLSearchParams()
+    if (item.isbn)             params.set('isbn',       item.isbn)
+    if (item.amazon_url)       params.set('amazon_url', item.amazon_url)
+    if (item.cover_image_url)  params.set('cover_url',  item.cover_image_url)
+    const res = await fetch(`/api/admin/validate-books?${params}`)
+    const data = await res.json() as {
+      isbn_ok?: boolean | null; isbn_error?: string
+      google_title?: string; google_author?: string; google_cover?: string | null
+      amazon_ok?: boolean | null; amazon_status?: number
+      cover_ok?: boolean | null; cover_status?: number
+    }
+    const fixes: { cover_image_url?: string } = {}
+    if (data.google_cover && (!item.cover_image_url || data.cover_ok === false)) {
+      fixes.cover_image_url = data.google_cover
+    }
+    let fixedFields: string[] = []
+    if (Object.keys(fixes).length > 0) {
+      try { fixedFields = (await autoFixBookAction(item.id, fixes)).fields } catch { /* non-fatal */ }
+    }
+    return {
+      status: 'done',
+      isbn_ok: data.isbn_ok, isbn_error: data.isbn_error,
+      google_title: data.google_title, google_author: data.google_author, google_cover: data.google_cover,
+      amazon_ok: data.amazon_ok, amazon_status: data.amazon_status,
+      cover_ok: data.cover_ok, cover_status: data.cover_status,
+      fixed: fixedFields,
+    }
+  }
+
+  async function reCheckOne(item: BookValidationItem) {
+    setResults(prev => prev.map(r => r.item.id === item.id ? { ...r, status: 'checking' } : r))
+    try {
+      const patch = await checkOneItem(item)
+      setResults(prev => prev.map(r => r.item.id === item.id ? { ...r, ...patch } : r))
+    } catch {
+      setResults(prev => prev.map(r => r.item.id === item.id ? { ...r, status: 'error' } : r))
+    }
+  }
+
   async function runCheck() {
     setRunning(true)
     setDone(false)
@@ -3582,53 +3758,11 @@ function BookCheckTab({ trip }: { trip: Trip }) {
 
     for (const item of items) {
       setResults(prev => prev.map(r => r.item.id === item.id ? { ...r, status: 'checking' } : r))
-
       try {
-        const params = new URLSearchParams()
-        if (item.isbn)          params.set('isbn',       item.isbn)
-        if (item.amazon_url)    params.set('amazon_url', item.amazon_url)
-        if (item.cover_image_url) params.set('cover_url', item.cover_image_url)
-
-        const res = await fetch(`/api/admin/validate-books?${params}`)
-        const data = await res.json() as {
-          isbn_ok?: boolean | null; isbn_error?: string
-          google_title?: string; google_author?: string; google_cover?: string | null
-          amazon_ok?: boolean | null; amazon_status?: number
-          cover_ok?: boolean | null; cover_status?: number
-        }
-
-        // Auto-fix: if cover is missing or broken but Google Books has one, save it
-        const fixes: { cover_image_url?: string } = {}
-        if (data.google_cover && (!item.cover_image_url || data.cover_ok === false)) {
-          fixes.cover_image_url = data.google_cover
-        }
-
-        let fixedFields: string[] = []
-        if (Object.keys(fixes).length > 0) {
-          try {
-            const fixResult = await autoFixBookAction(item.id, fixes)
-            fixedFields = fixResult.fields
-          } catch {
-            // non-fatal — report only
-          }
-        }
-
-        setResults(prev => prev.map(r => r.item.id !== item.id ? r : {
-          ...r,
-          status:       'done',
-          isbn_ok:      data.isbn_ok,
-          isbn_error:   data.isbn_error,
-          google_title:  data.google_title,
-          google_author: data.google_author,
-          google_cover:  data.google_cover,
-          amazon_ok:    data.amazon_ok,
-          amazon_status: data.amazon_status,
-          cover_ok:     data.cover_ok,
-          cover_status:  data.cover_status,
-          fixed:        fixedFields,
-        }))
+        const patch = await checkOneItem(item)
+        setResults(prev => prev.map(r => r.item.id === item.id ? { ...r, ...patch } : r))
       } catch {
-        setResults(prev => prev.map(r => r.item.id !== item.id ? r : { ...r, status: 'error' }))
+        setResults(prev => prev.map(r => r.item.id === item.id ? { ...r, status: 'error' } : r))
       }
     }
 
@@ -3773,6 +3907,19 @@ function BookCheckTab({ trip }: { trip: Trip }) {
                   {!item.amazon_url && status === 'done' && (
                     <span className="text-gray-300">No Amazon URL</span>
                   )}
+                </div>
+
+                {/* Per-row re-check */}
+                <div className="shrink-0">
+                  <button
+                    type="button"
+                    disabled={status === 'checking' || running}
+                    onClick={() => reCheckOne(item)}
+                    title="Re-check this item only"
+                    className="text-xs px-2 py-1 border border-gray-200 rounded-sm text-ink-muted hover:text-navy hover:border-navy transition-colors disabled:opacity-30"
+                  >
+                    {status === 'checking' ? '…' : '↺'}
+                  </button>
                 </div>
               </div>
             </div>

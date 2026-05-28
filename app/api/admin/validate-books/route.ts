@@ -32,38 +32,54 @@ async function headUrl(url: string): Promise<{ ok: boolean; status: number; fina
   }
 }
 
+/** Convert ISBN-13 (978-prefix) to ISBN-10. Returns null if not applicable. */
+function isbn13to10(isbn13: string): string | null {
+  if (isbn13.length !== 13 || !isbn13.startsWith('978')) return null
+  const nine = isbn13.slice(3, 12)
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += parseInt(nine[i]) * (10 - i)
+  const check = 11 - (sum % 11)
+  const checkChar = check === 10 ? 'X' : check === 11 ? '0' : String(check)
+  return nine + checkChar
+}
+
+async function queryGoogleBooksApi(isbnQuery: string): Promise<{
+  title: string | null; authors: string[]; cover: string | null
+} | null> {
+  const controller = new AbortController()
+  setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const res = await fetch(
+    `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbnQuery}&maxResults=1`,
+    { signal: controller.signal }
+  )
+  if (!res.ok) return null
+  const data = await res.json() as {
+    totalItems: number
+    items?: Array<{
+      volumeInfo: {
+        title?: string
+        authors?: string[]
+        imageLinks?: { thumbnail?: string; smallThumbnail?: string }
+      }
+    }>
+  }
+  if (!data.items?.length) return null
+  const vol = data.items[0].volumeInfo
+  const rawCover = vol.imageLinks?.thumbnail || vol.imageLinks?.smallThumbnail || null
+  const cover = rawCover
+    ? rawCover.replace('http://', 'https://').replace('zoom=1', 'zoom=3')
+    : null
+  return { title: vol.title ?? null, authors: vol.authors ?? [], cover }
+}
+
 async function fetchGoogleBooks(isbn: string) {
   try {
-    const controller = new AbortController()
-    setTimeout(() => controller.abort(), TIMEOUT_MS)
-    const res = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`,
-      { signal: controller.signal }
-    )
-    if (!res.ok) return null
-    const data = await res.json() as {
-      totalItems: number
-      items?: Array<{
-        volumeInfo: {
-          title?: string
-          authors?: string[]
-          imageLinks?: { thumbnail?: string; smallThumbnail?: string }
-          industryIdentifiers?: Array<{ type: string; identifier: string }>
-        }
-      }>
-    }
-    if (!data.items?.length) return null
-    const vol = data.items[0].volumeInfo
-    // Upgrade to HTTPS and higher resolution
-    const rawCover = vol.imageLinks?.thumbnail || vol.imageLinks?.smallThumbnail || null
-    const cover = rawCover
-      ? rawCover.replace('http://', 'https://').replace('zoom=1', 'zoom=3')
-      : null
-    return {
-      title: vol.title ?? null,
-      authors: vol.authors ?? [],
-      cover,
-    }
+    // Try ISBN-13 first; fall back to ISBN-10 (Google Books sometimes indexes only one)
+    const result = await queryGoogleBooksApi(isbn)
+    if (result) return result
+    const isbn10 = isbn13to10(isbn)
+    if (isbn10) return await queryGoogleBooksApi(isbn10)
+    return null
   } catch {
     return null
   }
