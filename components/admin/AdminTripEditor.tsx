@@ -17,6 +17,11 @@ import {
   upsertJourneyFactAction, deleteJourneyFactAction,
   upsertRouteAction, deleteRouteAction,
   bulkDeleteAction,
+  getValidationUrlsAction,
+  getBooksForValidationAction,
+  autoFixBookAction,
+  type ValidationItem,
+  type BookValidationItem,
 } from '@/app/(portal)/admin/actions'
 import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 import ImageUploadBtn from '@/components/admin/ImageUploadBtn'
@@ -84,12 +89,14 @@ const TABS = [
   { id: 'hunt',         label: 'Hunt' },
   { id: 'haggle',       label: '🛒 Haggle' },
   { id: 'packing',      label: 'Packing' },
-  { id: 'recs',         label: 'Recommendations' },
+  // Recommendations tab retired — read_watch_listen is the source of truth
   { id: 'rwl',          label: '📚 Read · Watch · Listen' },
   { id: 'pretripdrops', label: 'Pre-Trip Drops' },
   { id: 'facts',        label: '💡 Journey Facts' },
   { id: 'feedback',     label: 'Feedback' },
   { id: 'health',       label: '🩺 Health' },
+  { id: 'books',        label: '📖 Book Check' },
+  { id: 'validate',     label: '🔍 Validate' },
 ]
 
 const ROLE_OPTIONS = ['driver', 'guide', 'fixer', 'restaurant_contact', 'other']
@@ -163,67 +170,79 @@ function Label({ children }: { children: React.ReactNode }) {
   return <span className="block text-xs uppercase tracking-widest text-ink-muted mb-1.5" style={{ letterSpacing: '0.14em' }}>{children}</span>
 }
 
-function Input({ name, defaultValue, placeholder, type = 'text', required }: {
-  name: string; defaultValue?: string; placeholder?: string; type?: string; required?: boolean
+function Input({ name, defaultValue, placeholder, type = 'text', required, db }: {
+  name: string; defaultValue?: string; placeholder?: string; type?: string; required?: boolean; db?: string
 }) {
   return (
-    <input
-      name={name}
-      type={type}
-      defaultValue={defaultValue || ''}
-      placeholder={placeholder}
-      required={required}
-      className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
-      style={{ background: '#faf8f4' }}
-    />
+    <>
+      <input
+        name={name}
+        type={type}
+        defaultValue={defaultValue || ''}
+        placeholder={placeholder}
+        required={required}
+        className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+        style={{ background: '#faf8f4' }}
+      />
+      {db && <FieldHint value={db} />}
+    </>
   )
 }
 
 /** URL input paired with an Upload button. Use wherever an image URL is expected. */
-function ImageUrlInput({ name, defaultValue, placeholder, folder = 'general' }: {
-  name: string; defaultValue?: string; placeholder?: string; folder?: string
+function ImageUrlInput({ name, defaultValue, placeholder, folder = 'general', db }: {
+  name: string; defaultValue?: string; placeholder?: string; folder?: string; db?: string
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <input
+    <>
+      <div className="flex items-center gap-2">
+        <input
+          name={name}
+          type="url"
+          defaultValue={defaultValue || ''}
+          placeholder={placeholder || 'https://… or upload →'}
+          className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+          style={{ background: '#faf8f4' }}
+        />
+        <ImageUploadBtn targetInputName={name} folder={folder} />
+      </div>
+      {db && <FieldHint value={db} />}
+    </>
+  )
+}
+
+function Textarea({ name, defaultValue, placeholder, rows = 3, required, db }: {
+  name: string; defaultValue?: string; placeholder?: string; rows?: number; required?: boolean; db?: string
+}) {
+  return (
+    <>
+      <textarea
         name={name}
-        type="url"
         defaultValue={defaultValue || ''}
-        placeholder={placeholder || 'https://… or upload →'}
-        className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+        placeholder={placeholder}
+        rows={rows}
+        required={required}
+        className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold resize-y"
         style={{ background: '#faf8f4' }}
       />
-      <ImageUploadBtn targetInputName={name} folder={folder} />
-    </div>
+      {db && <FieldHint value={db} />}
+    </>
   )
 }
 
-function Textarea({ name, defaultValue, placeholder, rows = 3, required }: {
-  name: string; defaultValue?: string; placeholder?: string; rows?: number; required?: boolean
-}) {
+function Select({ name, defaultValue, options, db }: { name: string; defaultValue?: string; options: string[]; db?: string }) {
   return (
-    <textarea
-      name={name}
-      defaultValue={defaultValue || ''}
-      placeholder={placeholder}
-      rows={rows}
-      required={required}
-      className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold resize-y"
-      style={{ background: '#faf8f4' }}
-    />
-  )
-}
-
-function Select({ name, defaultValue, options }: { name: string; defaultValue?: string; options: string[] }) {
-  return (
-    <select
-      name={name}
-      defaultValue={defaultValue || options[0]}
-      className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
-      style={{ background: '#faf8f4' }}
-    >
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <>
+      <select
+        name={name}
+        defaultValue={defaultValue || options[0]}
+        className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+        style={{ background: '#faf8f4' }}
+      >
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+      {db && <FieldHint value={db} />}
+    </>
   )
 }
 
@@ -258,6 +277,139 @@ function Card({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-white border border-gray-100 rounded-sm px-6 py-5 space-y-4">
       {children}
+    </div>
+  )
+}
+
+// ── DB field hint ─────────────────────────────────────────────────────────────
+// Shown below-right of every editable field so curators know exactly which
+// DB column they're writing to. Pass db="table.column" to Input/Textarea/Select.
+
+function FieldHint({ value }: { value: string }) {
+  return (
+    <p className="text-right text-[10px] font-mono mt-0.5 select-none" style={{ color: '#c8c8c8', letterSpacing: '0.02em' }}>
+      {value}
+    </p>
+  )
+}
+
+// ── Timezone utilities ────────────────────────────────────────────────────────
+// Morocco (days 1–6): Africa/Casablanca, UTC+1 (no DST in summer)
+// France / Paris (days 7–15): Europe/Paris, UTC+2 (CEST in summer)
+// Default curator viewer timezone: Mountain Daylight Time (UTC-6)
+
+function destTzLabel(dayNumber: number): string {
+  return dayNumber <= 6 ? 'Morocco' : 'France'
+}
+
+/**
+ * Convert a destination time string ("HH:MM") to viewer local time.
+ * viewerOffsetHours defaults to -6 (Mountain Daylight Time, MDT).
+ */
+function toViewerTime(timeStr: string, dayNumber: number, viewerOffsetHours = -6): string | null {
+  const match = timeStr?.match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return null
+  const h = parseInt(match[1], 10)
+  const m = parseInt(match[2], 10)
+  const destOffset = dayNumber <= 6 ? 1 : 2   // UTC+1 Morocco, UTC+2 France (summer)
+  const vh = ((h + viewerOffsetHours - destOffset) % 24 + 24) % 24
+  const ampm = vh >= 12 ? 'PM' : 'AM'
+  const h12 = vh === 0 ? 12 : vh > 12 ? vh - 12 : vh
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
+// ── Place lookup (Google Places API) ─────────────────────────────────────────
+
+interface PlaceResult {
+  place_id: string
+  name: string
+  address: string
+  phone: string | null
+  website: string | null
+  lat: number
+  lng: number
+}
+
+/**
+ * Inline place search button + results dropdown.
+ * titleQuery: the current value of the event title field (used as search term).
+ * city: derived from the selected day's location field (context for the search).
+ * onSelect: called when curator picks a result — parent fills in form fields.
+ */
+function PlacePicker({ titleQuery, city, onSelect }: {
+  titleQuery: string
+  city: string
+  onSelect: (r: PlaceResult) => void
+}) {
+  const [results, setResults]   = useState<PlaceResult[]>([])
+  const [loading, setLoading]   = useState(false)
+  const [open, setOpen]         = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
+
+  async function lookup() {
+    if (!titleQuery.trim()) return
+    setLoading(true)
+    setOpen(false)
+    setApiError(null)
+    try {
+      const params = new URLSearchParams({ query: titleQuery, city })
+      const res  = await fetch(`/api/admin/lookup-place?${params}`)
+      const data = await res.json() as { results: PlaceResult[]; error?: string }
+      if (data.error) { setApiError(data.error); return }
+      setResults(data.results || [])
+      setOpen(true)
+      if (!data.results?.length) setApiError('No results found — try a more specific name or different city.')
+    } catch {
+      setApiError('Lookup failed — check your network connection.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onClick={lookup}
+        disabled={loading || !titleQuery.trim()}
+        title={city ? `Search Google Places for "${titleQuery}" in ${city}` : `Search Google Places for "${titleQuery}"`}
+        className="text-xs px-3 py-1.5 rounded-sm border transition-colors disabled:opacity-40"
+        style={{ borderColor: '#e5e7eb', color: '#1B2B4B', background: 'white' }}
+        onMouseEnter={e => (e.currentTarget.style.borderColor = '#1B2B4B')}
+        onMouseLeave={e => (e.currentTarget.style.borderColor = '#e5e7eb')}
+      >
+        {loading ? '⏳ Searching…' : '🔍 Look up place'}
+      </button>
+      {apiError && (
+        <p className="text-xs text-amber-600 mt-1 max-w-xs">{apiError}</p>
+      )}
+      {open && results.length > 0 && (
+        <>
+          {/* Click-away overlay */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-sm shadow-xl"
+               style={{ minWidth: '340px', maxWidth: '480px' }}>
+            <p className="px-3 py-2 text-[10px] uppercase tracking-widest text-ink-muted border-b border-gray-100"
+               style={{ letterSpacing: '0.14em' }}>
+              Select to fill fields — all editable after
+              {city && <span className="ml-1 font-medium text-navy">· {city}</span>}
+            </p>
+            {results.map(r => (
+              <button
+                key={r.place_id}
+                type="button"
+                onClick={() => { onSelect(r); setOpen(false) }}
+                className="w-full text-left px-3 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors"
+              >
+                <p className="text-sm font-semibold text-navy">{r.name}</p>
+                <p className="text-xs text-ink-muted mt-0.5">{r.address}</p>
+                {r.phone   && <p className="text-xs text-ink-muted">{r.phone}</p>}
+                {r.website && <p className="text-xs text-gold truncate">{r.website}</p>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -321,13 +473,15 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       {tab === 'hunt'          && <HuntTab         trip={trip} challenges={challenges} />}
       {tab === 'haggle'        && <HaggleTab       trip={trip} triggers={haggle} />}
       {tab === 'packing'       && <PackingTab      trip={trip} packing={packing} />}
-      {tab === 'recs'          && <RecsTab         trip={trip} recs={recs} />}
+      {/* RecsTab retired — RWL is the source of truth; prep page reads from read_watch_listen */}
       {tab === 'rwl'           && <RWLTab          trip={trip} items={rwl} />}
       {tab === 'pretripdrops'  && <PreTripDropsTab trip={trip} drops={drops} />}
       {tab === 'facts'         && <JourneyFactsTab trip={trip} facts={facts} />}
       {tab === 'feedback'      && <FeedbackTab     days={days} feedback={feedback} />}
       {tab === 'health'        && <ImageHealthTab  days={days} />}
+      {tab === 'books'         && <BookCheckTab    trip={trip} />}
       {tab === 'settings'      && <SettingsTab     trip={trip} />}
+      {tab === 'validate'      && <ValidateTab     trip={trip} />}
     </div>
   )
 }
@@ -654,6 +808,7 @@ function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; t
                     className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
                     style={{ background: '#faf8f4' }}
                   />
+                  <FieldHint value="trip_days.title" />
                   <button
                     type="button"
                     onClick={() => {
@@ -670,7 +825,7 @@ function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; t
                 {/* Morning Brief */}
                 <div>
                   <Label>Morning Brief</Label>
-                  <Textarea name="morning_brief" defaultValue={day.morning_brief} placeholder="What travelers need to know this morning…" rows={4} />
+                  <Textarea name="morning_brief" defaultValue={day.morning_brief} placeholder="What travelers need to know this morning…" rows={4} db="trip_days.morning_brief" />
                   <button
                     type="button"
                     onClick={() => {
@@ -687,7 +842,7 @@ function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; t
                 {/* WOW Moment */}
                 <div>
                   <Label>WOW Moment</Label>
-                  <Textarea name="wow_moment" defaultValue={day.wow_moment} placeholder="The headline moment for this day…" rows={2} />
+                  <Textarea name="wow_moment" defaultValue={day.wow_moment} placeholder="The headline moment for this day…" rows={2} db="trip_days.wow_moment" />
                   <button
                     type="button"
                     onClick={() => {
@@ -1151,6 +1306,21 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
 function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[]; events: Event[]; travelers: Traveler[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
+  const [addError, setAddError] = useState<string | null>(null)
+  // Controlled state for place-lookup-fillable fields in the add form
+  const [addDayId,      setAddDayId]      = useState(days[0]?.id ?? '')
+  const [addTitle,      setAddTitle]      = useState('')
+  const [addAddress,    setAddAddress]    = useState('')
+  const [addPhone,      setAddPhone]      = useState('')
+  const [addBookingUrl, setAddBookingUrl] = useState('')
+
+  function resetAddForm() {
+    setAddTitle(''); setAddAddress(''); setAddPhone(''); setAddBookingUrl('')
+    setAddDayId(days[0]?.id ?? '')
+  }
+
+  const addCityContext = days.find(d => d.id === addDayId)?.location
+    || days.find(d => d.id === addDayId)?.region || ''
 
   // Group events by day
   const byDay = days.map(d => ({
@@ -1163,7 +1333,7 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={() => setAdding(true)}
+          onClick={() => { setAdding(true); setAddError(null) }}
           className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85"
           style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
         >
@@ -1174,12 +1344,23 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
       {adding && (
         <Card>
           <SectionHeader title="New Event" />
+          {addError && (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-xs text-red-700 -mt-2 mb-2">
+              <strong>Save failed:</strong> {addError}
+            </div>
+          )}
           <form
             action={async (fd) => {
-              fd.set('trip_id', trip.id)
-              await upsertEventAction(fd)
-              setAdding(false)
-              window.location.reload()
+              try {
+                setAddError(null)
+                fd.set('trip_id', trip.id)
+                await upsertEventAction(fd)
+                setAdding(false)
+                resetAddForm()
+                window.location.reload()
+              } catch (err) {
+                setAddError(err instanceof Error ? err.message : 'Unknown error — check the console.')
+              }
             }}
             className="space-y-4"
           >
@@ -1187,26 +1368,111 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Day</Label>
-                <select name="day_id" required className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
+                <select
+                  name="day_id"
+                  required
+                  value={addDayId}
+                  onChange={e => setAddDayId(e.target.value)}
+                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none"
+                  style={{ background: '#faf8f4' }}
+                >
                   {days.map(d => <option key={d.id} value={d.id}>Day {d.day_number} — {d.title}</option>)}
                 </select>
+                <FieldHint value="events.day_id" />
               </div>
               <div>
                 <Label>Type</Label>
-                <Select name="type" options={EVENT_TYPES} />
+                <Select name="type" options={EVENT_TYPES} db="events.type" />
               </div>
             </div>
-            <div><Label>Title *</Label><Input name="title" required placeholder="e.g. Dinner at Le Cabestan" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Time</Label><Input name="time_start" placeholder="19:30" /></div>
-              <div><Label>Confirmation #</Label><Input name="confirmation" placeholder="ABC123" /></div>
+
+            {/* Title + place lookup */}
+            <div>
+              <Label>Title *</Label>
+              <div className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <input
+                    name="title"
+                    type="text"
+                    required
+                    value={addTitle}
+                    onChange={e => setAddTitle(e.target.value)}
+                    placeholder="e.g. Dinarjat Restaurant"
+                    className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                    style={{ background: '#faf8f4' }}
+                  />
+                  <FieldHint value="events.title" />
+                </div>
+                <div className="pt-0.5">
+                  <PlacePicker
+                    titleQuery={addTitle}
+                    city={addCityContext}
+                    onSelect={r => {
+                      setAddTitle(r.name)
+                      setAddAddress(r.address)
+                      if (r.phone)   setAddPhone(r.phone)
+                      if (r.website) setAddBookingUrl(r.website)
+                    }}
+                  />
+                </div>
+              </div>
+              {addCityContext && (
+                <p className="text-xs text-ink-muted mt-1">
+                  City context: <strong>{addCityContext}</strong> — used to narrow the place search
+                </p>
+              )}
             </div>
-            <div><Label>Address</Label><Input name="address" placeholder="Full address" /></div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Phone</Label><Input name="phone" placeholder="+212 522-000-000" /></div>
-              <div><Label>Booking URL</Label><Input name="booking_url" placeholder="https://…" /></div>
+              <div>
+                <Label>Time (HH:MM — local destination time)</Label>
+                <Input name="time_start" placeholder="19:30" db="events.time_start" />
+                <p className="text-xs text-ink-muted mt-0.5">Morocco or France local time. Mountain shown in card view.</p>
+              </div>
+              <div><Label>Confirmation #</Label><Input name="confirmation" placeholder="ABC123" db="events.confirmation" /></div>
             </div>
-            <div><Label>Notes</Label><Textarea name="notes" placeholder="Any important notes for travelers…" /></div>
+            <div>
+              <Label>Address</Label>
+              <input
+                name="address"
+                type="text"
+                value={addAddress}
+                onChange={e => setAddAddress(e.target.value)}
+                placeholder="Full address"
+                className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                style={{ background: '#faf8f4' }}
+              />
+              <FieldHint value="events.address" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Phone</Label>
+                <input
+                  name="phone"
+                  type="text"
+                  value={addPhone}
+                  onChange={e => setAddPhone(e.target.value)}
+                  placeholder="+212 522-000-000"
+                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                  style={{ background: '#faf8f4' }}
+                />
+                <FieldHint value="events.phone" />
+              </div>
+              <div>
+                <Label>Booking URL</Label>
+                <input
+                  name="booking_url"
+                  type="text"
+                  value={addBookingUrl}
+                  onChange={e => setAddBookingUrl(e.target.value)}
+                  placeholder="https://…"
+                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                  style={{ background: '#faf8f4' }}
+                />
+                <FieldHint value="events.booking_url" />
+              </div>
+            </div>
+            <div><Label>Notes</Label><Textarea name="notes" placeholder="Any important notes for travelers…" db="events.notes" /></div>
             {travelers.length > 0 && (
               <div>
                 <Label>Travelers (leave blank = everyone)</Label>
@@ -1215,7 +1481,7 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
             )}
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
-              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
+              <button type="button" onClick={() => { setAdding(false); resetAddForm() }} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
             </div>
           </form>
         </Card>
@@ -1247,6 +1513,17 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
 function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: string; days: Day[]; travelers: Traveler[] }) {
   const [editing, setEditing] = useState(false)
   const [pending, startTransition] = useTransition()
+  const [editError, setEditError] = useState<string | null>(null)
+  const day = days.find(d => d.id === event.day_id)
+  const dayNumber = day?.day_number ?? 0
+  // Controlled state for place-lookup-fillable fields in the edit form
+  const [editTitle,      setEditTitle]      = useState(event.title)
+  const [editAddress,    setEditAddress]    = useState(event.address  ?? '')
+  const [editPhone,      setEditPhone]      = useState(event.phone    ?? '')
+  const [editBookingUrl, setEditBookingUrl] = useState(event.booking_url ?? '')
+  const [editDayId,      setEditDayId]      = useState(event.day_id)
+  const editCity = days.find(d => d.id === editDayId)?.location
+    || days.find(d => d.id === editDayId)?.region || ''
 
   return (
     <Card>
@@ -1255,7 +1532,20 @@ function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: st
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs uppercase tracking-widest px-2 py-0.5 rounded-sm" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C', letterSpacing: '0.1em' }}>{event.type}</span>
-              {event.time_start && <span className="text-xs text-ink-muted">{event.time_start}</span>}
+              {event.time_start && (() => {
+                const mt = toViewerTime(event.time_start, dayNumber)
+                return (
+                  <span className="text-xs text-ink-muted flex items-center gap-1.5">
+                    <span className="font-medium text-navy">{event.time_start}</span>
+                    <span className="text-gray-300">·</span>
+                    <span>{destTzLabel(dayNumber)}</span>
+                    {mt && <>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-gold">{mt} MT</span>
+                    </>}
+                  </span>
+                )
+              })()}
               {event.confirmation && <span className="text-xs font-mono text-navy bg-gray-50 px-2 py-0.5 rounded-sm">{event.confirmation}</span>}
             </div>
             <p className="font-semibold text-navy text-sm">{event.title}</p>
@@ -1286,36 +1576,126 @@ function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: st
       ) : (
         <form
           action={async (fd) => {
-            fd.set('id', event.id)
-            fd.set('trip_id', tripId)
-            await upsertEventAction(fd)
-            setEditing(false)
-            window.location.reload()
+            try {
+              setEditError(null)
+              fd.set('id', event.id)
+              fd.set('trip_id', tripId)
+              await upsertEventAction(fd)
+              setEditing(false)
+              window.location.reload()
+            } catch (err) {
+              setEditError(err instanceof Error ? err.message : 'Unknown error — check the console.')
+            }
           }}
           className="space-y-3"
         >
+          {editError && (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-xs text-red-700">
+              <strong>Save failed:</strong> {editError}
+            </div>
+          )}
           <input type="hidden" name="id" value={event.id} />
           <input type="hidden" name="trip_id" value={tripId} />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Day</Label>
-              <select name="day_id" defaultValue={event.day_id} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
+              <select
+                name="day_id"
+                value={editDayId}
+                onChange={e => setEditDayId(e.target.value)}
+                className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none"
+                style={{ background: '#faf8f4' }}
+              >
                 {days.map(d => <option key={d.id} value={d.id}>Day {d.day_number} — {d.title}</option>)}
               </select>
+              <FieldHint value="events.day_id" />
             </div>
-            <div><Label>Type</Label><Select name="type" defaultValue={event.type} options={EVENT_TYPES} /></div>
+            <div><Label>Type</Label><Select name="type" defaultValue={event.type} options={EVENT_TYPES} db="events.type" /></div>
           </div>
-          <div><Label>Title *</Label><Input name="title" defaultValue={event.title} required /></div>
+
+          {/* Title + place lookup */}
+          <div>
+            <Label>Title *</Label>
+            <div className="flex gap-2 items-start">
+              <div className="flex-1">
+                <input
+                  name="title"
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                  style={{ background: '#faf8f4' }}
+                />
+                <FieldHint value="events.title" />
+              </div>
+              <div className="pt-0.5">
+                <PlacePicker
+                  titleQuery={editTitle}
+                  city={editCity}
+                  onSelect={r => {
+                    setEditTitle(r.name)
+                    setEditAddress(r.address)
+                    if (r.phone)   setEditPhone(r.phone)
+                    if (r.website) setEditBookingUrl(r.website)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Time</Label><Input name="time_start" defaultValue={event.time_start} /></div>
-            <div><Label>Confirmation #</Label><Input name="confirmation" defaultValue={event.confirmation} /></div>
+            <div>
+              <Label>Time (HH:MM local destination time)</Label>
+              <Input name="time_start" defaultValue={event.time_start} db="events.time_start" />
+              {event.time_start && (() => {
+                const mt = toViewerTime(event.time_start, dayNumber)
+                return mt ? (
+                  <p className="text-xs text-gold mt-0.5">{destTzLabel(dayNumber)} {event.time_start} = {mt} MT</p>
+                ) : null
+              })()}
+            </div>
+            <div><Label>Confirmation #</Label><Input name="confirmation" defaultValue={event.confirmation} db="events.confirmation" /></div>
           </div>
-          <div><Label>Address</Label><Input name="address" defaultValue={event.address} /></div>
+          <div>
+            <Label>Address</Label>
+            <input
+              name="address"
+              type="text"
+              value={editAddress}
+              onChange={e => setEditAddress(e.target.value)}
+              className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+              style={{ background: '#faf8f4' }}
+            />
+            <FieldHint value="events.address" />
+          </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Phone</Label><Input name="phone" defaultValue={event.phone} /></div>
-            <div><Label>Booking URL</Label><Input name="booking_url" defaultValue={event.booking_url} /></div>
+            <div>
+              <Label>Phone</Label>
+              <input
+                name="phone"
+                type="text"
+                value={editPhone}
+                onChange={e => setEditPhone(e.target.value)}
+                className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                style={{ background: '#faf8f4' }}
+              />
+              <FieldHint value="events.phone" />
+            </div>
+            <div>
+              <Label>Booking URL</Label>
+              <input
+                name="booking_url"
+                type="text"
+                value={editBookingUrl}
+                onChange={e => setEditBookingUrl(e.target.value)}
+                className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                style={{ background: '#faf8f4' }}
+              />
+              <FieldHint value="events.booking_url" />
+            </div>
           </div>
-          <div><Label>Notes</Label><Textarea name="notes" defaultValue={event.notes} /></div>
+          <div><Label>Notes</Label><Textarea name="notes" defaultValue={event.notes} db="events.notes" /></div>
           {travelers.length > 0 && (
             <div>
               <Label>Travelers (leave blank = everyone)</Label>
@@ -2061,6 +2441,7 @@ const RWL_STREAMING_PLATFORMS = ['', 'Netflix', 'Apple TV+', 'Amazon Prime', 'Sp
 function RWLTab({ trip, items }: { trip: Trip; items: RWLItem[] }) {
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
+  const [addError, setAddError] = useState<string | null>(null)
   const bulk = useBulkSelect(items.map(i => i.id))
 
   const byType = items.reduce((acc, r) => {
@@ -2090,49 +2471,60 @@ function RWLTab({ trip, items }: { trip: Trip; items: RWLItem[] }) {
       {adding && (
         <Card>
           <SectionHeader title="New Read · Watch · Listen Item" />
+          {addError && (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-xs text-red-700 -mt-2 mb-2">
+              <strong>Save failed:</strong> {addError}
+            </div>
+          )}
           <form
             action={async (fd) => {
-              fd.set('trip_id', trip.id)
-              await upsertRWLAction(fd)
-              setAdding(false)
-              window.location.reload()
+              try {
+                setAddError(null)
+                fd.set('trip_id', trip.id)
+                await upsertRWLAction(fd)
+                setAdding(false)
+                window.location.reload()
+              } catch (err) {
+                setAddError(err instanceof Error ? err.message : 'Unknown error — check the console.')
+              }
             }}
             className="space-y-3"
           >
             <input type="hidden" name="trip_id" value={trip.id} />
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Title *</Label><Input name="title" required placeholder="A Moveable Feast" /></div>
+              <div><Label>Title *</Label><Input name="title" required placeholder="A Moveable Feast" db="read_watch_listen.title" /></div>
               <div>
                 <Label>Type *</Label>
-                <Select name="type" options={RWL_TYPES} />
+                <Select name="type" options={RWL_TYPES} db="read_watch_listen.type" />
               </div>
             </div>
-            <div><Label>Author / Director</Label><Input name="author_director" placeholder="Ernest Hemingway" /></div>
-            <div><Label>Why Relevant</Label><Textarea name="reason" placeholder="Why this book or film connects to this journey…" rows={2} /></div>
+            <div><Label>Author / Director</Label><Input name="author_director" placeholder="Ernest Hemingway" db="read_watch_listen.author_director" /></div>
+            <div><Label>Why Relevant</Label><Textarea name="reason" placeholder="Why this book or film connects to this journey…" rows={2} db="read_watch_listen.reason" /></div>
             <div className="grid grid-cols-2 gap-3 p-3 rounded-sm border border-gold border-opacity-30" style={{ background: 'rgba(201,168,76,0.05)' }}>
               <div>
                 <Label>ISBN (books only)</Label>
-                <Input name="isbn" placeholder="9780684833637 — 13-digit ISBN from Amazon or back cover" />
+                <Input name="isbn" placeholder="9780684833637 — 13-digit ISBN from Amazon or back cover" db="read_watch_listen.isbn" />
                 <p className="text-xs text-ink-muted mt-1">Used to auto-fetch book cover from Google Books. Always fill for books.</p>
               </div>
               <div>
                 <Label>TMDB ID (films & series)</Label>
-                <Input name="tmdb_id" placeholder="840 — from themoviedb.org URL (/movie/840 or /tv/96677)" />
+                <Input name="tmdb_id" placeholder="840 — from themoviedb.org URL (/movie/840 or /tv/96677)" db="read_watch_listen.tmdb_id" />
                 <p className="text-xs text-ink-muted mt-1">Used to auto-fetch poster. Always fill for films and series.</p>
               </div>
             </div>
-            <div><Label>Cover Image URL (override only)</Label><ImageUrlInput name="cover_image_url" placeholder="Only if ISBN/TMDB auto-fetch fails — direct .jpg or .png URL" folder="trip-media" /></div>
+            <div><Label>Cover Image URL (override only)</Label><ImageUrlInput name="cover_image_url" placeholder="Only if ISBN/TMDB auto-fetch fails — direct .jpg or .png URL" folder="trip-media" db="read_watch_listen.cover_image_url" /></div>
             <div className="grid grid-cols-3 gap-3">
-              <div><Label>Amazon URL</Label><Input name="amazon_url" placeholder="https://amazon.com/…" /></div>
-              <div><Label>Streaming URL</Label><Input name="streaming_url" placeholder="https://…" /></div>
+              <div><Label>Amazon URL</Label><Input name="amazon_url" placeholder="https://amazon.com/…" db="read_watch_listen.amazon_url" /></div>
+              <div><Label>Streaming URL</Label><Input name="streaming_url" placeholder="https://…" db="read_watch_listen.streaming_url" /></div>
               <div>
                 <Label>Streaming Platform</Label>
                 <select name="streaming_platform" className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
                   {RWL_STREAMING_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
                 </select>
+                <FieldHint value="read_watch_listen.streaming_platform" />
               </div>
             </div>
-            <div style={{ maxWidth: '160px' }}><Label>Display Order</Label><Input name="display_order" defaultValue="0" placeholder="1" /></div>
+            <div style={{ maxWidth: '160px' }}><Label>Display Order</Label><Input name="display_order" defaultValue="0" placeholder="1" db="read_watch_listen.display_order" /></div>
             <p className="text-xs text-ink-muted -mt-1">Lower number = appears first in app. Use sequential integers (1, 2, 3…). Gaps are fine.</p>
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
@@ -2164,6 +2556,7 @@ function RWLTab({ trip, items }: { trip: Trip; items: RWLItem[] }) {
 function RWLRow({ item, tripId }: { item: RWLItem; tripId: string }) {
   const [editing, setEditing] = useState(false)
   const [pending, startTransition] = useTransition()
+  const [editError, setEditError] = useState<string | null>(null)
 
   const hasCoverHint = item.isbn || item.tmdb_id
   const missingCoverHint = !item.isbn && !item.tmdb_id && !item.cover_image_url
@@ -2205,44 +2598,55 @@ function RWLRow({ item, tripId }: { item: RWLItem; tripId: string }) {
       ) : (
         <form
           action={async (fd) => {
-            fd.set('id', item.id)
-            fd.set('trip_id', tripId)
-            await upsertRWLAction(fd)
-            setEditing(false)
-            window.location.reload()
+            try {
+              setEditError(null)
+              fd.set('id', item.id)
+              fd.set('trip_id', tripId)
+              await upsertRWLAction(fd)
+              setEditing(false)
+              window.location.reload()
+            } catch (err) {
+              setEditError(err instanceof Error ? err.message : 'Unknown error — check the console.')
+            }
           }}
           className="space-y-3"
         >
+          {editError && (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-xs text-red-700">
+              <strong>Save failed:</strong> {editError}
+            </div>
+          )}
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="trip_id" value={tripId} />
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Title *</Label><Input name="title" defaultValue={item.title} required /></div>
-            <div><Label>Type</Label><Select name="type" defaultValue={item.type} options={RWL_TYPES} /></div>
+            <div><Label>Title *</Label><Input name="title" defaultValue={item.title} required db="read_watch_listen.title" /></div>
+            <div><Label>Type</Label><Select name="type" defaultValue={item.type} options={RWL_TYPES} db="read_watch_listen.type" /></div>
           </div>
-          <div><Label>Author / Director</Label><Input name="author_director" defaultValue={item.author_director} /></div>
-          <div><Label>Why Relevant</Label><Textarea name="reason" defaultValue={item.reason} rows={2} /></div>
+          <div><Label>Author / Director</Label><Input name="author_director" defaultValue={item.author_director} db="read_watch_listen.author_director" /></div>
+          <div><Label>Why Relevant</Label><Textarea name="reason" defaultValue={item.reason} rows={2} db="read_watch_listen.reason" /></div>
           <div className="grid grid-cols-2 gap-3 p-3 rounded-sm border border-gold border-opacity-30" style={{ background: 'rgba(201,168,76,0.05)' }}>
             <div>
               <Label>ISBN (books)</Label>
-              <Input name="isbn" defaultValue={item.isbn} placeholder="9780684833637" />
+              <Input name="isbn" defaultValue={item.isbn} placeholder="9780684833637" db="read_watch_listen.isbn" />
             </div>
             <div>
               <Label>TMDB ID (films/series)</Label>
-              <Input name="tmdb_id" defaultValue={item.tmdb_id} placeholder="840" />
+              <Input name="tmdb_id" defaultValue={item.tmdb_id} placeholder="840" db="read_watch_listen.tmdb_id" />
             </div>
           </div>
-          <div><Label>Cover Image URL (override)</Label><ImageUrlInput name="cover_image_url" defaultValue={item.cover_image_url} placeholder="Direct .jpg or .png URL" folder="trip-media" /></div>
+          <div><Label>Cover Image URL (override)</Label><ImageUrlInput name="cover_image_url" defaultValue={item.cover_image_url} placeholder="Direct .jpg or .png URL" folder="trip-media" db="read_watch_listen.cover_image_url" /></div>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>Amazon URL</Label><Input name="amazon_url" defaultValue={item.amazon_url} /></div>
-            <div><Label>Streaming URL</Label><Input name="streaming_url" defaultValue={item.streaming_url} /></div>
+            <div><Label>Amazon URL</Label><Input name="amazon_url" defaultValue={item.amazon_url} db="read_watch_listen.amazon_url" /></div>
+            <div><Label>Streaming URL</Label><Input name="streaming_url" defaultValue={item.streaming_url} db="read_watch_listen.streaming_url" /></div>
             <div>
               <Label>Streaming Platform</Label>
               <select name="streaming_platform" defaultValue={item.streaming_platform || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
                 {RWL_STREAMING_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
               </select>
+              <FieldHint value="read_watch_listen.streaming_platform" />
             </div>
           </div>
-          <div style={{ maxWidth: '160px' }}><Label>Display Order</Label><Input name="display_order" defaultValue={String(item.display_order ?? 0)} /></div>
+          <div style={{ maxWidth: '160px' }}><Label>Display Order</Label><Input name="display_order" defaultValue={String(item.display_order ?? 0)} db="read_watch_listen.display_order" /></div>
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
             <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -2958,7 +3362,7 @@ function TripImageSlot({ trip, field, label, savedKey }: { trip: Trip; field: st
   )
 }
 
-function TripTextField({ trip, field, label, placeholder, multiline, isImage }: { trip: Trip; field: string; label: string; placeholder?: string; multiline?: boolean; isImage?: boolean }) {
+function TripTextField({ trip, field, label, placeholder, multiline, isImage, db }: { trip: Trip; field: string; label: string; placeholder?: string; multiline?: boolean; isImage?: boolean; db?: string }) {
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const inputId = `trip-field-${field}`
@@ -2985,7 +3389,7 @@ function TripTextField({ trip, field, label, placeholder, multiline, isImage }: 
     <div>
       <Label>{label}</Label>
       {multiline
-        ? <textarea {...sharedProps} rows={4} />
+        ? <><textarea {...sharedProps} rows={4} />{(db ?? `trips.${field}`) && <FieldHint value={db ?? `trips.${field}`} />}</>
         : isImage
           ? (
             <div className="flex items-center gap-2">
@@ -3011,7 +3415,7 @@ function TripTextField({ trip, field, label, placeholder, multiline, isImage }: 
               />
             </div>
           )
-          : <input {...sharedProps} type="text" />
+          : <><input {...sharedProps} type="text" /><FieldHint value={db ?? `trips.${field}`} /></>
       }
       <div className="flex items-center gap-3 mt-2">
         <button
@@ -3111,6 +3515,518 @@ function SettingsTab({ trip }: { trip: Trip }) {
           </div>
         </div>
       </Card>
+    </div>
+  )
+}
+
+// ── Book Check Tab ────────────────────────────────────────────────────────────
+// Validates all Read · Watch · Listen items:
+//   ISBN → Google Books: verify title/author, get canonical cover
+//   Amazon URL → HEAD check (resolves?)
+//   Cover image → HEAD check (loads?)
+// Auto-fixes: missing/broken cover images are replaced with Google Books covers.
+
+type BookStatus = 'pending' | 'checking' | 'done' | 'error'
+
+interface BookResult {
+  item: BookValidationItem
+  status: BookStatus
+  isbn_ok?: boolean | null
+  isbn_error?: string
+  google_title?: string
+  google_author?: string
+  google_cover?: string | null
+  amazon_ok?: boolean | null
+  amazon_status?: number
+  cover_ok?: boolean | null
+  cover_status?: number
+  fixed?: string[]
+}
+
+function BookCheckTab({ trip }: { trip: Trip }) {
+  const [results, setResults] = useState<BookResult[]>([])
+  const [running, setRunning] = useState(false)
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fixCount = results.filter(r => r.fixed && r.fixed.length > 0).length
+  const issueCount = results.filter(r =>
+    r.status === 'done' && (r.isbn_ok === false || r.amazon_ok === false || r.cover_ok === false)
+  ).length
+  const okCount = results.filter(r =>
+    r.status === 'done' && r.isbn_ok !== false && r.amazon_ok !== false && r.cover_ok !== false
+  ).length
+
+  async function runCheck() {
+    setRunning(true)
+    setDone(false)
+    setError(null)
+
+    let items: BookValidationItem[]
+    try {
+      items = await getBooksForValidationAction(trip.id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load items.')
+      setRunning(false)
+      return
+    }
+
+    if (!items.length) {
+      setResults([])
+      setDone(true)
+      setRunning(false)
+      return
+    }
+
+    setResults(items.map(item => ({ item, status: 'pending' })))
+
+    for (const item of items) {
+      setResults(prev => prev.map(r => r.item.id === item.id ? { ...r, status: 'checking' } : r))
+
+      try {
+        const params = new URLSearchParams()
+        if (item.isbn)          params.set('isbn',       item.isbn)
+        if (item.amazon_url)    params.set('amazon_url', item.amazon_url)
+        if (item.cover_image_url) params.set('cover_url', item.cover_image_url)
+
+        const res = await fetch(`/api/admin/validate-books?${params}`)
+        const data = await res.json() as {
+          isbn_ok?: boolean | null; isbn_error?: string
+          google_title?: string; google_author?: string; google_cover?: string | null
+          amazon_ok?: boolean | null; amazon_status?: number
+          cover_ok?: boolean | null; cover_status?: number
+        }
+
+        // Auto-fix: if cover is missing or broken but Google Books has one, save it
+        const fixes: { cover_image_url?: string } = {}
+        if (data.google_cover && (!item.cover_image_url || data.cover_ok === false)) {
+          fixes.cover_image_url = data.google_cover
+        }
+
+        let fixedFields: string[] = []
+        if (Object.keys(fixes).length > 0) {
+          try {
+            const fixResult = await autoFixBookAction(item.id, fixes)
+            fixedFields = fixResult.fields
+          } catch {
+            // non-fatal — report only
+          }
+        }
+
+        setResults(prev => prev.map(r => r.item.id !== item.id ? r : {
+          ...r,
+          status:       'done',
+          isbn_ok:      data.isbn_ok,
+          isbn_error:   data.isbn_error,
+          google_title:  data.google_title,
+          google_author: data.google_author,
+          google_cover:  data.google_cover,
+          amazon_ok:    data.amazon_ok,
+          amazon_status: data.amazon_status,
+          cover_ok:     data.cover_ok,
+          cover_status:  data.cover_status,
+          fixed:        fixedFields,
+        }))
+      } catch {
+        setResults(prev => prev.map(r => r.item.id !== item.id ? r : { ...r, status: 'error' }))
+      }
+    }
+
+    setDone(true)
+    setRunning(false)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <h3 className="font-serif text-lg font-bold text-navy">Book &amp; Media Validation</h3>
+          <p className="text-xs text-ink-muted mt-1 max-w-xl leading-relaxed">
+            Validates every item in <strong>Read · Watch · Listen</strong>: ISBN via Google Books (title match + canonical cover),
+            Amazon URL reachability, and cover image availability.
+            Broken covers are <strong>auto-fixed</strong> from Google Books. Amazon URLs are flagged for manual review.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={runCheck}
+          disabled={running}
+          className="shrink-0 text-xs uppercase tracking-widest px-5 py-2.5 text-white rounded-sm hover:opacity-85 disabled:opacity-50"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          {running ? `Checking… ${results.filter(r => r.status === 'done' || r.status === 'error').length} / ${results.length}` : results.length > 0 ? '↺ Re-run' : '▶ Run Check'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-xs text-red-700">{error}</div>
+      )}
+
+      {/* Summary */}
+      {results.length > 0 && (
+        <div className="flex flex-wrap gap-5 px-5 py-3 bg-gray-50 border border-gray-100 rounded-sm text-sm">
+          <span className="text-navy font-semibold">{results.length} items</span>
+          <span className="text-green-600 font-medium">✓ {okCount} ok</span>
+          {issueCount > 0 && <span className="text-red-600 font-semibold">✗ {issueCount} issues</span>}
+          {fixCount > 0 && <span className="text-gold font-medium">⚡ {fixCount} auto-fixed</span>}
+        </div>
+      )}
+
+      {done && issueCount === 0 && results.length > 0 && (
+        <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-xs text-green-700 font-medium">
+          ✓ All items validated. {fixCount > 0 ? `${fixCount} cover image${fixCount > 1 ? 's' : ''} auto-fixed from Google Books.` : ''}
+        </div>
+      )}
+
+      {/* Item rows */}
+      <div className="space-y-3">
+        {results.map(({ item, status, isbn_ok, isbn_error, google_title, google_author, google_cover, amazon_ok, amazon_status, cover_ok, fixed }) => {
+          const hasIssue = isbn_ok === false || amazon_ok === false || cover_ok === false
+          const wasFixed = fixed && fixed.length > 0
+
+          return (
+            <div
+              key={item.id}
+              className="bg-white border rounded-sm px-5 py-4 text-xs"
+              style={{
+                borderColor: status === 'done' && hasIssue && !wasFixed ? '#dc2626'
+                  : wasFixed ? '#C9A84C'
+                  : '#e5e7eb',
+                borderLeftWidth: (hasIssue || wasFixed) ? 3 : 1,
+              }}
+            >
+              <div className="flex items-start gap-4">
+                {/* Status badge */}
+                <div className="shrink-0 pt-0.5">
+                  {status === 'pending'  && <span className="text-gray-300">—</span>}
+                  {status === 'checking' && <span className="text-gold">…</span>}
+                  {status === 'error'    && <span className="text-orange-500">⚠</span>}
+                  {status === 'done' && !hasIssue && <span className="text-green-600 font-bold">✓</span>}
+                  {status === 'done' && hasIssue  && !wasFixed && <span className="text-red-600 font-bold">✗</span>}
+                  {status === 'done' && wasFixed   && <span className="text-gold font-bold">⚡</span>}
+                </div>
+
+                {/* Cover thumbnail */}
+                {(google_cover || item.cover_image_url) && (
+                  <div className="shrink-0 w-8 h-12 rounded overflow-hidden border border-gray-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={google_cover || item.cover_image_url!} alt="" className="w-full h-full object-cover" />
+                  </div>
+                )}
+
+                {/* Info */}
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs uppercase tracking-widest px-1.5 py-0.5 rounded-sm" style={{ background: 'rgba(201,168,76,0.12)', color: '#C9A84C', letterSpacing: '0.1em' }}>{item.type}</span>
+                    <span className="font-semibold text-navy">{item.title}</span>
+                    {item.author_director && <span className="text-ink-muted">{item.author_director}</span>}
+                  </div>
+
+                  {/* ISBN check */}
+                  {item.isbn && (
+                    <div>
+                      {isbn_ok === true && (
+                        <span className="text-green-600">✓ ISBN {item.isbn} verified — <em>{google_title}</em> by {google_author}</span>
+                      )}
+                      {isbn_ok === false && (
+                        <span className="text-red-600">✗ ISBN {item.isbn}: {isbn_error}</span>
+                      )}
+                      {isbn_ok === undefined && status === 'checking' && (
+                        <span className="text-gold">Checking ISBN…</span>
+                      )}
+                    </div>
+                  )}
+                  {!item.isbn && item.type === 'book' && (
+                    <span className="text-amber-500">⚠ No ISBN — add one to enable cover auto-fetch</span>
+                  )}
+
+                  {/* Cover check */}
+                  {status === 'done' && (
+                    <div>
+                      {wasFixed && fixed?.includes('cover_image_url') && (
+                        <span className="text-gold">⚡ Cover auto-fixed from Google Books</span>
+                      )}
+                      {cover_ok === false && !wasFixed && (
+                        <span className="text-red-600">✗ Cover image broken (HTTP {cover_ok})</span>
+                      )}
+                      {cover_ok === true && !wasFixed && item.cover_image_url && (
+                        <span className="text-green-600">✓ Cover image loads</span>
+                      )}
+                      {!item.cover_image_url && !google_cover && (
+                        <span className="text-amber-500">⚠ No cover image (add ISBN to auto-fetch)</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Amazon check */}
+                  {item.amazon_url && status === 'done' && (
+                    <div>
+                      {amazon_ok === true && (
+                        <span className="text-green-600">✓ Amazon URL resolves (HTTP {amazon_status}) — <a href={item.amazon_url} target="_blank" rel="noopener noreferrer" className="text-gold hover:opacity-75">verify manually →</a></span>
+                      )}
+                      {amazon_ok === false && (
+                        <span className="text-red-600">✗ Amazon URL broken (HTTP {amazon_status}) — update in RWL tab</span>
+                      )}
+                    </div>
+                  )}
+                  {!item.amazon_url && status === 'done' && (
+                    <span className="text-gray-300">No Amazon URL</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {!running && results.length === 0 && !error && (
+        <div className="py-20 text-center border border-dashed border-gray-200 rounded-sm">
+          <p className="text-sm text-ink-muted mb-1 font-medium">No validation run yet.</p>
+          <p className="text-xs text-ink-muted">
+            Click <strong>▶ Run Check</strong> to validate all Read · Watch · Listen items.
+            ISBNs are verified via Google Books. Amazon URLs are checked for reachability.
+            Broken or missing covers are auto-fixed from Google Books cover art.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Validate Tab ──────────────────────────────────────────────────────────────
+// Checks every link, image URL, and media URL in the trip against a server-side
+// fetch proxy (/api/admin/validate-url) so CORS doesn't interfere.
+
+type CheckStatus = 'pending' | 'checking' | 'ok' | 'broken' | 'error'
+
+interface CheckItem extends ValidationItem {
+  status: CheckStatus
+  statusCode?: number
+  message?: string
+}
+
+const STATUS_STYLES: Record<CheckStatus, { bg: string; color: string; label: string }> = {
+  pending:  { bg: '#f3f4f6',              color: '#9ca3af', label: '—' },
+  checking: { bg: 'rgba(201,168,76,0.15)', color: '#C9A84C', label: '…' },
+  ok:       { bg: 'rgba(22,163,74,0.10)',  color: '#16a34a', label: '✓ OK' },
+  broken:   { bg: 'rgba(220,38,38,0.10)',  color: '#dc2626', label: '✗ Broken' },
+  error:    { bg: 'rgba(234,88,12,0.10)',  color: '#ea580c', label: '⚠ Error' },
+}
+
+function ValidateTab({ trip }: { trip: Trip }) {
+  const [items, setItems] = useState<CheckItem[]>([])
+  const [running, setRunning] = useState(false)
+  const [done, setDone] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
+  const total    = items.length
+  const checked  = items.filter(i => i.status !== 'pending' && i.status !== 'checking').length
+  const okCount  = items.filter(i => i.status === 'ok').length
+  const badCount = items.filter(i => i.status === 'broken' || i.status === 'error').length
+
+  async function runCheck() {
+    setRunning(true)
+    setDone(false)
+    setFetchError(null)
+
+    let urls: ValidationItem[]
+    try {
+      urls = await getValidationUrlsAction(trip.id)
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : 'Failed to load URLs.')
+      setRunning(false)
+      return
+    }
+
+    if (urls.length === 0) {
+      setItems([])
+      setDone(true)
+      setRunning(false)
+      return
+    }
+
+    // Initialise all items as pending
+    const initial: CheckItem[] = urls.map(u => ({ ...u, status: 'pending' }))
+    setItems(initial)
+
+    // Check in parallel batches of 8
+    const BATCH = 8
+    for (let i = 0; i < initial.length; i += BATCH) {
+      const batch = initial.slice(i, i + BATCH)
+
+      // Mark batch as checking
+      const batchIds = new Set(batch.map(b => b.id))
+      setItems(prev => prev.map(p => batchIds.has(p.id) ? { ...p, status: 'checking' } : p))
+
+      await Promise.all(batch.map(async (item) => {
+        try {
+          const res  = await fetch(`/api/admin/validate-url?url=${encodeURIComponent(item.url)}`)
+          const json = await res.json() as { ok: boolean; status?: number; error?: string }
+          setItems(prev => prev.map(p => p.id !== item.id ? p : {
+            ...p,
+            status:     json.ok ? 'ok' : 'broken',
+            statusCode: json.status,
+            message:    json.error,
+          }))
+        } catch {
+          setItems(prev => prev.map(p => p.id !== item.id ? p : {
+            ...p,
+            status:  'error',
+            message: 'Check request failed',
+          }))
+        }
+      }))
+    }
+
+    setDone(true)
+    setRunning(false)
+  }
+
+  // Group items by category for display
+  const categories = Array.from(new Set(items.map(i => i.category)))
+
+  return (
+    <div className="space-y-6">
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <h3 className="font-serif text-lg font-bold text-navy">Link &amp; Image Validation</h3>
+          <p className="text-xs text-ink-muted mt-1 max-w-xl leading-relaxed">
+            Checks every booking URL, hotel website, Amazon / streaming link, image URL, media file,
+            and GPX route for this trip. Requests are made server-side so CORS never blocks them.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={runCheck}
+          disabled={running}
+          className="shrink-0 text-xs uppercase tracking-widest px-5 py-2.5 text-white rounded-sm hover:opacity-85 disabled:opacity-50 transition-opacity"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          {running ? `Checking… ${checked} / ${total}` : items.length > 0 ? '↺ Re-run' : '▶ Run Check'}
+        </button>
+      </div>
+
+      {/* Fetch error */}
+      {fetchError && (
+        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-sm text-xs text-red-700">
+          Failed to load URL list: {fetchError}
+        </div>
+      )}
+
+      {/* Summary bar */}
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-5 px-5 py-3 bg-gray-50 border border-gray-100 rounded-sm text-sm">
+          <span className="text-navy font-semibold">{total} items</span>
+          <span className="text-green-600 font-medium">✓ {okCount} ok</span>
+          {badCount > 0 && (
+            <span className="text-red-600 font-semibold">✗ {badCount} broken / error</span>
+          )}
+          {checked < total && (
+            <span className="text-gray-400">{total - checked} pending</span>
+          )}
+        </div>
+      )}
+
+      {/* All-clear message */}
+      {done && badCount === 0 && total > 0 && (
+        <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-xs text-green-700 font-medium">
+          ✓ All {total} links and images returned OK.
+        </div>
+      )}
+
+      {/* Results grouped by category */}
+      <div className="space-y-8">
+        {categories.map(cat => {
+          const catItems  = items.filter(i => i.category === cat)
+          const catBad    = catItems.filter(i => i.status === 'broken' || i.status === 'error').length
+          const catOk     = catItems.filter(i => i.status === 'ok').length
+          const allCatDone = catItems.every(i => i.status !== 'pending' && i.status !== 'checking')
+
+          return (
+            <div key={cat}>
+              {/* Category header */}
+              <div className="flex items-center gap-3 mb-2">
+                <h4 className="text-xs font-semibold uppercase tracking-widest text-navy" style={{ letterSpacing: '0.14em' }}>
+                  {cat}
+                </h4>
+                <span className="text-xs text-ink-muted">({catItems.length})</span>
+                {allCatDone && catBad === 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(22,163,74,0.10)', color: '#16a34a' }}>
+                    ✓ all {catOk} ok
+                  </span>
+                )}
+                {catBad > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(220,38,38,0.10)', color: '#dc2626' }}>
+                    ✗ {catBad} broken
+                  </span>
+                )}
+              </div>
+
+              {/* Item rows */}
+              <div className="space-y-1.5">
+                {catItems.map(item => {
+                  const style = STATUS_STYLES[item.status]
+                  const statusLabel = item.status === 'broken' && item.statusCode
+                    ? `✗ ${item.statusCode}`
+                    : style.label
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 px-4 py-2.5 bg-white border border-gray-100 rounded-sm text-xs"
+                      style={{ borderLeftColor: item.status === 'broken' || item.status === 'error' ? '#dc2626' : undefined, borderLeftWidth: item.status === 'broken' || item.status === 'error' ? 3 : undefined }}
+                    >
+                      {/* Status badge */}
+                      <span
+                        className="shrink-0 min-w-[64px] text-center rounded-sm px-2 py-0.5 font-semibold tabular-nums"
+                        style={{ background: style.bg, color: style.color }}
+                      >
+                        {statusLabel}
+                      </span>
+
+                      {/* Label */}
+                      <span className="flex-1 min-w-0 text-navy font-medium truncate">
+                        {item.label}
+                        {item.isImage && <span className="ml-1.5 text-ink-muted font-normal">(image)</span>}
+                      </span>
+
+                      {/* Error / timeout message */}
+                      {item.message && (
+                        <span className="shrink-0 text-orange-500 italic">{item.message}</span>
+                      )}
+
+                      {/* URL link */}
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 text-gold hover:opacity-75 hidden md:block max-w-xs truncate"
+                        title={item.url}
+                      >
+                        {item.url.length > 55 ? item.url.slice(0, 55) + '…' : item.url}
+                      </a>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Empty state */}
+      {!running && items.length === 0 && !fetchError && (
+        <div className="py-20 text-center border border-dashed border-gray-200 rounded-sm">
+          <p className="text-sm text-ink-muted mb-1 font-medium">No validation run yet.</p>
+          <p className="text-xs text-ink-muted">
+            Click <strong>▶ Run Check</strong> to validate all links and images for this trip.
+            Checks booking URLs, hotel sites, Amazon / streaming links, images, and GPX routes.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
