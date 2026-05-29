@@ -586,7 +586,7 @@ function RoutesSection({ day, tripId, travelers, routes }: {
           }}
         >
           <div><Label>Route Name (optional)</Label>
-            <Input name="name" placeholder="e.g. Alhambra walk — Omar & Kristi" />
+            <Input name="name" placeholder="e.g. Alhambra walk — Omar & Kristi" db="day_routes.name" />
           </div>
           <div>
             <Label>GPX File *</Label>
@@ -690,7 +690,7 @@ function RouteRow({ route, tripId, travelers, index }: {
             setEditing(false)
           }}
         >
-          <div><Label>Route Name</Label><Input name="name" defaultValue={route.name || ''} placeholder="e.g. Alhambra walk — Omar & Kristi" /></div>
+          <div><Label>Route Name</Label><Input name="name" defaultValue={route.name || ''} placeholder="e.g. Alhambra walk — Omar & Kristi" db="day_routes.name" /></div>
           <div>
             <Label>GPX File *</Label>
             <RouteGpxField inputId={`edit-route-${route.id}`} defaultValue={route.gpx_url} />
@@ -898,6 +898,7 @@ function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; t
                               }}
                             />
                           </div>
+                          <FieldHint value={`trip_days.${field}`} />
                           <ImagePreview url={previewUrl} />
                         </div>
                         <div className="pt-6 flex flex-col gap-2">
@@ -958,6 +959,7 @@ function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; t
                       }}
                     />
                   </div>
+                  <FieldHint value="trip_days.footer_image_url" />
                   <ImagePreview url={dayPreviews.footer !== undefined ? dayPreviews.footer : (day.footer_image_url || '')} />
                   <div className="flex items-center gap-3 mt-2">
                     <button
@@ -1049,17 +1051,17 @@ function TravelersTab({ trip, travelers }: { trip: Trip; travelers: Traveler[] }
 
             {/* Identity */}
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Full Name *</Label><Input name="name" required placeholder="e.g. Kristi Hamid" /></div>
-              <div><Label>Traveler Key</Label><Input name="traveler_key" placeholder="kristi (used for packing/persona)" /></div>
+              <div><Label>Full Name *</Label><Input name="name" required placeholder="e.g. Kristi Hamid" db="traveler_profiles.full_name" /></div>
+              <div><Label>Traveler Key</Label><Input name="traveler_key" placeholder="kristi (used for packing/persona)" db="traveler_profiles.traveler_key" /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div><Label>Email</Label><Input name="email" type="email" placeholder="kristi@example.com" /></div>
-              <div><Label>Phone</Label><Input name="phone" placeholder="+1 555 000 0000" /></div>
-              <div><Label>Partner / Spouse Name</Label><Input name="partner_name" placeholder="e.g. Omar" /></div>
+              <div><Label>Email</Label><Input name="email" type="email" placeholder="kristi@example.com" db="traveler_profiles.email" /></div>
+              <div><Label>Phone</Label><Input name="phone" placeholder="+1 555 000 0000" db="traveler_profiles.phone" /></div>
+              <div><Label>Partner / Spouse Name</Label><Input name="partner_name" placeholder="e.g. Omar" db="traveler_profiles.partner_name" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Age</Label><Input name="age" type="number" placeholder="42" /></div>
-              <div><Label>Languages</Label><Input name="languages" placeholder="English (native), French (basic)" /></div>
+              <div><Label>Age</Label><Input name="age" type="number" placeholder="42" db="traveler_profiles.age" /></div>
+              <div><Label>Languages</Label><Input name="languages" placeholder="English (native), French (basic)" db="traveler_profiles.languages" /></div>
             </div>
 
             {/* Hospitality */}
@@ -1078,7 +1080,7 @@ function TravelersTab({ trip, travelers }: { trip: Trip; travelers: Traveler[] }
                     {CURTAINS_OPTIONS.map(o => <option key={o} value={o}>{o || '—'}</option>)}
                   </select>
                 </div>
-                <div><Label>Coffee Order</Label><Input name="coffee_order" placeholder="Black, no sugar" /></div>
+                <div><Label>Coffee Order</Label><Input name="coffee_order" placeholder="Black, no sugar" db="traveler_profiles.coffee_order" /></div>
               </div>
             </div>
 
@@ -1086,31 +1088,31 @@ function TravelersTab({ trip, travelers }: { trip: Trip; travelers: Traveler[] }
             <div className="pt-2 border-t border-gray-100">
               <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Food & Drink</p>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Allergies</Label><Input name="allergies" placeholder="Shellfish, tree nuts…" /></div>
-                <div><Label>Dietary Notes</Label><Input name="dietary_notes" placeholder="Vegetarian-curious, no pork…" /></div>
+                <div><Label>Allergies</Label><Input name="allergies" placeholder="Shellfish, tree nuts…" db="traveler_profiles.allergies" /></div>
+                <div><Label>Dietary Notes</Label><Input name="dietary_notes" placeholder="Vegetarian-curious, no pork…" db="traveler_profiles.dietary_notes" /></div>
               </div>
-              <div className="mt-3"><Label>Wine & Drink Preferences</Label><Textarea name="wine_preferences" placeholder="Prefers red Burgundy, dry whites. Enjoys local aperitifs." rows={2} /></div>
+              <div className="mt-3"><Label>Wine & Drink Preferences</Label><Textarea name="wine_preferences" placeholder="Prefers red Burgundy, dry whites. Enjoys local aperitifs." rows={2} db="traveler_profiles.wine_preferences" /></div>
             </div>
 
             {/* Personality */}
             <div className="pt-2 border-t border-gray-100">
               <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Personality & Travel Style</p>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Travel Style</Label><Input name="travel_style" placeholder="Slow explorer, needs downtime each afternoon" /></div>
-                <div><Label>Personality / Framing</Label><Input name="personality" placeholder="The planner. Needs the 'why'." /></div>
+                <div><Label>Travel Style</Label><Input name="travel_style" placeholder="Slow explorer, needs downtime each afternoon" db="traveler_profiles.travel_style" /></div>
+                <div><Label>Personality / Framing</Label><Input name="personality" placeholder="The planner. Needs the 'why'." db="traveler_profiles.personality" /></div>
               </div>
-              <div className="mt-3"><Label>Interests & Passions</Label><Textarea name="interests" placeholder="Architecture, local markets, food culture, photography…" rows={2} /></div>
-              <div className="mt-3"><Label>Preferred Activities</Label><Textarea name="activities" placeholder="Loves walking tours. Avoids extreme heat." rows={2} /></div>
+              <div className="mt-3"><Label>Interests & Passions</Label><Textarea name="interests" placeholder="Architecture, local markets, food culture, photography…" rows={2} db="traveler_profiles.interests" /></div>
+              <div className="mt-3"><Label>Preferred Activities</Label><Textarea name="activities" placeholder="Loves walking tours. Avoids extreme heat." rows={2} db="traveler_profiles.activities" /></div>
             </div>
 
             {/* Personal */}
             <div className="pt-2 border-t border-gray-100">
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" /></div>
-                <div><Label>Bucket List (this trip)</Label><Input name="bucket_list" placeholder="See the sunrise at the Alhambra" /></div>
+                <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" db="traveler_profiles.anniversary_date" /></div>
+                <div><Label>Bucket List (this trip)</Label><Input name="bucket_list" placeholder="See the sunrise at the Alhambra" db="traveler_profiles.bucket_list" /></div>
               </div>
-              <div className="mt-3"><Label>Mobility Notes</Label><Textarea name="mobility_notes" placeholder="Prefers flat routes, no cobblestones…" rows={2} /></div>
-              <div className="mt-3"><Label>Curator Notes</Label><Textarea name="notes" placeholder="Any private notes for this traveler…" rows={2} /></div>
+              <div className="mt-3"><Label>Mobility Notes</Label><Textarea name="mobility_notes" placeholder="Prefers flat routes, no cobblestones…" rows={2} db="traveler_profiles.mobility_notes" /></div>
+              <div className="mt-3"><Label>Curator Notes</Label><Textarea name="notes" placeholder="Any private notes for this traveler…" rows={2} db="traveler_profiles.notes" /></div>
             </div>
 
             <div className="flex gap-3">
@@ -1226,17 +1228,17 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
 
           {/* Identity */}
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Full Name *</Label><Input name="name" defaultValue={traveler.full_name} required /></div>
-            <div><Label>Traveler Key</Label><Input name="traveler_key" defaultValue={traveler.traveler_key} placeholder="e.g. kristi" /></div>
+            <div><Label>Full Name *</Label><Input name="name" defaultValue={traveler.full_name} required db="traveler_profiles.full_name" /></div>
+            <div><Label>Traveler Key</Label><Input name="traveler_key" defaultValue={traveler.traveler_key} placeholder="e.g. kristi" db="traveler_profiles.traveler_key" /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>Email</Label><Input name="email" type="email" defaultValue={traveler.email} /></div>
-            <div><Label>Phone</Label><Input name="phone" defaultValue={traveler.phone} /></div>
-            <div><Label>Partner / Spouse</Label><Input name="partner_name" defaultValue={traveler.partner_name} placeholder="e.g. Omar" /></div>
+            <div><Label>Email</Label><Input name="email" type="email" defaultValue={traveler.email} db="traveler_profiles.email" /></div>
+            <div><Label>Phone</Label><Input name="phone" defaultValue={traveler.phone} db="traveler_profiles.phone" /></div>
+            <div><Label>Partner / Spouse</Label><Input name="partner_name" defaultValue={traveler.partner_name} placeholder="e.g. Omar" db="traveler_profiles.partner_name" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Age</Label><Input name="age" type="number" defaultValue={traveler.age?.toString()} placeholder="e.g. 42" /></div>
-            <div><Label>Languages</Label><Input name="languages" defaultValue={traveler.languages} placeholder="English (native), French (basic)" /></div>
+            <div><Label>Age</Label><Input name="age" type="number" defaultValue={traveler.age?.toString()} placeholder="e.g. 42" db="traveler_profiles.age" /></div>
+            <div><Label>Languages</Label><Input name="languages" defaultValue={traveler.languages} placeholder="English (native), French (basic)" db="traveler_profiles.languages" /></div>
           </div>
 
           {/* Hospitality */}
@@ -1255,7 +1257,7 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
                   {CURTAINS_OPTIONS.map(o => <option key={o} value={o}>{o || '—'}</option>)}
                 </select>
               </div>
-              <div><Label>Coffee Order</Label><Input name="coffee_order" defaultValue={traveler.coffee_order} placeholder="Black, no sugar" /></div>
+              <div><Label>Coffee Order</Label><Input name="coffee_order" defaultValue={traveler.coffee_order} placeholder="Black, no sugar" db="traveler_profiles.coffee_order" /></div>
             </div>
           </div>
 
@@ -1263,32 +1265,32 @@ function TravelerRow({ traveler, tripId }: { traveler: Traveler; tripId: string 
           <div className="pt-3 border-t border-gray-100">
             <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Food & Drink</p>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Allergies</Label><Input name="allergies" defaultValue={traveler.allergies} placeholder="Shellfish, tree nuts…" /></div>
-              <div><Label>Dietary Notes</Label><Input name="dietary_notes" defaultValue={traveler.dietary_notes} placeholder="Vegetarian-curious, no pork…" /></div>
+              <div><Label>Allergies</Label><Input name="allergies" defaultValue={traveler.allergies} placeholder="Shellfish, tree nuts…" db="traveler_profiles.allergies" /></div>
+              <div><Label>Dietary Notes</Label><Input name="dietary_notes" defaultValue={traveler.dietary_notes} placeholder="Vegetarian-curious, no pork…" db="traveler_profiles.dietary_notes" /></div>
             </div>
-            <div className="mt-3"><Label>Wine & Drink Preferences</Label><Textarea name="wine_preferences" defaultValue={traveler.wine_preferences} placeholder="Prefers red Burgundy, dry whites. Enjoys local aperitifs. Doesn't drink spirits." rows={2} /></div>
+            <div className="mt-3"><Label>Wine & Drink Preferences</Label><Textarea name="wine_preferences" defaultValue={traveler.wine_preferences} placeholder="Prefers red Burgundy, dry whites. Enjoys local aperitifs. Doesn't drink spirits." rows={2} db="traveler_profiles.wine_preferences" /></div>
           </div>
 
           {/* Personality & Travel */}
           <div className="pt-3 border-t border-gray-100">
             <p className="text-xs font-semibold text-navy uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>Personality & Travel Style</p>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Travel Style</Label><Input name="travel_style" defaultValue={traveler.travel_style} placeholder="Slow explorer, needs downtime each afternoon" /></div>
-              <div><Label>Personality / Framing</Label><Input name="personality" defaultValue={traveler.personality} placeholder="The planner. Needs the 'why' before the 'what'." /></div>
+              <div><Label>Travel Style</Label><Input name="travel_style" defaultValue={traveler.travel_style} placeholder="Slow explorer, needs downtime each afternoon" db="traveler_profiles.travel_style" /></div>
+              <div><Label>Personality / Framing</Label><Input name="personality" defaultValue={traveler.personality} placeholder="The planner. Needs the 'why' before the 'what'." db="traveler_profiles.personality" /></div>
             </div>
-            <div className="mt-3"><Label>Interests & Passions</Label><Textarea name="interests" defaultValue={traveler.interests} placeholder="Architecture, Moorish history, photography, local markets, contemporary art…" rows={2} /></div>
-            <div className="mt-3"><Label>Preferred Activities</Label><Textarea name="activities" defaultValue={traveler.activities} placeholder="Loves walking tours and cooking classes. Avoids extreme heat, no extreme sports." rows={2} /></div>
-            <div className="mt-3"><Label>Music Preferences</Label><Input name="music_preferences" defaultValue={traveler.music_preferences} placeholder="Jazz, flamenco, ambient. Dislikes EDM." /></div>
+            <div className="mt-3"><Label>Interests & Passions</Label><Textarea name="interests" defaultValue={traveler.interests} placeholder="Architecture, Moorish history, photography, local markets, contemporary art…" rows={2} db="traveler_profiles.interests" /></div>
+            <div className="mt-3"><Label>Preferred Activities</Label><Textarea name="activities" defaultValue={traveler.activities} placeholder="Loves walking tours and cooking classes. Avoids extreme heat, no extreme sports." rows={2} db="traveler_profiles.activities" /></div>
+            <div className="mt-3"><Label>Music Preferences</Label><Input name="music_preferences" defaultValue={traveler.music_preferences} placeholder="Jazz, flamenco, ambient. Dislikes EDM." db="traveler_profiles.music_preferences" /></div>
           </div>
 
           {/* Dates & notes */}
           <div className="pt-3 border-t border-gray-100">
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" defaultValue={traveler.anniversary_date?.split('T')[0]} /></div>
-              <div><Label>Bucket List (this trip)</Label><Input name="bucket_list" defaultValue={traveler.bucket_list} placeholder="See the sunrise at the Alhambra" /></div>
+              <div><Label>Anniversary Date</Label><Input name="anniversary_date" type="date" defaultValue={traveler.anniversary_date?.split('T')[0]} db="traveler_profiles.anniversary_date" /></div>
+              <div><Label>Bucket List (this trip)</Label><Input name="bucket_list" defaultValue={traveler.bucket_list} placeholder="See the sunrise at the Alhambra" db="traveler_profiles.bucket_list" /></div>
             </div>
-            <div className="mt-3"><Label>Mobility Notes</Label><Textarea name="mobility_notes" defaultValue={traveler.mobility_notes} placeholder="Prefers flat routes, no cobblestones…" rows={2} /></div>
-            <div className="mt-3"><Label>Curator Notes</Label><Textarea name="notes" defaultValue={traveler.notes} placeholder="Any private notes for this traveler…" rows={2} /></div>
+            <div className="mt-3"><Label>Mobility Notes</Label><Textarea name="mobility_notes" defaultValue={traveler.mobility_notes} placeholder="Prefers flat routes, no cobblestones…" rows={2} db="traveler_profiles.mobility_notes" /></div>
+            <div className="mt-3"><Label>Curator Notes</Label><Textarea name="notes" defaultValue={traveler.notes} placeholder="Any private notes for this traveler…" rows={2} db="traveler_profiles.notes" /></div>
           </div>
 
           <div className="flex gap-3">
@@ -1737,15 +1739,15 @@ function ContactsTab({ trip, contacts }: { trip: Trip; contacts: Contact[] }) {
           >
             <input type="hidden" name="trip_id" value={trip.id} />
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Name *</Label><Input name="name" required placeholder="Full name" /></div>
-              <div><Label>Phone *</Label><Input name="phone" required placeholder="+212 600-000-000" /></div>
+              <div><Label>Name *</Label><Input name="name" required placeholder="Full name" db="local_contacts.name" /></div>
+              <div><Label>Phone *</Label><Input name="phone" required placeholder="+212 600-000-000" db="local_contacts.phone" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Role</Label><Select name="role" options={ROLE_OPTIONS} /></div>
-              <div><Label>Destination / City</Label><Input name="destination" required placeholder="Casablanca" /></div>
+              <div><Label>Role</Label><Select name="role" options={ROLE_OPTIONS} db="local_contacts.role" /></div>
+              <div><Label>Destination / City</Label><Input name="destination" required placeholder="Casablanca" db="local_contacts.destination" /></div>
             </div>
-            <div><Label>Specialty</Label><Input name="specialty" placeholder="Airport transfers, Medina, Rabat run" /></div>
-            <div><Label>Intro Note</Label><Textarea name="intro_note" placeholder="Brief note for travelers about who this person is…" rows={2} /></div>
+            <div><Label>Specialty</Label><Input name="specialty" placeholder="Airport transfers, Medina, Rabat run" db="local_contacts.specialty" /></div>
+            <div><Label>Intro Note</Label><Textarea name="intro_note" placeholder="Brief note for travelers about who this person is…" rows={2} db="local_contacts.intro_note" /></div>
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
               <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -1819,15 +1821,15 @@ function ContactRow({ contact, tripId }: { contact: Contact; tripId: string }) {
           <input type="hidden" name="id" value={contact.id} />
           <input type="hidden" name="trip_id" value={tripId} />
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Name *</Label><Input name="name" defaultValue={contact.name} required /></div>
-            <div><Label>Phone *</Label><Input name="phone" defaultValue={contact.phone} required /></div>
+            <div><Label>Name *</Label><Input name="name" defaultValue={contact.name} required db="local_contacts.name" /></div>
+            <div><Label>Phone *</Label><Input name="phone" defaultValue={contact.phone} required db="local_contacts.phone" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Role</Label><Select name="role" defaultValue={contact.role} options={ROLE_OPTIONS} /></div>
-            <div><Label>Destination</Label><Input name="destination" defaultValue={contact.destination} required /></div>
+            <div><Label>Role</Label><Select name="role" defaultValue={contact.role} options={ROLE_OPTIONS} db="local_contacts.role" /></div>
+            <div><Label>Destination</Label><Input name="destination" defaultValue={contact.destination} required db="local_contacts.destination" /></div>
           </div>
-          <div><Label>Specialty</Label><Input name="specialty" defaultValue={contact.specialty} /></div>
-          <div><Label>Intro Note</Label><Textarea name="intro_note" defaultValue={contact.intro_note} rows={2} /></div>
+          <div><Label>Specialty</Label><Input name="specialty" defaultValue={contact.specialty} db="local_contacts.specialty" /></div>
+          <div><Label>Intro Note</Label><Textarea name="intro_note" defaultValue={contact.intro_note} rows={2} db="local_contacts.intro_note" /></div>
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
             <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -2070,17 +2072,17 @@ function HuntTab({ trip, challenges }: { trip: Trip; challenges: Challenge[] }) 
           >
             <input type="hidden" name="trip_id" value={trip.id} />
             <div className="grid grid-cols-4 gap-3">
-              <div><Label>Day #</Label><Input name="day_number" placeholder="e.g. 3" /></div>
-              <div><Label>Points</Label><Input name="points" defaultValue="10" /></div>
-              <div><Label>Type</Label><Select name="challenge_type" options={CHALLENGE_TYPES} /></div>
-              <div><Label>Leg</Label><Select name="leg" options={LEG_OPTIONS} /></div>
+              <div><Label>Day #</Label><Input name="day_number" placeholder="e.g. 3" db="hunt_challenges.day_number" /></div>
+              <div><Label>Points</Label><Input name="points" defaultValue="10" db="hunt_challenges.points" /></div>
+              <div><Label>Type</Label><Select name="challenge_type" options={CHALLENGE_TYPES} db="hunt_challenges.challenge_type" /></div>
+              <div><Label>Leg</Label><Select name="leg" options={LEG_OPTIONS} db="hunt_challenges.leg" /></div>
             </div>
-            <div><Label>Title *</Label><Input name="title" required placeholder="Find the Blue Door" /></div>
-            <div><Label>Description *</Label><Textarea name="description" required placeholder="Full challenge text shown to travelers…" rows={3} /></div>
-            <div><Label>Transliteration (optional)</Label><Input name="transliteration" placeholder="Arabic/French pronunciation guide…" /></div>
+            <div><Label>Title *</Label><Input name="title" required placeholder="Find the Blue Door" db="hunt_challenges.title" /></div>
+            <div><Label>Description *</Label><Textarea name="description" required placeholder="Full challenge text shown to travelers…" rows={3} db="hunt_challenges.description" /></div>
+            <div><Label>Transliteration (optional)</Label><Input name="transliteration" placeholder="Arabic/French pronunciation guide…" db="hunt_challenges.transliteration" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Longitude</Label><Input name="coord_lon" placeholder="-7.6114 (lon first)" /></div>
-              <div><Label>Latitude</Label><Input name="coord_lat" placeholder="33.5892" /></div>
+              <div><Label>Longitude</Label><Input name="coord_lon" placeholder="-7.6114 (lon first)" db="hunt_challenges.coordinates" /></div>
+              <div><Label>Latitude</Label><Input name="coord_lat" placeholder="33.5892" db="hunt_challenges.coordinates" /></div>
             </div>
             <p className="text-xs text-ink-muted -mt-1">Get from Google Maps or latlong.net — longitude is the negative number for Morocco (e.g. -7.6114), latitude is positive (e.g. 33.5892).</p>
             <div className="flex gap-3">
@@ -2150,14 +2152,14 @@ function ChallengeRow({ challenge, tripId, tripStartDate }: { challenge: Challen
           <input type="hidden" name="id" value={challenge.id} />
           <input type="hidden" name="trip_id" value={tripId} />
           <div className="grid grid-cols-4 gap-3">
-            <div><Label>Day #</Label><Input name="day_number" defaultValue={String(challenge.day_number || '')} /></div>
-            <div><Label>Points</Label><Input name="points" defaultValue={String(challenge.points)} /></div>
-            <div><Label>Type</Label><Select name="challenge_type" defaultValue={challenge.challenge_type} options={CHALLENGE_TYPES} /></div>
-            <div><Label>Leg</Label><Select name="leg" defaultValue={challenge.leg || 'morocco'} options={LEG_OPTIONS} /></div>
+            <div><Label>Day #</Label><Input name="day_number" defaultValue={String(challenge.day_number || '')} db="hunt_challenges.day_number" /></div>
+            <div><Label>Points</Label><Input name="points" defaultValue={String(challenge.points)} db="hunt_challenges.points" /></div>
+            <div><Label>Type</Label><Select name="challenge_type" defaultValue={challenge.challenge_type} options={CHALLENGE_TYPES} db="hunt_challenges.challenge_type" /></div>
+            <div><Label>Leg</Label><Select name="leg" defaultValue={challenge.leg || 'morocco'} options={LEG_OPTIONS} db="hunt_challenges.leg" /></div>
           </div>
-          <div><Label>Title *</Label><Input name="title" defaultValue={challenge.title} required /></div>
-          <div><Label>Description *</Label><Textarea name="description" defaultValue={challenge.description} required rows={3} /></div>
-          <div><Label>Transliteration</Label><Input name="transliteration" defaultValue={challenge.transliteration} /></div>
+          <div><Label>Title *</Label><Input name="title" defaultValue={challenge.title} required db="hunt_challenges.title" /></div>
+          <div><Label>Description *</Label><Textarea name="description" defaultValue={challenge.description} required rows={3} db="hunt_challenges.description" /></div>
+          <div><Label>Transliteration</Label><Input name="transliteration" defaultValue={challenge.transliteration} db="hunt_challenges.transliteration" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Longitude</Label>
@@ -2165,6 +2167,7 @@ function ChallengeRow({ challenge, tripId, tripStartDate }: { challenge: Challen
                 name="coord_lon"
                 defaultValue={challenge.coordinates ? challenge.coordinates.replace(/^\(([^,]+),.+\)$/, '$1') : ''}
                 placeholder="-7.6114"
+                db="hunt_challenges.coordinates"
               />
             </div>
             <div>
@@ -2173,6 +2176,7 @@ function ChallengeRow({ challenge, tripId, tripStartDate }: { challenge: Challen
                 name="coord_lat"
                 defaultValue={challenge.coordinates ? challenge.coordinates.replace(/^\([^,]+,([^)]+)\)$/, '$1') : ''}
                 placeholder="33.5892"
+                db="hunt_challenges.coordinates"
               />
             </div>
           </div>
@@ -2233,15 +2237,15 @@ function PackingTab({ trip, packing }: { trip: Trip; packing: PackingItem[] }) {
             className="space-y-3"
           >
             <input type="hidden" name="trip_id" value={trip.id} />
-            <div><Label>Item Name *</Label><Input name="item" required placeholder="e.g. Cycling jersey" /></div>
+            <div><Label>Item Name *</Label><Input name="item" required placeholder="e.g. Cycling jersey" db="packing_items.item" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Category</Label>
-                <Select name="category" options={PACKING_CATEGORIES} />
+                <Select name="category" options={PACKING_CATEGORIES} db="packing_items.category" />
               </div>
               <div>
                 <Label>Traveler</Label>
-                <Select name="traveler_key" options={TRAVELER_KEYS} />
+                <Select name="traveler_key" options={TRAVELER_KEYS} db="packing_items.traveler_key" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -2252,9 +2256,9 @@ function PackingTab({ trip, packing }: { trip: Trip; packing: PackingItem[] }) {
                   {SEGMENTS.filter(s => s).map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <div><Label>Sort Order</Label><Input name="sort_order" placeholder="0" /></div>
+              <div><Label>Sort Order</Label><Input name="sort_order" placeholder="0" db="packing_items.sort_order" /></div>
             </div>
-            <div><Label>Reason / Note</Label><Textarea name="reason" placeholder="Why this item matters for this trip…" rows={2} /></div>
+            <div><Label>Reason / Note</Label><Textarea name="reason" placeholder="Why this item matters for this trip…" rows={2} db="packing_items.reason" /></div>
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
               <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -2324,10 +2328,10 @@ function PackingRow({ item, tripId }: { item: PackingItem; tripId: string }) {
         >
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="trip_id" value={tripId} />
-          <div><Label>Item Name *</Label><Input name="item" defaultValue={item.item} required /></div>
+          <div><Label>Item Name *</Label><Input name="item" defaultValue={item.item} required db="packing_items.item" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Category</Label><Select name="category" defaultValue={item.category} options={PACKING_CATEGORIES} /></div>
-            <div><Label>Traveler</Label><Select name="traveler_key" defaultValue={item.traveler_key || 'all'} options={TRAVELER_KEYS} /></div>
+            <div><Label>Category</Label><Select name="category" defaultValue={item.category} options={PACKING_CATEGORIES} db="packing_items.category" /></div>
+            <div><Label>Traveler</Label><Select name="traveler_key" defaultValue={item.traveler_key || 'all'} options={TRAVELER_KEYS} db="packing_items.traveler_key" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -2337,9 +2341,9 @@ function PackingRow({ item, tripId }: { item: PackingItem; tripId: string }) {
                 {SEGMENTS.filter(s => s).map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <div><Label>Sort Order</Label><Input name="sort_order" defaultValue={String(item.sort_order || '')} /></div>
+            <div><Label>Sort Order</Label><Input name="sort_order" defaultValue={String(item.sort_order || '')} db="packing_items.sort_order" /></div>
           </div>
-          <div><Label>Reason / Note</Label><Textarea name="reason" defaultValue={item.reason} rows={2} /></div>
+          <div><Label>Reason / Note</Label><Textarea name="reason" defaultValue={item.reason} rows={2} db="packing_items.reason" /></div>
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
             <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -2395,16 +2399,16 @@ function RecsTab({ trip, recs }: { trip: Trip; recs: Rec[] }) {
           >
             <input type="hidden" name="trip_id" value={trip.id} />
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Title *</Label><Input name="title" required placeholder="Book / film / album title" /></div>
-              <div><Label>Type</Label><Select name="type" options={REC_TYPES} /></div>
+              <div><Label>Title *</Label><Input name="title" required placeholder="Book / film / album title" db="recommendations.title" /></div>
+              <div><Label>Type</Label><Select name="type" options={REC_TYPES} db="recommendations.type" /></div>
             </div>
-            <div><Label>Author / Artist / Director</Label><Input name="author" placeholder="Author or creator" /></div>
-            <div><Label>Description</Label><Textarea name="description" placeholder="Brief synopsis or description…" rows={2} /></div>
-            <div><Label>Why Relevant to This Trip</Label><Textarea name="why_relevant" placeholder="How does this connect to Morocco, France, the journey…" rows={2} /></div>
-            <div><Label>When to Enjoy</Label><Input name="when_to_enjoy" placeholder="Before departure / On the plane / During the trip…" /></div>
+            <div><Label>Author / Artist / Director</Label><Input name="author" placeholder="Author or creator" db="recommendations.author" /></div>
+            <div><Label>Description</Label><Textarea name="description" placeholder="Brief synopsis or description…" rows={2} db="recommendations.description" /></div>
+            <div><Label>Why Relevant to This Trip</Label><Textarea name="why_relevant" placeholder="How does this connect to Morocco, France, the journey…" rows={2} db="recommendations.why_relevant" /></div>
+            <div><Label>When to Enjoy</Label><Input name="when_to_enjoy" placeholder="Before departure / On the plane / During the trip…" db="recommendations.when_to_enjoy" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Amazon URL</Label><Input name="amazon_url" placeholder="https://amazon.com/…" /></div>
-              <div><Label>Streaming URL</Label><Input name="streaming_url" placeholder="https://…" /></div>
+              <div><Label>Amazon URL</Label><Input name="amazon_url" placeholder="https://amazon.com/…" db="recommendations.amazon_url" /></div>
+              <div><Label>Streaming URL</Label><Input name="streaming_url" placeholder="https://…" db="recommendations.streaming_url" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -2413,7 +2417,7 @@ function RecsTab({ trip, recs }: { trip: Trip; recs: Rec[] }) {
                   {STREAMING_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
                 </select>
               </div>
-              <div><Label>Sort Order</Label><Input name="sort_order" placeholder="0" /></div>
+              <div><Label>Sort Order</Label><Input name="sort_order" placeholder="0" db="recommendations.sort_order" /></div>
             </div>
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
@@ -2488,16 +2492,16 @@ function RecRow({ rec, tripId }: { rec: Rec; tripId: string }) {
           <input type="hidden" name="id" value={rec.id} />
           <input type="hidden" name="trip_id" value={tripId} />
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Title *</Label><Input name="title" defaultValue={rec.title} required /></div>
-            <div><Label>Type</Label><Select name="type" defaultValue={rec.type} options={REC_TYPES} /></div>
+            <div><Label>Title *</Label><Input name="title" defaultValue={rec.title} required db="recommendations.title" /></div>
+            <div><Label>Type</Label><Select name="type" defaultValue={rec.type} options={REC_TYPES} db="recommendations.type" /></div>
           </div>
-          <div><Label>Author / Artist</Label><Input name="author" defaultValue={rec.author} /></div>
-          <div><Label>Description</Label><Textarea name="description" defaultValue={rec.description} rows={2} /></div>
-          <div><Label>Why Relevant</Label><Textarea name="why_relevant" defaultValue={rec.why_relevant} rows={2} /></div>
-          <div><Label>When to Enjoy</Label><Input name="when_to_enjoy" defaultValue={rec.when_to_enjoy} /></div>
+          <div><Label>Author / Artist</Label><Input name="author" defaultValue={rec.author} db="recommendations.author" /></div>
+          <div><Label>Description</Label><Textarea name="description" defaultValue={rec.description} rows={2} db="recommendations.description" /></div>
+          <div><Label>Why Relevant</Label><Textarea name="why_relevant" defaultValue={rec.why_relevant} rows={2} db="recommendations.why_relevant" /></div>
+          <div><Label>When to Enjoy</Label><Input name="when_to_enjoy" defaultValue={rec.when_to_enjoy} db="recommendations.when_to_enjoy" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Amazon URL</Label><Input name="amazon_url" defaultValue={rec.amazon_url} /></div>
-            <div><Label>Streaming URL</Label><Input name="streaming_url" defaultValue={rec.streaming_url} /></div>
+            <div><Label>Amazon URL</Label><Input name="amazon_url" defaultValue={rec.amazon_url} db="recommendations.amazon_url" /></div>
+            <div><Label>Streaming URL</Label><Input name="streaming_url" defaultValue={rec.streaming_url} db="recommendations.streaming_url" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -2506,7 +2510,7 @@ function RecRow({ rec, tripId }: { rec: Rec; tripId: string }) {
                 {STREAMING_PLATFORMS.map(p => <option key={p} value={p}>{p || '—'}</option>)}
               </select>
             </div>
-            <div><Label>Sort Order</Label><Input name="sort_order" defaultValue={String(rec.sort_order || '')} /></div>
+            <div><Label>Sort Order</Label><Input name="sort_order" defaultValue={String(rec.sort_order || '')} db="recommendations.sort_order" /></div>
           </div>
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
@@ -2839,13 +2843,13 @@ function PreTripDropsTab({ trip, drops }: { trip: Trip; drops: PreTripDrop[] }) 
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Days Offset *</Label>
-                <Input name="date_offset_days" required placeholder="-7 (7 days before)" />
+                <Input name="date_offset_days" required placeholder="-7 (7 days before)" db="pre_trip_content.date_offset_days" />
               </div>
-              <div><Label>Type</Label><Select name="type" options={DROP_TYPES} /></div>
-              <div><Label>Title</Label><Input name="title" placeholder="Optional headline" /></div>
+              <div><Label>Type</Label><Select name="type" options={DROP_TYPES} db="pre_trip_content.type" /></div>
+              <div><Label>Title</Label><Input name="title" placeholder="Optional headline" db="pre_trip_content.title" /></div>
             </div>
-            <div><Label>Content *</Label><Textarea name="content" required placeholder="The drop content shown to travelers…" rows={4} /></div>
-            <div><Label>Media URL</Label><Input name="media_url" placeholder="https://… (optional image or audio link)" /></div>
+            <div><Label>Content *</Label><Textarea name="content" required placeholder="The drop content shown to travelers…" rows={4} db="pre_trip_content.content" /></div>
+            <div><Label>Media URL</Label><Input name="media_url" placeholder="https://… (optional image or audio link)" db="pre_trip_content.media_url" /></div>
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
               <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
@@ -2903,12 +2907,12 @@ function PreTripDropRow({ drop, tripId, offsetLabel }: { drop: PreTripDrop; trip
           <input type="hidden" name="id" value={drop.id} />
           <input type="hidden" name="trip_id" value={tripId} />
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>Days Offset *</Label><Input name="date_offset_days" defaultValue={String(drop.date_offset_days)} required /></div>
-            <div><Label>Type</Label><Select name="type" defaultValue={drop.type} options={DROP_TYPES} /></div>
-            <div><Label>Title</Label><Input name="title" defaultValue={drop.title} /></div>
+            <div><Label>Days Offset *</Label><Input name="date_offset_days" defaultValue={String(drop.date_offset_days)} required db="pre_trip_content.date_offset_days" /></div>
+            <div><Label>Type</Label><Select name="type" defaultValue={drop.type} options={DROP_TYPES} db="pre_trip_content.type" /></div>
+            <div><Label>Title</Label><Input name="title" defaultValue={drop.title} db="pre_trip_content.title" /></div>
           </div>
-          <div><Label>Content *</Label><Textarea name="content" defaultValue={drop.content} required rows={4} /></div>
-          <div><Label>Media URL</Label><Input name="media_url" defaultValue={drop.media_url} /></div>
+          <div><Label>Content *</Label><Textarea name="content" defaultValue={drop.content} required rows={4} db="pre_trip_content.content" /></div>
+          <div><Label>Media URL</Label><Input name="media_url" defaultValue={drop.media_url} db="pre_trip_content.media_url" /></div>
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 text-xs text-navy cursor-pointer">
               <input type="checkbox" name="sent" value="true" defaultChecked={drop.sent} className="rounded" />
@@ -3083,34 +3087,34 @@ function HaggleTab({ trip, triggers }: { trip: Trip; triggers: HaggleTrigger[] }
           >
             <input type="hidden" name="trip_id" value={trip.id} />
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Location Name *</Label><Input name="location_name" required placeholder="Casablanca — Quartier des Habous" /></div>
+              <div><Label>Location Name *</Label><Input name="location_name" required placeholder="Casablanca — Quartier des Habous" db="joie_haggle_triggers.location_name" /></div>
               <div>
                 <Label>Currency</Label>
-                <Select name="currency" options={CURRENCY_OPTIONS} />
+                <Select name="currency" options={CURRENCY_OPTIONS} db="joie_haggle_triggers.currency" />
               </div>
             </div>
             <div>
               <Label>Coordinates (required) *</Label>
               <div className="grid grid-cols-2 gap-3">
-                <Input name="coord_lon" required placeholder="Longitude: -7.5898" />
-                <Input name="coord_lat" required placeholder="Latitude: 33.5731" />
+                <Input name="coord_lon" required placeholder="Longitude: -7.5898" db="joie_haggle_triggers.coordinates" />
+                <Input name="coord_lat" required placeholder="Latitude: 33.5731" db="joie_haggle_triggers.coordinates" />
               </div>
               <p className="text-xs text-ink-muted mt-1">Get from Google Maps — longitude is negative for Morocco (e.g. -7.5898), latitude is positive (e.g. 33.5731). <strong>Longitude first.</strong></p>
             </div>
-            <div style={{ maxWidth: '200px' }}><Label>Geofence Radius (metres)</Label><Input name="radius_meters" defaultValue="500" placeholder="500" /></div>
+            <div style={{ maxWidth: '200px' }}><Label>Geofence Radius (metres)</Label><Input name="radius_meters" defaultValue="500" placeholder="500" db="joie_haggle_triggers.radius_meters" /></div>
             <div>
               <Label>Haggle Tips (one tip per line)</Label>
-              <Textarea name="tips" placeholder={"Start at 40% of asking price\nWalk away if needed — they will call you back\nPay in cash for better rates"} rows={4} />
+              <Textarea name="tips" placeholder={"Start at 40% of asking price\nWalk away if needed — they will call you back\nPay in cash for better rates"} rows={4} db="joie_haggle_triggers.tips" />
               <p className="text-xs text-ink-muted mt-1">Each line becomes a separate tip in the app.</p>
             </div>
             <div>
               <Label>Phrases (JSON)</Label>
-              <Textarea name="phrases" placeholder={'{\n  "opening": "بكم هذا؟",\n  "too_expensive": "هذا غالي جداً",\n  "final_offer": "هذا آخر عرضي",\n  "thank_you": "شكراً"\n}'} rows={5} />
+              <Textarea name="phrases" placeholder={'{\n  "opening": "بكم هذا؟",\n  "too_expensive": "هذا غالي جداً",\n  "final_offer": "هذا آخر عرضي",\n  "thank_you": "شكراً"\n}'} rows={5} db="joie_haggle_triggers.phrases" />
               <p className="text-xs text-ink-muted mt-1">Key-value JSON. Keys are phrase names; values are the local-language text.</p>
             </div>
             <div>
               <Label>Price Anchors (JSON)</Label>
-              <Textarea name="price_anchors" placeholder={'{\n  "leather_bag": {"low": 80, "mid": 150, "high": 300},\n  "spices_100g": {"low": 10, "mid": 20, "high": 40}\n}'} rows={5} />
+              <Textarea name="price_anchors" placeholder={'{\n  "leather_bag": {"low": 80, "mid": 150, "high": 300},\n  "spices_100g": {"low": 10, "mid": 20, "high": 40}\n}'} rows={5} db="joie_haggle_triggers.price_anchors" />
               <p className="text-xs text-ink-muted mt-1">Each key is an item name; value is an object with low/mid/high price range in the local currency.</p>
             </div>
             <div className="flex gap-3">
@@ -3186,31 +3190,31 @@ function HaggleTriggerRow({ trigger, tripId }: { trigger: HaggleTrigger; tripId:
           <input type="hidden" name="id" value={trigger.id} />
           <input type="hidden" name="trip_id" value={tripId} />
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Location Name *</Label><Input name="location_name" defaultValue={trigger.location_name} required /></div>
+            <div><Label>Location Name *</Label><Input name="location_name" defaultValue={trigger.location_name} required db="joie_haggle_triggers.location_name" /></div>
             <div>
               <Label>Currency</Label>
-              <Select name="currency" defaultValue={trigger.currency || 'MAD'} options={CURRENCY_OPTIONS} />
+              <Select name="currency" defaultValue={trigger.currency || 'MAD'} options={CURRENCY_OPTIONS} db="joie_haggle_triggers.currency" />
             </div>
           </div>
           <div>
             <Label>Coordinates *</Label>
             <div className="grid grid-cols-2 gap-3">
-              <Input name="coord_lon" defaultValue={lonRaw} placeholder="-7.5898" required />
-              <Input name="coord_lat" defaultValue={latRaw} placeholder="33.5731" required />
+              <Input name="coord_lon" defaultValue={lonRaw} placeholder="-7.5898" required db="joie_haggle_triggers.coordinates" />
+              <Input name="coord_lat" defaultValue={latRaw} placeholder="33.5731" required db="joie_haggle_triggers.coordinates" />
             </div>
           </div>
-          <div style={{ maxWidth: '200px' }}><Label>Radius (metres)</Label><Input name="radius_meters" defaultValue={String(trigger.radius_meters || 500)} /></div>
+          <div style={{ maxWidth: '200px' }}><Label>Radius (metres)</Label><Input name="radius_meters" defaultValue={String(trigger.radius_meters || 500)} db="joie_haggle_triggers.radius_meters" /></div>
           <div>
             <Label>Tips (one per line)</Label>
-            <Textarea name="tips" defaultValue={tipsText} rows={4} />
+            <Textarea name="tips" defaultValue={tipsText} rows={4} db="joie_haggle_triggers.tips" />
           </div>
           <div>
             <Label>Phrases (JSON)</Label>
-            <Textarea name="phrases" defaultValue={phrasesText} rows={5} />
+            <Textarea name="phrases" defaultValue={phrasesText} rows={5} db="joie_haggle_triggers.phrases" />
           </div>
           <div>
             <Label>Price Anchors (JSON)</Label>
-            <Textarea name="price_anchors" defaultValue={priceAnchorsText} rows={5} />
+            <Textarea name="price_anchors" defaultValue={priceAnchorsText} rows={5} db="joie_haggle_triggers.price_anchors" />
           </div>
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
@@ -3268,18 +3272,18 @@ function JourneyFactsTab({ trip, facts }: { trip: Trip; facts: JourneyFact[] }) 
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Category</Label>
-                <Select name="category" options={FACT_CATEGORIES} />
+                <Select name="category" options={FACT_CATEGORIES} db="journey_facts.category" />
               </div>
-              <div><Label>Sort Order</Label><Input name="sort_order" placeholder="1" /></div>
+              <div><Label>Sort Order</Label><Input name="sort_order" placeholder="1" db="journey_facts.sort_order" /></div>
               <div>
                 <Label>Active</Label>
                 <Select name="is_active" options={['true', 'false']} />
               </div>
             </div>
-            <div><Label>Headline *</Label><Input name="headline" required placeholder="Short hook (~60 chars max)" /></div>
-            <div><Label>Body *</Label><Textarea name="body" required placeholder="Full fact text (2–4 sentences)…" rows={4} /></div>
+            <div><Label>Headline *</Label><Input name="headline" required placeholder="Short hook (~60 chars max)" db="journey_facts.headline" /></div>
+            <div><Label>Body *</Label><Textarea name="body" required placeholder="Full fact text (2–4 sentences)…" rows={4} db="journey_facts.body" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Music URL (optional)</Label><Input name="music_url" placeholder="Apple Music or Spotify link" /></div>
+              <div><Label>Music URL (optional)</Label><Input name="music_url" placeholder="Apple Music or Spotify link" db="journey_facts.music_url" /></div>
               <div>
                 <Label>Music Platform</Label>
                 <select name="music_platform" className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
@@ -3289,7 +3293,7 @@ function JourneyFactsTab({ trip, facts }: { trip: Trip; facts: JourneyFact[] }) 
             </div>
             <div>
               <Label>Destinations (JSON array, optional)</Label>
-              <Input name="destinations" placeholder='["Morocco", "France"]' />
+              <Input name="destinations" placeholder='["Morocco", "France"]' db="journey_facts.destinations" />
               <p className="text-xs text-ink-muted mt-1">Controls which trips see this fact. Leave blank to show on all trips.</p>
             </div>
             <div className="flex gap-3">
@@ -3365,18 +3369,18 @@ function JourneyFactRow({ fact, tripId }: { fact: JourneyFact; tripId: string })
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label>Category</Label>
-              <Select name="category" defaultValue={fact.category} options={FACT_CATEGORIES} />
+              <Select name="category" defaultValue={fact.category} options={FACT_CATEGORIES} db="journey_facts.category" />
             </div>
-            <div><Label>Sort Order</Label><Input name="sort_order" defaultValue={String(fact.sort_order ?? '')} placeholder="1" /></div>
+            <div><Label>Sort Order</Label><Input name="sort_order" defaultValue={String(fact.sort_order ?? '')} placeholder="1" db="journey_facts.sort_order" /></div>
             <div>
               <Label>Active</Label>
               <Select name="is_active" defaultValue={fact.is_active ? 'true' : 'false'} options={['true', 'false']} />
             </div>
           </div>
-          <div><Label>Headline *</Label><Input name="headline" defaultValue={fact.headline} required /></div>
-          <div><Label>Body *</Label><Textarea name="body" defaultValue={fact.body} required rows={4} /></div>
+          <div><Label>Headline *</Label><Input name="headline" defaultValue={fact.headline} required db="journey_facts.headline" /></div>
+          <div><Label>Body *</Label><Textarea name="body" defaultValue={fact.body} required rows={4} db="journey_facts.body" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Music URL</Label><Input name="music_url" defaultValue={fact.music_url} /></div>
+            <div><Label>Music URL</Label><Input name="music_url" defaultValue={fact.music_url} db="journey_facts.music_url" /></div>
             <div>
               <Label>Music Platform</Label>
               <select name="music_platform" defaultValue={fact.music_platform || ''} className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none" style={{ background: '#faf8f4' }}>
@@ -3390,6 +3394,7 @@ function JourneyFactRow({ fact, tripId }: { fact: JourneyFact; tripId: string })
               name="destinations"
               defaultValue={fact.destinations ? JSON.stringify(fact.destinations) : ''}
               placeholder='["Morocco", "France"]'
+              db="journey_facts.destinations"
             />
           </div>
           <div className="flex gap-3">
