@@ -1855,6 +1855,15 @@ function HotelsTab({ trip, hotels, travelers }: { trip: Trip; hotels: Hotel[]; t
   const [adding, setAdding] = useState(false)
   const [pending, startTransition] = useTransition()
   const bulk = useBulkSelect(hotels.map(h => h.id))
+  // Controlled state for place-lookup-fillable fields
+  const [addName,    setAddName]    = useState('')
+  const [addAddress, setAddAddress] = useState('')
+  const [addPhone,   setAddPhone]   = useState('')
+  const [addWebsite, setAddWebsite] = useState('')
+
+  function resetAddForm() {
+    setAddName(''); setAddAddress(''); setAddPhone(''); setAddWebsite('')
+  }
 
   return (
     <div className="space-y-4">
@@ -1868,31 +1877,100 @@ function HotelsTab({ trip, hotels, travelers }: { trip: Trip; hotels: Hotel[]; t
               fd.set('trip_id', trip.id)
               await upsertHotelAction(fd)
               setAdding(false)
+              resetAddForm()
               window.location.reload()
             }}
             className="space-y-3"
           >
             <input type="hidden" name="trip_id" value={trip.id} />
-            <div><Label>Hotel Name *</Label><Input name="name" required placeholder="Villa Sahrai" db="reference_items.name" /></div>
+
+            {/* Name + place lookup */}
+            <div>
+              <Label>Hotel Name *</Label>
+              <div className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <input
+                    name="name"
+                    type="text"
+                    required
+                    value={addName}
+                    onChange={e => setAddName(e.target.value)}
+                    placeholder="Villa Sahrai"
+                    className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                    style={{ background: '#faf8f4' }}
+                  />
+                  <FieldHint value="reference_items.name" />
+                </div>
+                <div className="pt-0.5">
+                  <PlacePicker
+                    titleQuery={addName}
+                    city=""
+                    onSelect={r => {
+                      setAddName(r.name)
+                      setAddAddress(r.address)
+                      if (r.phone)   setAddPhone(r.phone)
+                      if (r.website) setAddWebsite(r.website)
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-4 gap-3">
               <div><Label>Check-in Date</Label><Input name="check_in" type="date" db="reference_items.check_in" /></div>
               <div>
                 <Label>Check-in Time (local)</Label>
-                <Input name="check_in_time" placeholder="15:00" db="reference_items.check_in_time" />
+                <Input name="check_in_time" defaultValue="15:00" placeholder="15:00" db="reference_items.check_in_time" />
                 <p className="text-xs text-ink-muted -mt-1">HH:MM in destination local time</p>
               </div>
               <div><Label>Check-out Date</Label><Input name="check_out" type="date" db="reference_items.check_out" /></div>
               <div>
                 <Label>Check-out Time (local)</Label>
-                <Input name="check_out_time" placeholder="12:00" db="reference_items.check_out_time" />
+                <Input name="check_out_time" defaultValue="12:00" placeholder="12:00" db="reference_items.check_out_time" />
                 <p className="text-xs text-ink-muted -mt-1">HH:MM in destination local time</p>
               </div>
             </div>
             <div><Label>Confirmation #</Label><Input name="confirmation" placeholder="ABC-123456" db="reference_items.confirmation" /></div>
-            <div><Label>Address</Label><Input name="address" db="reference_items.address" /></div>
+            <div>
+              <Label>Address</Label>
+              <input
+                name="address"
+                type="text"
+                value={addAddress}
+                onChange={e => setAddAddress(e.target.value)}
+                placeholder="Full address"
+                className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                style={{ background: '#faf8f4' }}
+              />
+              <FieldHint value="reference_items.address" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Phone</Label><Input name="phone" db="reference_items.phone" /></div>
-              <div><Label>Website</Label><Input name="website" placeholder="https://…" db="reference_items.website" /></div>
+              <div>
+                <Label>Phone</Label>
+                <input
+                  name="phone"
+                  type="text"
+                  value={addPhone}
+                  onChange={e => setAddPhone(e.target.value)}
+                  placeholder="+212 522-000-000"
+                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                  style={{ background: '#faf8f4' }}
+                />
+                <FieldHint value="reference_items.phone" />
+              </div>
+              <div>
+                <Label>Website</Label>
+                <input
+                  name="website"
+                  type="text"
+                  value={addWebsite}
+                  onChange={e => setAddWebsite(e.target.value)}
+                  placeholder="https://…"
+                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                  style={{ background: '#faf8f4' }}
+                />
+                <FieldHint value="reference_items.website" />
+              </div>
             </div>
             <div><Label>Notes</Label><Textarea name="notes" db="reference_items.notes" /></div>
             {travelers.length > 0 && (
@@ -1904,7 +1982,7 @@ function HotelsTab({ trip, hotels, travelers }: { trip: Trip; hotels: Hotel[]; t
             )}
             <div className="flex gap-3">
               <SaveBtn pending={pending} />
-              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
+              <button type="button" onClick={() => { setAdding(false); resetAddForm() }} className="text-xs text-ink-muted">Cancel</button>
             </div>
           </form>
         </Card>
@@ -1923,6 +2001,10 @@ function HotelsTab({ trip, hotels, travelers }: { trip: Trip; hotels: Hotel[]; t
 function HotelRow({ hotel, tripId, tripStartDate, travelers }: { hotel: Hotel; tripId: string; tripStartDate: string; travelers: Traveler[] }) {
   const [editing, setEditing] = useState(false)
   const [pending, startTransition] = useTransition()
+  const [editName,    setEditName]    = useState(hotel.name)
+  const [editAddress, setEditAddress] = useState(hotel.address || '')
+  const [editPhone,   setEditPhone]   = useState(hotel.phone || '')
+  const [editWebsite, setEditWebsite] = useState(hotel.website || '')
 
   const checkInDay  = hotelDayNumber(tripStartDate, hotel.check_in)
   const checkOutDay = hotelDayNumber(tripStartDate, hotel.check_out)
@@ -2007,7 +2089,38 @@ function HotelRow({ hotel, tripId, tripStartDate, travelers }: { hotel: Hotel; t
         >
           <input type="hidden" name="id" value={hotel.id} />
           <input type="hidden" name="trip_id" value={tripId} />
-          <div><Label>Hotel Name *</Label><Input name="name" defaultValue={hotel.name} required db="reference_items.name" /></div>
+
+          {/* Name + place lookup */}
+          <div>
+            <Label>Hotel Name *</Label>
+            <div className="flex gap-2 items-start">
+              <div className="flex-1">
+                <input
+                  name="name"
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                  style={{ background: '#faf8f4' }}
+                />
+                <FieldHint value="reference_items.name" />
+              </div>
+              <div className="pt-0.5">
+                <PlacePicker
+                  titleQuery={editName}
+                  city=""
+                  onSelect={r => {
+                    setEditName(r.name)
+                    setEditAddress(r.address)
+                    if (r.phone)   setEditPhone(r.phone)
+                    if (r.website) setEditWebsite(r.website)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-4 gap-3">
             <div><Label>Check-in Date</Label><Input name="check_in" type="date" defaultValue={hotel.check_in?.split('T')[0]} db="reference_items.check_in" /></div>
             <div>
@@ -2023,10 +2136,43 @@ function HotelRow({ hotel, tripId, tripStartDate, travelers }: { hotel: Hotel; t
             </div>
           </div>
           <div><Label>Confirmation #</Label><Input name="confirmation" defaultValue={hotel.confirmation} db="reference_items.confirmation" /></div>
-          <div><Label>Address</Label><Input name="address" defaultValue={hotel.address} db="reference_items.address" /></div>
+          <div>
+            <Label>Address</Label>
+            <input
+              name="address"
+              type="text"
+              value={editAddress}
+              onChange={e => setEditAddress(e.target.value)}
+              className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+              style={{ background: '#faf8f4' }}
+            />
+            <FieldHint value="reference_items.address" />
+          </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Phone</Label><Input name="phone" defaultValue={hotel.phone} db="reference_items.phone" /></div>
-            <div><Label>Website</Label><Input name="website" defaultValue={hotel.website} db="reference_items.website" /></div>
+            <div>
+              <Label>Phone</Label>
+              <input
+                name="phone"
+                type="text"
+                value={editPhone}
+                onChange={e => setEditPhone(e.target.value)}
+                className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                style={{ background: '#faf8f4' }}
+              />
+              <FieldHint value="reference_items.phone" />
+            </div>
+            <div>
+              <Label>Website</Label>
+              <input
+                name="website"
+                type="text"
+                value={editWebsite}
+                onChange={e => setEditWebsite(e.target.value)}
+                className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                style={{ background: '#faf8f4' }}
+              />
+              <FieldHint value="reference_items.website" />
+            </div>
           </div>
           <div><Label>Notes</Label><Textarea name="notes" defaultValue={hotel.notes} db="reference_items.notes" /></div>
           {travelers.length > 0 && (
