@@ -3459,6 +3459,7 @@ function TripImageSlot({ trip, field, label, savedKey }: { trip: Trip; field: st
           onUploaded={handleSave}
         />
       </div>
+      <FieldHint value={`trips.${field}`} />
       <div className="flex items-center gap-4">
         <button
           type="button"
@@ -3533,28 +3534,31 @@ function TripTextField({ trip, field, label, placeholder, multiline, isImage, db
         ? <><textarea {...sharedProps} rows={4} />{(db ?? `trips.${field}`) && <FieldHint value={db ?? `trips.${field}`} />}</>
         : isImage
           ? (
-            <div className="flex items-center gap-2">
-              <input {...sharedProps} type="url" className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" />
-              <ImageUploadBtn
-                targetInputName={field}
-                targetInputId={inputId}
-                folder="trip-media"
-                onUploaded={url => {
-                  const el = document.getElementById(inputId) as HTMLInputElement | null
-                  if (el) {
-                    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
-                    nativeSetter?.call(el, url)
-                    el.dispatchEvent(new Event('input', { bubbles: true }))
-                    el.dispatchEvent(new Event('change', { bubbles: true }))
-                  }
-                  startTransition(async () => {
-                    await updateTripFieldAction(trip.id, field, url)
-                    setSaved(true)
-                    setTimeout(() => setSaved(false), 2000)
-                  })
-                }}
-              />
-            </div>
+            <>
+              <div className="flex items-center gap-2">
+                <input {...sharedProps} type="url" className="flex-1 min-w-0 border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold" />
+                <ImageUploadBtn
+                  targetInputName={field}
+                  targetInputId={inputId}
+                  folder="trip-media"
+                  onUploaded={url => {
+                    const el = document.getElementById(inputId) as HTMLInputElement | null
+                    if (el) {
+                      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
+                      nativeSetter?.call(el, url)
+                      el.dispatchEvent(new Event('input', { bubbles: true }))
+                      el.dispatchEvent(new Event('change', { bubbles: true }))
+                    }
+                    startTransition(async () => {
+                      await updateTripFieldAction(trip.id, field, url)
+                      setSaved(true)
+                      setTimeout(() => setSaved(false), 2000)
+                    })
+                  }}
+                />
+              </div>
+              <FieldHint value={db ?? `trips.${field}`} />
+            </>
           )
           : <><input {...sharedProps} type="text" /><FieldHint value={db ?? `trips.${field}`} /></>
       }
