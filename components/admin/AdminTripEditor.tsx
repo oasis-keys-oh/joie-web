@@ -45,9 +45,9 @@ function dayDate(tripStartDate: string, dayNumber: number): string {
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; web_password?: string; story_image_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
-interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; morning_brief?: string; wow_moment?: string; gpx_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
+interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; timezone?: string; location_lat?: number; location_lng?: number; morning_brief?: string; wow_moment?: string; gpx_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
 interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; partner_name?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; wine_preferences?: string; interests?: string; travel_style?: string; allergies?: string; languages?: string; activities?: string; bucket_list?: string; music_preferences?: string; age?: number }
-interface Event { id: string; day_id: string; type: string; title: string; time_start?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string; traveler_keys?: string[] }
+interface Event { id: string; day_id: string; type: string; title: string; subtitle?: string; time_start?: string; time_end?: string; timezone?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string; traveler_keys?: string[] }
 interface DayRoute { id: string; trip_id: string; day_id: string; name?: string; gpx_url: string; traveler_keys?: string[]; sort_order: number }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; check_in_time?: string; check_out_time?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string; traveler_keys?: string[] }
@@ -316,6 +316,177 @@ function toViewerTime(timeStr: string, dayNumber: number, viewerOffsetHours = -6
   const ampm = vh >= 12 ? 'PM' : 'AM'
   const h12 = vh === 0 ? 12 : vh > 12 ? vh - 12 : vh
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
+// ── IANA timezone selector ────────────────────────────────────────────────────
+// Common zones for this product (Morocco + France legs, US viewer timezones).
+// Rendered as a free-text input backed by a <datalist> so curators can both pick
+// from the list and type any other valid IANA string.
+
+const COMMON_TIMEZONES = [
+  'Africa/Casablanca',
+  'Europe/Paris',
+  'Europe/London',
+  'Europe/Madrid',
+  'America/Denver',
+  'America/New_York',
+  'America/Chicago',
+  'America/Los_Angeles',
+  'Asia/Dubai',
+  'Asia/Tokyo',
+  'Asia/Singapore',
+  'Australia/Sydney',
+  'UTC',
+]
+
+const IANA_DATALIST_ID = 'iana-timezones'
+
+function TimezoneDatalist() {
+  return (
+    <datalist id={IANA_DATALIST_ID}>
+      {COMMON_TIMEZONES.map(z => <option key={z} value={z} />)}
+    </datalist>
+  )
+}
+
+// ── Time / duration helpers ────────────────────────────────────────────────────
+
+/** Parse an "HH:MM" string to minutes-since-midnight, or null if unparseable. */
+function parseHHMM(v?: string): number | null {
+  const m = v?.match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return null
+  const h = parseInt(m[1], 10)
+  const min = parseInt(m[2], 10)
+  if (h > 23 || min > 59) return null
+  return h * 60 + min
+}
+
+/** Add `mins` to an "HH:MM" start string, wrapping past midnight. Returns "HH:MM". */
+function addMinutes(start: string, mins: number): string {
+  const s = parseHHMM(start)
+  if (s === null) return ''
+  const t = ((s + mins) % 1440 + 1440) % 1440
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
+}
+
+/** Human duration between two "HH:MM" strings, e.g. "2h 15m". Null if either is empty/invalid. */
+function fmtDuration(startStr?: string, endStr?: string): string | null {
+  const s = parseHHMM(startStr)
+  const e = parseHHMM(endStr)
+  if (s === null || e === null) return null
+  let diff = e - s
+  if (diff < 0) diff += 1440  // crosses midnight (e.g. late flight)
+  if (diff === 0) return '0m'
+  const h = Math.floor(diff / 60)
+  const m = diff % 60
+  return [h > 0 ? `${h}h` : '', m > 0 ? `${m}m` : ''].filter(Boolean).join(' ')
+}
+
+const DURATION_PRESETS = [
+  { label: '30m',  mins: 30 },
+  { label: '1h',   mins: 60 },
+  { label: '1h30', mins: 90 },
+  { label: '2h',   mins: 120 },
+  { label: '3h',   mins: 180 },
+]
+
+/**
+ * Start/End time inputs (type=time, day-scoped so date is implicit) with a live
+ * duration read-out and quick-set presets. Renders named inputs `time_start` and
+ * `time_end` so the form action picks them up.
+ */
+function EventTimeFields({ defaultStart, defaultEnd }: { defaultStart?: string; defaultEnd?: string }) {
+  const [start, setStart] = useState(defaultStart ?? '')
+  const [end, setEnd]     = useState(defaultEnd ?? '')
+  const duration = fmtDuration(start, end)
+  const inputCls = 'w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold'
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Start Time</Label>
+          <input
+            name="time_start"
+            type="time"
+            value={start}
+            onChange={e => setStart(e.target.value)}
+            className={inputCls}
+            style={{ background: '#faf8f4' }}
+          />
+          <FieldHint value="events.time_start" />
+        </div>
+        <div>
+          <Label>End Time</Label>
+          <input
+            name="time_end"
+            type="time"
+            value={end}
+            onChange={e => setEnd(e.target.value)}
+            className={inputCls}
+            style={{ background: '#faf8f4' }}
+          />
+          <FieldHint value="events.time_end" />
+        </div>
+      </div>
+
+      {duration && (
+        <p className="text-xs font-medium text-navy mt-1.5">Duration: {duration}</p>
+      )}
+
+      {start && (
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          <span className="text-[10px] uppercase tracking-widest text-ink-muted" style={{ letterSpacing: '0.12em' }}>Set end:</span>
+          {DURATION_PRESETS.map(p => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => setEnd(addMinutes(start, p.mins))}
+              className="text-xs px-2.5 py-1 rounded-full border border-gray-200 text-navy hover:border-gold hover:text-gold transition-colors"
+            >
+              {p.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setEnd('')}
+            className="text-xs px-2.5 py-1 rounded-full border border-gray-200 text-ink-muted hover:border-navy hover:text-navy transition-colors"
+          >
+            Custom
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Event timezone selector. Pre-populates from the parent day's timezone when the
+ * event has none of its own; shows an inherit hint when neither is set. Keyed by
+ * dayId at the call site so changing the day re-seeds the default.
+ */
+function EventTimezoneField({ eventTimezone, dayTimezone }: { eventTimezone?: string; dayTimezone?: string }) {
+  const [tz, setTz] = useState(eventTimezone || dayTimezone || '')
+  const showInheritHint = !eventTimezone && !dayTimezone
+  return (
+    <div>
+      <Label>Timezone</Label>
+      <input
+        name="timezone"
+        list={IANA_DATALIST_ID}
+        value={tz}
+        onChange={e => setTz(e.target.value)}
+        placeholder="Africa/Casablanca"
+        className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+        style={{ background: '#faf8f4' }}
+      />
+      <TimezoneDatalist />
+      {showInheritHint && (
+        <p className="text-xs text-ink-muted mt-0.5">Inherits from day timezone</p>
+      )}
+      <FieldHint value="events.timezone" />
+    </div>
+  )
 }
 
 // ── Place lookup (Google Places API) ─────────────────────────────────────────
@@ -819,6 +990,34 @@ function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; t
                     style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
                   >
                     {pending ? 'Saving…' : 'Save Title'}
+                  </button>
+                </div>
+
+                {/* Day Timezone */}
+                <div>
+                  <Label>Day Timezone</Label>
+                  <input
+                    name="timezone"
+                    type="text"
+                    list={IANA_DATALIST_ID}
+                    defaultValue={day.timezone || ''}
+                    placeholder="Africa/Casablanca"
+                    className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                    style={{ background: '#faf8f4' }}
+                  />
+                  <TimezoneDatalist />
+                  <FieldHint value="trip_days.timezone" />
+                  <p className="text-xs text-ink-muted mt-1">Events in this day will inherit this timezone if they don&rsquo;t have their own set.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.querySelector(`[data-day="${day.id}"] input[name="timezone"]`) as HTMLInputElement
+                      handleSave(day.id, 'timezone', el?.value || '')
+                    }}
+                    className="mt-2 text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
+                    style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
+                  >
+                    {pending ? 'Saving…' : 'Save Timezone'}
                   </button>
                 </div>
 
@@ -1390,7 +1589,7 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
 
             {/* Title + place lookup */}
             <div>
-              <Label>Title *</Label>
+              <Label>Title (header) *</Label>
               <div className="flex gap-2 items-start">
                 <div className="flex-1">
                   <input
@@ -1425,12 +1624,16 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
               )}
             </div>
 
+            {/* Subtitle */}
+            <div>
+              <Label>Subtitle</Label>
+              <Input name="subtitle" placeholder="e.g. DEN → CMN, departure gate B12, Ritz-Carlton" db="events.subtitle" />
+            </div>
+
+            <EventTimeFields />
+
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Time (HH:MM — local destination time)</Label>
-                <Input name="time_start" placeholder="19:30" db="events.time_start" />
-                <p className="text-xs text-ink-muted mt-0.5">Morocco or France local time. Mountain shown in card view.</p>
-              </div>
+              <EventTimezoneField key={addDayId} dayTimezone={days.find(d => d.id === addDayId)?.timezone} />
               <div><Label>Confirmation #</Label><Input name="confirmation" placeholder="ABC123" db="events.confirmation" /></div>
             </div>
             <div>
@@ -1538,9 +1741,13 @@ function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: st
                 const mt = toViewerTime(event.time_start, dayNumber)
                 return (
                   <span className="text-xs text-ink-muted flex items-center gap-1.5">
-                    <span className="font-medium text-navy">{event.time_start}</span>
+                    <span className="font-medium text-navy">{event.time_start}{event.time_end ? `–${event.time_end}` : ''}</span>
+                    {fmtDuration(event.time_start, event.time_end) && <>
+                      <span className="text-gray-300">·</span>
+                      <span>{fmtDuration(event.time_start, event.time_end)}</span>
+                    </>}
                     <span className="text-gray-300">·</span>
-                    <span>{destTzLabel(dayNumber)}</span>
+                    <span>{event.timezone || destTzLabel(dayNumber)}</span>
                     {mt && <>
                       <span className="text-gray-300">·</span>
                       <span className="text-gold">{mt} MT</span>
@@ -1551,6 +1758,7 @@ function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: st
               {event.confirmation && <span className="text-xs font-mono text-navy bg-gray-50 px-2 py-0.5 rounded-sm">{event.confirmation}</span>}
             </div>
             <p className="font-semibold text-navy text-sm">{event.title}</p>
+            {event.subtitle && <p className="text-xs text-navy/70 mt-0.5">{event.subtitle}</p>}
             {event.address && <p className="text-xs text-ink-muted mt-0.5">{event.address}</p>}
             {event.phone && <p className="text-xs text-ink-muted">{event.phone}</p>}
             {event.notes && <p className="text-xs text-ink-muted mt-1 italic">{event.notes}</p>}
@@ -1646,17 +1854,16 @@ function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: st
             </div>
           </div>
 
+          {/* Subtitle */}
+          <div>
+            <Label>Subtitle</Label>
+            <Input name="subtitle" defaultValue={event.subtitle} placeholder="e.g. DEN → CMN, departure gate B12, Ritz-Carlton" db="events.subtitle" />
+          </div>
+
+          <EventTimeFields defaultStart={event.time_start} defaultEnd={event.time_end} />
+
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Time (HH:MM local destination time)</Label>
-              <Input name="time_start" defaultValue={event.time_start} db="events.time_start" />
-              {event.time_start && (() => {
-                const mt = toViewerTime(event.time_start, dayNumber)
-                return mt ? (
-                  <p className="text-xs text-gold mt-0.5">{destTzLabel(dayNumber)} {event.time_start} = {mt} MT</p>
-                ) : null
-              })()}
-            </div>
+            <EventTimezoneField key={editDayId} eventTimezone={event.timezone} dayTimezone={days.find(d => d.id === editDayId)?.timezone} />
             <div><Label>Confirmation #</Label><Input name="confirmation" defaultValue={event.confirmation} db="events.confirmation" /></div>
           </div>
           <div>
