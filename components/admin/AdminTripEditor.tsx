@@ -47,7 +47,7 @@ function dayDate(tripStartDate: string, dayNumber: number): string {
 interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; web_password?: string; story_image_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
 interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; timezone?: string; location_lat?: number; location_lng?: number; morning_brief?: string; wow_moment?: string; gpx_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
 interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; partner_name?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; wine_preferences?: string; interests?: string; travel_style?: string; allergies?: string; languages?: string; activities?: string; bucket_list?: string; music_preferences?: string; age?: number }
-interface Event { id: string; day_id: string; type: string; title: string; subtitle?: string; time_start?: string; time_end?: string; timezone?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string; traveler_keys?: string[] }
+interface Event { id: string; day_id: string; type: string; title: string; subtitle?: string; time_start?: string; time_end?: string; timezone?: string; timezone_end?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string; traveler_keys?: string[] }
 interface DayRoute { id: string; trip_id: string; day_id: string; name?: string; gpx_url: string; traveler_keys?: string[]; sort_order: number }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; check_in_time?: string; check_out_time?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string; traveler_keys?: string[] }
@@ -460,31 +460,72 @@ function EventTimeFields({ defaultStart, defaultEnd }: { defaultStart?: string; 
   )
 }
 
+/** Event types whose start and end may sit in different timezones. */
+const CROSS_TZ_EVENT_TYPES = ['flight', 'transfer']
+
 /**
- * Event timezone selector. Pre-populates from the parent day's timezone when the
- * event has none of its own; shows an inherit hint when neither is set. Keyed by
- * dayId at the call site so changing the day re-seeds the default.
+ * Event timezone selector(s). Renders the start timezone (name="timezone"),
+ * pre-populated from the parent day's timezone when the event has none of its own.
+ *
+ * `timezone_end` behaviour by event type:
+ *  - flight / transfer: a separate "Arrival Timezone" input (name="timezone_end"),
+ *    pre-filled from the start timezone but independently editable.
+ *  - all other types: no arrival field shown; a hidden input keeps timezone_end in
+ *    sync with the start timezone so it is written as the same value on save.
+ *
+ * Keyed by dayId at the call site so changing the day re-seeds the defaults; the
+ * `type` prop is reactive so switching to/from flight reveals/hides the arrival field
+ * without losing the entered start timezone.
  */
-function EventTimezoneField({ eventTimezone, dayTimezone }: { eventTimezone?: string; dayTimezone?: string }) {
-  const [tz, setTz] = useState(eventTimezone || dayTimezone || '')
+function EventTimezoneFields({ type, eventTimezone, eventTimezoneEnd, dayTimezone }: {
+  type: string; eventTimezone?: string; eventTimezoneEnd?: string; dayTimezone?: string
+}) {
+  const initialStart = eventTimezone || dayTimezone || ''
+  const [startTz, setStartTz] = useState(initialStart)
+  const [endTz, setEndTz]     = useState(eventTimezoneEnd || initialStart)
+  const isCrossTz = CROSS_TZ_EVENT_TYPES.includes(type)
   const showInheritHint = !eventTimezone && !dayTimezone
+  const inputCls = 'w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold'
+
   return (
-    <div>
-      <Label>Timezone</Label>
-      <input
-        name="timezone"
-        list={IANA_DATALIST_ID}
-        value={tz}
-        onChange={e => setTz(e.target.value)}
-        placeholder="Africa/Casablanca"
-        className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
-        style={{ background: '#faf8f4' }}
-      />
-      <TimezoneDatalist />
-      {showInheritHint && (
-        <p className="text-xs text-ink-muted mt-0.5">Inherits from day timezone</p>
+    <div className="space-y-3">
+      <div>
+        <Label>{isCrossTz ? 'Departure Timezone' : 'Timezone'}</Label>
+        <input
+          name="timezone"
+          list={IANA_DATALIST_ID}
+          value={startTz}
+          onChange={e => setStartTz(e.target.value)}
+          placeholder="Africa/Casablanca"
+          className={inputCls}
+          style={{ background: '#faf8f4' }}
+        />
+        <TimezoneDatalist />
+        {showInheritHint && (
+          <p className="text-xs text-ink-muted mt-0.5">Inherits from day timezone</p>
+        )}
+        <FieldHint value="events.timezone" />
+      </div>
+
+      {isCrossTz ? (
+        <div>
+          <Label>Arrival Timezone</Label>
+          <input
+            name="timezone_end"
+            list={IANA_DATALIST_ID}
+            value={endTz}
+            onChange={e => setEndTz(e.target.value)}
+            placeholder="Europe/Paris"
+            className={inputCls}
+            style={{ background: '#faf8f4' }}
+          />
+          <p className="text-xs text-ink-muted mt-0.5">The timezone the end time is in. Pre-filled from departure — change it if the leg crosses zones.</p>
+          <FieldHint value="events.timezone_end" />
+        </div>
+      ) : (
+        // Non-cross-tz events: end timezone tracks the start timezone.
+        <input type="hidden" name="timezone_end" value={startTz} />
       )}
-      <FieldHint value="events.timezone" />
     </div>
   )
 }
@@ -1510,6 +1551,7 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
   const [addError, setAddError] = useState<string | null>(null)
   // Controlled state for place-lookup-fillable fields in the add form
   const [addDayId,      setAddDayId]      = useState(days[0]?.id ?? '')
+  const [addType,       setAddType]       = useState(EVENT_TYPES[0])
   const [addTitle,      setAddTitle]      = useState('')
   const [addAddress,    setAddAddress]    = useState('')
   const [addPhone,      setAddPhone]      = useState('')
@@ -1517,7 +1559,7 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
 
   function resetAddForm() {
     setAddTitle(''); setAddAddress(''); setAddPhone(''); setAddBookingUrl('')
-    setAddDayId(days[0]?.id ?? '')
+    setAddDayId(days[0]?.id ?? ''); setAddType(EVENT_TYPES[0])
   }
 
   const addCityContext = days.find(d => d.id === addDayId)?.location
@@ -1583,7 +1625,16 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
               </div>
               <div>
                 <Label>Type</Label>
-                <Select name="type" options={EVENT_TYPES} db="events.type" />
+                <select
+                  name="type"
+                  value={addType}
+                  onChange={e => setAddType(e.target.value)}
+                  className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                  style={{ background: '#faf8f4' }}
+                >
+                  {EVENT_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <FieldHint value="events.type" />
               </div>
             </div>
 
@@ -1632,8 +1683,8 @@ function EventsTab({ trip, days, events, travelers }: { trip: Trip; days: Day[];
 
             <EventTimeFields />
 
-            <div className="grid grid-cols-2 gap-4">
-              <EventTimezoneField key={addDayId} dayTimezone={days.find(d => d.id === addDayId)?.timezone} />
+            <div className="grid grid-cols-2 gap-4 items-start">
+              <EventTimezoneFields key={addDayId} type={addType} dayTimezone={days.find(d => d.id === addDayId)?.timezone} />
               <div><Label>Confirmation #</Label><Input name="confirmation" placeholder="ABC123" db="events.confirmation" /></div>
             </div>
             <div>
@@ -1727,6 +1778,7 @@ function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: st
   const [editPhone,      setEditPhone]      = useState(event.phone    ?? '')
   const [editBookingUrl, setEditBookingUrl] = useState(event.booking_url ?? '')
   const [editDayId,      setEditDayId]      = useState(event.day_id)
+  const [editType,       setEditType]       = useState(event.type)
   const editCity = days.find(d => d.id === editDayId)?.location
     || days.find(d => d.id === editDayId)?.region || ''
 
@@ -1747,7 +1799,10 @@ function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: st
                       <span>{fmtDuration(event.time_start, event.time_end)}</span>
                     </>}
                     <span className="text-gray-300">·</span>
-                    <span>{event.timezone || destTzLabel(dayNumber)}</span>
+                    <span>
+                      {event.timezone || destTzLabel(dayNumber)}
+                      {event.timezone_end && event.timezone_end !== event.timezone ? ` → ${event.timezone_end}` : ''}
+                    </span>
                     {mt && <>
                       <span className="text-gray-300">·</span>
                       <span className="text-gold">{mt} MT</span>
@@ -1820,7 +1875,19 @@ function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: st
               </select>
               <FieldHint value="events.day_id" />
             </div>
-            <div><Label>Type</Label><Select name="type" defaultValue={event.type} options={EVENT_TYPES} db="events.type" /></div>
+            <div>
+              <Label>Type</Label>
+              <select
+                name="type"
+                value={editType}
+                onChange={e => setEditType(e.target.value)}
+                className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                style={{ background: '#faf8f4' }}
+              >
+                {EVENT_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <FieldHint value="events.type" />
+            </div>
           </div>
 
           {/* Title + place lookup */}
@@ -1862,8 +1929,8 @@ function EventRow({ event, tripId, days, travelers }: { event: Event; tripId: st
 
           <EventTimeFields defaultStart={event.time_start} defaultEnd={event.time_end} />
 
-          <div className="grid grid-cols-2 gap-3">
-            <EventTimezoneField key={editDayId} eventTimezone={event.timezone} dayTimezone={days.find(d => d.id === editDayId)?.timezone} />
+          <div className="grid grid-cols-2 gap-3 items-start">
+            <EventTimezoneFields key={editDayId} type={editType} eventTimezone={event.timezone} eventTimezoneEnd={event.timezone_end} dayTimezone={days.find(d => d.id === editDayId)?.timezone} />
             <div><Label>Confirmation #</Label><Input name="confirmation" defaultValue={event.confirmation} db="events.confirmation" /></div>
           </div>
           <div>

@@ -84,6 +84,7 @@ export async function upsertEventAction(formData: FormData) {
     time_start:     formData.get('time_start') as string || null,
     time_end:       formData.get('time_end') as string || null,
     timezone:       formData.get('timezone') as string || null,
+    timezone_end:   formData.get('timezone_end') as string || null,
     address:        formData.get('address') as string || null,
     phone:          formData.get('phone') as string || null,
     confirmation:   formData.get('confirmation') as string || null,
