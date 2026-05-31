@@ -41,6 +41,16 @@
   to     = "/support.html"
   status = 200
 
+# ── Trip follower landing (public) ───────────────────────────────────────────
+# /follow/:slug?ref=… serves the static follower page in /public. The slug is
+# read from the path by follow.html's client JS. Kept distinct from the (portal)
+# /trip/* routes so the follow page is fully public and the auth gate is intact.
+
+[[redirects]]
+  from   = "/follow/*"
+  to     = "/follow.html"
+  status = 200
+
 # ── Browser favicon fallback ─────────────────────────────────────────────────
 # Browsers request /favicon.ico automatically even when <link rel="icon"> is
 # set. Serve icon.svg in its place so DevTools doesn't log a 404.

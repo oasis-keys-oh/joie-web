@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Follow the Journey — Oukala Journeys</title>
+  <meta name="description" content="Follow along live as the journey unfolds. Real-time updates from the road, powered by Joie." />
+  <meta name="theme-color" content="#080808" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Follow the Journey — Oukala Journeys" />
+  <meta property="og:description" content="Get real-time updates as the journey unfolds." />
+  <meta property="og:type" content="website" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #080808;
+      --surface:      #101010;
+      --surface-2:    #161616;
+      --border:       rgba(255,255,255,0.07);
+      --border-focus: rgba(196,163,90,0.55);
+      --gold:         #C4A35A;
+      --gold-dim:     rgba(196,163,90,0.15);
+      --gold-border:  rgba(196,163,90,0.25);
+      --text:         #F0EBE3;
+      --text-muted:   #8A857E;
+      --text-dim:     #3E3A35;
+      --text-soft:    #C8C2BA;
+      --error:        #C76B5A;
+
+      --serif:  'Cormorant Garamond', Georgia, serif;
+      --sans:   'DM Sans', system-ui, sans-serif;
+
+      --max-w: 920px;
+      --gutter: clamp(1.25rem, 5vw, 3rem);
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    img { display: block; max-width: 100%; }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: var(--max-w); margin: 0 auto; padding: 0 var(--gutter); }
+
+    .eyebrow {
+      font-family: var(--sans);
+      font-size: 0.6875rem;
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    /* ─── Top bar ─────────────────────────────────────────────── */
+    .topbar {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.4rem var(--gutter);
+    }
+    .topbar-logo { display: flex; flex-direction: column; line-height: 1; }
+    .topbar-logo .name {
+      font-size: 0.72rem; font-weight: 500; letter-spacing: 0.25em;
+      text-transform: uppercase; color: var(--text);
+    }
+    .topbar-logo .product {
+      font-size: 0.58rem; font-weight: 300; letter-spacing: 0.3em;
+      text-transform: uppercase; color: var(--gold); margin-top: 0.3rem;
+    }
+    .topbar-link {
+      font-size: 0.68rem; font-weight: 400; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-muted); transition: color 0.2s;
+    }
+    .topbar-link:hover { color: var(--text); }
+
+    /* ─── Hero ────────────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      min-height: 64vh;
+      display: flex; align-items: flex-end;
+      padding: 0 0 clamp(2.5rem, 6vw, 4.5rem);
+      overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      transform: scale(1.04);
+    }
+    .hero-bg::after {
+      content: ""; position: absolute; inset: 0;
+      background:
+        linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.25) 35%, rgba(8,8,8,0.75) 80%, rgba(8,8,8,0.97) 100%),
+        radial-gradient(120% 80% at 20% 100%, rgba(8,8,8,0.6), transparent 60%);
+    }
+    .hero-inner { position: relative; z-index: 2; width: 100%; }
+    .hero .rule { display: block; width: 2.25rem; height: 1px; background: var(--gold); margin: 1.1rem 0 1.4rem; }
+    .hero h1 {
+      font-family: var(--serif); font-weight: 300;
+      font-size: clamp(2.1rem, 6vw, 3.9rem);
+      line-height: 1.04; letter-spacing: -0.01em;
+      color: var(--text); max-width: 16ch;
+    }
+    .hero h1 em { font-style: italic; color: var(--gold); }
+    .hero-meta {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.55rem 1.1rem;
+      margin-top: 1.6rem;
+      font-size: 0.9rem; color: var(--text-soft); font-weight: 300;
+    }
+    .hero-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--gold); opacity: 0.7; }
+
+    /* ─── Sections / cards ────────────────────────────────────── */
+    main { padding: clamp(2.5rem, 6vw, 4rem) 0 clamp(3.5rem, 8vw, 6rem); }
+    .stack { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: clamp(1.6rem, 4vw, 2.5rem);
+      position: relative;
+    }
+    .card-gold {
+      border-color: var(--gold-border);
+      background:
+        linear-gradient(180deg, rgba(196,163,90,0.06), rgba(196,163,90,0.01)),
+        var(--surface);
+    }
+
+    .card-eyebrow { margin-bottom: 0.85rem; }
+    .card h2 {
+      font-family: var(--serif); font-weight: 300;
+      font-size: clamp(1.6rem, 4vw, 2.3rem); line-height: 1.1; letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .card h2 em { font-style: italic; color: var(--gold); }
+    .card .sub {
+      margin-top: 0.7rem; font-size: 0.98rem; line-height: 1.6;
+      color: var(--text-muted); max-width: 52ch; font-weight: 300;
+    }
+
+    /* ─── Form ────────────────────────────────────────────────── */
+    form { margin-top: 1.7rem; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 560px) { .field-row { grid-template-columns: 1fr; } }
+    .field { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+    .field label {
+      font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .field label .req { color: var(--gold); margin-left: 0.2rem; }
+    .field input {
+      background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+      font-family: var(--sans); font-size: 0.95rem; font-weight: 300;
+      padding: 0.9rem 1rem; outline: none; border-radius: 0; width: 100%;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .field input:focus { border-color: var(--border-focus); background: var(--surface); }
+    .field input::placeholder { color: var(--text-dim); }
+    .field input.error { border-color: var(--error); }
+    .field-error { font-size: 0.6875rem; color: var(--error); min-height: 0.9rem; display: none; }
+    .field-error.show { display: block; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+      padding: 0.95rem 1.6rem; font-family: var(--sans); font-size: 0.72rem; font-weight: 500;
+      letter-spacing: 0.15em; text-transform: uppercase; border: 1px solid var(--gold);
+      color: var(--bg); background: var(--gold); cursor: pointer; width: 100%;
+      transition: background 0.2s, border-color 0.2s, opacity 0.2s; border-radius: 0;
+    }
+    .btn:hover { background: #D4B36A; border-color: #D4B36A; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn.loading { color: transparent; position: relative; }
+    .btn.loading::after {
+      content: ""; position: absolute; width: 16px; height: 16px;
+      border: 2px solid rgba(8,8,8,0.35); border-top-color: var(--bg);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .privacy-note {
+      margin-top: 0.95rem; font-size: 0.78rem; color: var(--text-dim);
+      display: flex; align-items: center; gap: 0.45rem; justify-content: center;
+    }
+    .form-msg {
+      margin-top: 1rem; font-size: 0.85rem; line-height: 1.5; padding: 0.85rem 1rem;
+      border: 1px solid var(--gold-border); background: var(--gold-dim); color: var(--text-soft);
+      display: none;
+    }
+    .form-msg.show { display: block; }
+    .form-msg.err { border-color: rgba(199,107,90,0.4); background: rgba(199,107,90,0.1); color: #E0A99B; }
+
+    /* ─── Download / App CTA ──────────────────────────────────── */
+    .download-grid {
+      display: grid; grid-template-columns: 1fr auto; gap: clamp(1.25rem, 4vw, 2.5rem);
+      align-items: center; margin-top: 1.7rem;
+    }
+    @media (max-width: 620px) { .download-grid { grid-template-columns: 1fr; } }
+    .download-copy h3 {
+      font-family: var(--serif); font-weight: 300; font-size: 1.5rem; color: var(--text);
+    }
+    .download-copy p { margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted); line-height: 1.55; max-width: 40ch; }
+    .download-actions { margin-top: 1.25rem; display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+
+    .appstore-badge { display: inline-block; transition: opacity 0.2s; }
+    .appstore-badge:hover { opacity: 0.82; }
+    .appstore-badge svg { height: 48px; width: auto; display: block; }
+
+    .qr-wrap { display: none; flex-direction: column; align-items: center; gap: 0.6rem; }
+    @media (min-width: 720px) { .qr-wrap { display: flex; } }
+    .qr-box { padding: 8px; background: #fff; border-radius: 4px; width: 116px; height: 116px; }
+    .qr-box img, .qr-box canvas { width: 100% !important; height: 100% !important; }
+    .qr-cap { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+
+    /* ─── Confirmation ────────────────────────────────────────── */
+    .confirm-icon { font-size: 2.4rem; line-height: 1; }
+    .confirm h2 { margin-top: 0.8rem; }
+
+    /* ─── Live feed ───────────────────────────────────────────── */
+    .feed-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.3rem; }
+    .feed-head .eyebrow { color: var(--gold); }
+    .feed-live {
+      display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.66rem;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted);
+    }
+    .feed-live .pulse {
+      width: 7px; height: 7px; border-radius: 50%; background: #5BBF7A;
+      box-shadow: 0 0 0 0 rgba(91,191,122,0.6); animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(91,191,122,0.5); }
+      70% { box-shadow: 0 0 0 7px rgba(91,191,122,0); }
+      100% { box-shadow: 0 0 0 0 rgba(91,191,122,0); }
+    }
+    .feed-empty {
+      text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);
+      border: 1px dashed var(--border); font-size: 0.92rem;
+    }
+    .feed-empty .ico { font-size: 1.6rem; display: block; margin-bottom: 0.6rem; opacity: 0.7; }
+    .feed-item { display: flex; gap: 1rem; padding: 1.1rem 0; border-top: 1px solid var(--border); }
+    .feed-item:first-child { border-top: none; }
+    .feed-thumb {
+      width: 56px; height: 56px; flex-shrink: 0; border-radius: 4px; background: var(--surface-2);
+      background-size: cover; background-position: center; display: flex; align-items: center;
+      justify-content: center; font-size: 1.3rem; border: 1px solid var(--border);
+    }
+    .feed-body { flex: 1; min-width: 0; }
+    .feed-title { font-size: 0.96rem; color: var(--text); font-weight: 400; }
+    .feed-text { margin-top: 0.25rem; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }
+    .feed-time { margin-top: 0.4rem; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+
+    /* ─── States ──────────────────────────────────────────────── */
+    .loading-screen {
+      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 1.2rem; background: var(--bg); z-index: 50;
+    }
+    .loading-screen .ring {
+      width: 34px; height: 34px; border: 2px solid var(--border); border-top-color: var(--gold);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    .loading-screen .lbl { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted); }
+    .hidden { display: none !important; }
+    .fade-in { animation: fadeIn 0.5s var(--ease) both; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .notfound { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 2rem; }
+    .notfound h1 { font-family: var(--serif); font-weight: 300; font-size: 2.4rem; }
+    .notfound p { margin-top: 0.8rem; color: var(--text-muted); }
+    .notfound a { margin-top: 1.8rem; display: inline-block; }
+
+    /* ─── Footer ──────────────────────────────────────────────── */
+    footer { border-top: 1px solid var(--border); padding: 2rem 0; }
+    footer .inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    footer .copy { font-size: 0.72rem; color: var(--text-dim); letter-spacing: 0.04em; }
+    footer a { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    footer a:hover { color: var(--gold); }
+  </style>
+</head>
+<body>
+
+  <!-- Loading -->
+  <div class="loading-screen" id="loading">
+    <div class="ring"></div>
+    <div class="lbl">Loading journey</div>
+  </div>
+
+  <!-- Not found -->
+  <div class="notfound hidden" id="notfound">
+    <div>
+      <div class="eyebrow" style="justify-content:center;">Oukala Journeys</div>
+      <h1>Journey not found</h1>
+      <p>This invitation link may have expired or the address is incorrect.</p>
+      <a href="/" class="btn" style="width:auto;">Explore Oukala Journeys</a>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <a href="/" class="topbar-logo">
+        <span class="name">Oukala Journeys</span>
+        <span class="product">Powered by Joie</span>
+      </a>
+      <a href="/" class="topbar-link">Plan your own</a>
+    </header>
+
+    <section class="hero">
+      <div class="hero-bg" id="heroBg"></div>
+      <div class="hero-inner container">
+        <div class="eyebrow" id="heroEyebrow">Follow the journey</div>
+        <span class="rule"></span>
+        <h1 id="heroTitle"></h1>
+        <div class="hero-meta" id="heroMeta"></div>
+      </div>
+    </section>
+
+    <main>
+      <div class="container stack">
+
+        <!-- A. Registration (pre) -->
+        <div class="card card-gold fade-in" id="registerCard">
+          <div class="eyebrow card-eyebrow">Follow along live</div>
+          <h2 id="registerHeadline">Follow along live</h2>
+          <p class="sub" id="registerSub"></p>
+
+          <form id="followForm" novalidate>
+            <div class="field-row">
+              <div class="field">
+                <label for="firstName">First name<span class="req">*</span></label>
+                <input type="text" id="firstName" name="firstName" autocomplete="given-name" placeholder="Your first name" />
+                <div class="field-error" id="err-firstName">Please enter your first name.</div>
+              </div>
+              <div class="field">
+                <label for="email">Email<span class="req">*</span></label>
+                <input type="email" id="email" name="email" autocomplete="email" placeholder="you@email.com" />
+                <div class="field-error" id="err-email">Please enter a valid email.</div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="phone">Phone <span style="color:var(--text-dim);text-transform:none;letter-spacing:0;">(optional)</span></label>
+              <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="+1 (555) 000-0000" />
+            </div>
+            <button type="submit" class="btn" id="submitBtn">Follow this journey</button>
+            <div class="privacy-note">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              We'll only send you trip updates. No spam.
+            </div>
+            <div class="form-msg" id="formMsg"></div>
+          </form>
+        </div>
+
+        <!-- C. Download CTA (secondary pre / primary post) -->
+        <div class="card fade-in" id="downloadCard">
+          <div class="eyebrow card-eyebrow">The travel companion</div>
+          <div class="download-grid">
+            <div class="download-copy">
+              <h3>Plan your own journey</h3>
+              <p>Download Joie — the travel companion for unforgettable trips. Itineraries, live updates, and the people you love, all in one place.</p>
+              <div class="download-actions">
+                <a class="appstore-badge" id="appStoreLink" href="https://apps.apple.com/app/id6769767765" target="_blank" rel="noopener" aria-label="Download Joie on the App Store">
+                  <!-- App Store badge -->
+                  <svg viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Download on the App Store">
+                    <rect width="120" height="40" rx="7" fill="#000" stroke="#3a3a3a" stroke-width="0.6"/>
+                    <g fill="#fff">
+                      <path d="M24.77 20.3c-.02-2.3 1.88-3.4 1.96-3.45-1.07-1.56-2.73-1.78-3.32-1.8-1.4-.15-2.76.83-3.47.83-.72 0-1.83-.81-3-.79-1.53.02-2.95.9-3.74 2.27-1.6 2.77-.41 6.87 1.13 9.12.77 1.1 1.68 2.34 2.87 2.29 1.16-.05 1.6-.74 3-.74 1.39 0 1.79.74 3 .71 1.24-.02 2.03-1.12 2.78-2.23.88-1.28 1.24-2.52 1.26-2.58-.03-.01-2.42-.92-2.44-3.65zM22.5 13.56c.63-.77 1.06-1.83.94-2.9-.91.04-2.02.61-2.68 1.37-.59.67-1.1 1.76-.96 2.78 1.02.08 2.06-.51 2.7-1.25z"/>
+                    </g>
+                    <g fill="#fff">
+                      <text x="34" y="16" font-family="Helvetica, Arial, sans-serif" font-size="6.5" font-weight="400">Download on the</text>
+                      <text x="34" y="28" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="500">App Store</text>
+                    </g>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <div class="qr-wrap">
+              <div class="qr-box" id="qrBox"></div>
+              <span class="qr-cap">Scan to download</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- D. Live feed (post only) -->
+        <div class="card hidden" id="feedCard">
+          <div class="feed-head">
+            <div>
+              <div class="eyebrow">The journey, live</div>
+            </div>
+            <span class="feed-live" id="feedLive"><span class="pulse"></span> Live feed</span>
+          </div>
+          <div id="feedContent"></div>
+        </div>
+
+      </div>
+    </main>
+
+    <footer>
+      <div class="container inner">
+        <span class="copy">© <span id="year"></span> Oukala Journeys</span>
+        <div style="display:flex;gap:1.5rem;">
+          <a href="/privacy">Privacy</a>
+          <a href="/support">Support</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ── Config ───────────────────────────────────────────────
+    const SUPABASE_URL = 'https://khxrhpjmperubjdqxrxq.supabase.co';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoeHJocGptcGVydWJqZHF4cnhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjI5MDMsImV4cCI6MjA5MDEzODkwM30.JiZ97I5FX3bigVn5EfMsb6f2w26WrJQq3Ny3R6BUJ90';
+    const APPSTORE_URL = 'https://apps.apple.com/app/id6769767765';
+
+    const sb = window.supabase.createClient(SUPABASE_URL, ANON_KEY);
+
+    // ── URL parsing ──────────────────────────────────────────
+    const params = new URLSearchParams(location.search);
+    let slug = params.get('slug');
+    if (!slug) {
+      const m = location.pathname.match(/\/(?:follow|trip|j)\/([^\/?#]+)/i);
+      if (m) slug = decodeURIComponent(m[1]);
+    }
+    const ref = params.get('ref'); // inviter's traveler id / name
+
+    // ── Helpers ──────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    function titleCase(s) { return s.replace(/\b[a-z]/g, c => c.toUpperCase()); }
+
+    // ref may be a display name (e.g. "omar") or an opaque id/uuid. Only use as a name if it looks like one.
+    function refAsName(r) {
+      if (!r) return null;
+      if (/^[a-zA-Z][a-zA-Z'’\-]{1,18}$/.test(r)) return titleCase(r);
+      return null;
+    }
+
+    function formatDateRange(startStr, endStr) {
+      if (!startStr || !endStr) return '';
+      const s = new Date(startStr + 'T00:00:00');
+      const e = new Date(endStr + 'T00:00:00');
+      if (isNaN(s) || isNaN(e)) return '';
+      const sy = s.getFullYear(), ey = e.getFullYear();
+      const sm = s.getMonth(), em = e.getMonth();
+      const sd = s.getDate(), ed = e.getDate();
+      if (sy === ey && sm === em) return `${MONTHS[sm]} ${sd}–${ed}, ${sy}`;
+      if (sy === ey) return `${MONTHS[sm]} ${sd} – ${MONTHS[em]} ${ed}, ${sy}`;
+      return `${MONTHS[sm]} ${sd}, ${sy} – ${MONTHS[em]} ${ed}, ${ey}`;
+    }
+
+    // Derive destination + day/city counts from trip + trip_days
+    function deriveInfo(trip, days) {
+      const start = trip.start_date ? new Date(trip.start_date + 'T00:00:00') : null;
+      const end = trip.end_date ? new Date(trip.end_date + 'T00:00:00') : null;
+      let dayCount = days.length;
+      if (!dayCount && start && end) dayCount = Math.round((end - start) / 86400000) + 1;
+
+      // Cities: first place token of each day's location, deduped + prefix-merged.
+      let cities = [];
+      const countries = new Set();
+      days.forEach(d => {
+        if (d.location) {
+          const first = String(d.location).split(/[→\/—–]/)[0].trim();
+          if (first) cities.push(first);
+        }
+        const reg = (d.region || '').toLowerCase();
+        if (reg.includes('morocco')) countries.add('Morocco');
+        if (reg.includes('france') || reg.includes('paris') || reg.includes('loire') || reg.includes('burgundy')) countries.add('France');
+        if (reg.includes('spain')) countries.add('Spain');
+        if (reg.includes('italy')) countries.add('Italy');
+        if (reg.includes('portugal')) countries.add('Portugal');
+      });
+      let uniq = [...new Set(cities)].filter(c => c && !/^[A-Z]{3}$/.test(c));
+      uniq = uniq.filter(c => !uniq.some(o => o !== c && o.toLowerCase().startsWith(c.toLowerCase() + ' ')));
+      const cityCount = uniq.length;
+
+      // Destination string
+      let destination = [...countries].join(' & ');
+      if (!destination) {
+        if (trip.subtitle) destination = trip.subtitle.split(/[·,|–—]/)[0].trim();
+        else destination = trip.title || 'the journey';
+      }
+      return { dayCount, cityCount, destination };
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function relTime(iso) {
+      const then = new Date(iso); const now = new Date();
+      const diff = Math.floor((now - then) / 1000);
+      if (isNaN(diff)) return '';
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+      if (diff < 604800) return Math.floor(diff/86400) + 'd ago';
+      return `${MONTHS[then.getMonth()].slice(0,3)} ${then.getDate()}`;
+    }
+
+    const EVENT_ICON = { memory: '📸', arrival: '📍', challenge: '🎯', manual: '✦', default: '✦' };
+
+    // ── State / DOM refs ─────────────────────────────────────
+    let TRIP = null, INFO = null, TRAVELER = null, DEST = null;
+
+    function localKey() { return 'oj_follow_' + (slug || 'unknown'); }
+
+    // ── Render ───────────────────────────────────────────────
+    function renderHero() {
+      const img = TRIP.hero_image_url || TRIP.story_image_url || TRIP.hero_image_url_2 || '';
+      if (img) $('heroBg').style.backgroundImage = `url("${img}")`;
+      const possessive = TRAVELER ? `${escapeHtml(TRAVELER)}'s Journey to <em>${escapeHtml(DEST)}</em>`
+                                  : `A Journey to <em>${escapeHtml(DEST)}</em>`;
+      $('heroTitle').innerHTML = possessive;
+
+      const meta = [];
+      const dates = formatDateRange(TRIP.start_date, TRIP.end_date);
+      if (dates) meta.push(dates);
+      if (INFO.dayCount) meta.push(`${INFO.dayCount} days`);
+      if (INFO.cityCount) meta.push(`${INFO.cityCount} ${INFO.cityCount === 1 ? 'city' : 'cities'}`);
+      $('heroMeta').innerHTML = meta.map((m, i) =>
+        (i ? '<span class="dot"></span>' : '') + `<span>${escapeHtml(m)}</span>`).join('');
+    }
+
+    function renderRegisterCopy() {
+      const who = TRAVELER || 'the traveler';
+      $('registerHeadline').textContent = 'Follow along live';
+      $('registerSub').textContent = `Get real-time updates as ${who} explores ${DEST}. We'll let you know the moment something worth sharing happens.`;
+    }
+
+    function buildQR() {
+      const box = $('qrBox');
+      if (!box || !window.QRCode || box.dataset.done) return;
+      box.dataset.done = '1';
+      try {
+        new window.QRCode(box, {
+          text: APPSTORE_URL, width: 100, height: 100,
+          colorDark: '#080808', colorLight: '#ffffff',
+          correctLevel: window.QRCode.CorrectLevel.M
+        });
+      } catch (e) { box.closest('.qr-wrap').style.display = 'none'; }
+    }
+
+    // ── Post-registration ────────────────────────────────────
+    function showRegistered(firstName) {
+      const card = $('registerCard');
+      card.classList.remove('card-gold');
+      card.classList.add('confirm');
+      const heading = TRAVELER
+        ? `You're following ${escapeHtml(TRAVELER)}&rsquo;s journey! 🌍`
+        : `You're following this journey! 🌍`;
+      card.innerHTML = `
+        <div class="confirm-icon">🌍</div>
+        <h2>${heading}</h2>
+        <p class="sub">You'll receive updates as they explore. Check back here any time for their live feed.</p>
+      `;
+
+      // Promote the download card to primary
+      $('downloadCard').classList.add('card-gold');
+      $('downloadCard').querySelector('.card-eyebrow').textContent = 'Your turn next';
+
+      // Reveal live feed
+      $('feedCard').classList.remove('hidden');
+      loadFeed();
+    }
+
+    // ── Live feed ────────────────────────────────────────────
+    async function loadFeed() {
+      const content = $('feedContent');
+      const live = $('feedLive');
+      if (!TRIP.sharing_enabled) {
+        live.classList.add('hidden');
+        content.innerHTML = `
+          <div class="feed-empty">
+            <span class="ico">🧭</span>
+            Updates coming soon. The live feed will light up the moment ${escapeHtml(TRAVELER || 'the traveler')} sets off.
+          </div>`;
+        return;
+      }
+      content.innerHTML = `<div class="feed-empty"><span class="ico">⏳</span>Loading updates…</div>`;
+      try {
+        const { data, error } = await sb
+          .from('trip_share_events')
+          .select('event_type, place_name, place_category, challenge_title, push_title, push_body, thumbnail_url, created_at')
+          .eq('trip_id', TRIP.id)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (error) throw error;
+        if (!data || !data.length) {
+          content.innerHTML = `
+            <div class="feed-empty"><span class="ico">🧭</span>
+            No updates yet — but ${escapeHtml(TRAVELER || 'the traveler')} is just getting started. Check back soon.</div>`;
+          return;
+        }
+        content.innerHTML = data.map(ev => {
+          const icon = EVENT_ICON[ev.event_type] || EVENT_ICON.default;
+          const thumb = ev.thumbnail_url
+            ? `<div class="feed-thumb" style="background-image:url('${encodeURI(ev.thumbnail_url)}')"></div>`
+            : `<div class="feed-thumb">${icon}</div>`;
+          const title = ev.push_title || ev.place_name || ev.challenge_title || 'Update';
+          const body = ev.push_body || '';
+          return `<div class="feed-item">
+            ${thumb}
+            <div class="feed-body">
+              <div class="feed-title">${escapeHtml(title)}</div>
+              ${body ? `<div class="feed-text">${escapeHtml(body)}</div>` : ''}
+              <div class="feed-time">${escapeHtml(relTime(ev.created_at))}</div>
+            </div>
+          </div>`;
+        }).join('');
+      } catch (e) {
+        content.innerHTML = `<div class="feed-empty"><span class="ico">🧭</span>Updates coming soon.</div>`;
+      }
+    }
+
+    // ── Form handling ────────────────────────────────────────
+    function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+    function setFieldError(id, show) {
+      $(id).classList.toggle('error', show);
+      const err = $('err-' + id);
+      if (err) err.classList.toggle('show', show);
+    }
+
+    function showFormMsg(text, isErr) {
+      const el = $('formMsg');
+      el.textContent = text;
+      el.classList.toggle('err', !!isErr);
+      el.classList.add('show');
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const firstName = $('firstName').value.trim();
+      const email = $('email').value.trim();
+      const phone = $('phone').value.trim();
+
+      let ok = true;
+      if (!firstName) { setFieldError('firstName', true); ok = false; } else setFieldError('firstName', false);
+      if (!validEmail(email)) { setFieldError('email', true); ok = false; } else setFieldError('email', false);
+      if (!ok) return;
+
+      const btn = $('submitBtn');
+      btn.disabled = true; btn.classList.add('loading');
+      $('formMsg').classList.remove('show');
+
+      // Local guard: this browser already followed → treat as already-following.
+      try {
+        const prior = localStorage.getItem(localKey());
+        if (prior) {
+          const pe = JSON.parse(prior).email;
+          if (pe && pe.toLowerCase() === email.toLowerCase()) {
+            btn.classList.remove('loading');
+            showRegistered(firstName);
+            return;
+          }
+        }
+      } catch (_) {}
+
+      try {
+        // trip_followers schema only persists { trip_id, email } (+ push fields w/ defaults).
+        // Name / phone / ref have no columns in this table; kept client-side for the greeting + handoff.
+        const { error } = await sb.from('trip_followers').insert({
+          trip_id: TRIP.id,
+          email: email
+        });
+
+        if (error) {
+          const dup = error.code === '23505' || /duplicate|unique/i.test(error.message || '');
+          if (dup) {
+            persistLocal(firstName, email, phone);
+            btn.classList.remove('loading');
+            showRegistered(firstName);
+            return;
+          }
+          throw error;
+        }
+
+        persistLocal(firstName, email, phone);
+        btn.classList.remove('loading');
+        showRegistered(firstName);
+      } catch (err) {
+        btn.disabled = false; btn.classList.remove('loading');
+        showFormMsg("Something went wrong saving your details. Please try again.", true);
+        console.error('[follow] insert failed', err);
+      }
+    }
+
+    function persistLocal(firstName, email, phone) {
+      try {
+        localStorage.setItem(localKey(), JSON.stringify({
+          firstName, email, phone, ref: ref || null, at: new Date().toISOString()
+        }));
+      } catch (_) {}
+    }
+
+    // ── Boot ─────────────────────────────────────────────────
+    async function boot() {
+      if (!slug) return fail();
+      try {
+        const { data, error } = await sb
+          .from('trips')
+          .select('*')
+          .eq('web_slug', slug)
+          .limit(1);
+        if (error) throw error;
+        if (!data || !data.length) return fail();
+        TRIP = data[0];
+
+        // trip_days for stats (best-effort)
+        let days = [];
+        try {
+          const r = await sb.from('trip_days')
+            .select('day_number, region, location')
+            .eq('trip_id', TRIP.id)
+            .order('day_number', { ascending: true });
+          if (!r.error && r.data) days = r.data;
+        } catch (_) {}
+
+        INFO = deriveInfo(TRIP, days);
+        DEST = INFO.destination;
+        TRAVELER = refAsName(ref);
+
+        renderHero();
+        renderRegisterCopy();
+        buildQR();
+
+        $('year').textContent = new Date().getFullYear();
+        $('loading').classList.add('hidden');
+        $('app').classList.remove('hidden');
+
+        // Already followed in this browser? Jump to registered state.
+        try {
+          const prior = localStorage.getItem(localKey());
+          if (prior) showRegistered(JSON.parse(prior).firstName);
+        } catch (_) {}
+
+        $('followForm').addEventListener('submit', handleSubmit);
+        ['firstName','email'].forEach(id => $(id).addEventListener('input', () => setFieldError(id, false)));
+      } catch (e) {
+        console.error('[follow] boot failed', e);
+        fail();
+      }
+    }
+
+    function fail() {
+      $('loading').classList.add('hidden');
+      $('notfound').classList.remove('hidden');
+    }
+
+    // QR lib may load after boot; retry once DOM is ready.
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+    window.addEventListener('load', () => { try { buildQR(); } catch (_) {} });
+  })();
+  </script>
+</body>
+</html>
