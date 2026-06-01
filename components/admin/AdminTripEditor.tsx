@@ -100,7 +100,12 @@ const TABS = [
 ]
 
 const ROLE_OPTIONS = ['driver', 'guide', 'fixer', 'restaurant_contact', 'other']
-const EVENT_TYPES = ['restaurant', 'activity', 'transport', 'flight', 'hotel', 'experience', 'tour', 'transfer']
+const EVENT_TYPES = [
+  'restaurant', 'activity', 'attraction', 'flight',
+  'hotel_checkin', 'hotel_checkout', 'transfer',
+  'ef_meeting', 'water_sport', 'ferry', 'rental_car',
+  'departure_reminder', 'shopping', 'other',
+]
 const CHALLENGE_TYPES = ['find', 'photo', 'taste', 'buy', 'ask', 'learn', 'grand_finale']
 const LEG_OPTIONS = ['morocco', 'france']
 
