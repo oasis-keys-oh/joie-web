@@ -677,12 +677,11 @@
       } catch (_) {}
 
       try {
-        // trip_followers schema only persists { trip_id, email } (+ push fields w/ defaults).
-        // Name / phone / ref have no columns in this table; kept client-side for the greeting + handoff.
-        const { error } = await sb.from('trip_followers').insert({
-          trip_id: TRIP.id,
-          email: email
-        });
+        const payload = { trip_id: TRIP.id, email };
+        if (firstName) payload.first_name = firstName;
+        if (phone) payload.phone = phone;
+        if (ref) payload.ref_code = ref;
+        const { error } = await sb.from('trip_followers').insert(payload);
 
         if (error) {
           const dup = error.code === '23505' || /duplicate|unique/i.test(error.message || '');

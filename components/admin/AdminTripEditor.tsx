@@ -16,6 +16,8 @@ import {
   upsertHaggleTriggerAction, deleteHaggleTriggerAction,
   upsertJourneyFactAction, deleteJourneyFactAction,
   upsertRouteAction, deleteRouteAction,
+  upsertDayTripSuggestionAction, deleteDayTripSuggestionAction,
+  upsertDayTripBlockAction, deleteDayTripBlockAction,
   bulkDeleteAction,
   getValidationUrlsAction,
   getBooksForValidationAction,
@@ -59,6 +61,8 @@ interface Feedback { id: string; day_id: string; traveler_name: string; comment:
 interface RWLItem { id: string; type: string; title: string; author_director?: string; reason?: string; amazon_url?: string; streaming_url?: string; streaming_platform?: string; cover_image_url?: string; isbn?: string; tmdb_id?: string; display_order?: number }
 interface HaggleTrigger { id: string; trip_id: string; day_id?: string; location_name: string; coordinates?: string; radius_meters?: number; currency?: string; phrases?: Record<string, string>; price_anchors?: Record<string, unknown>; tips?: string[] }
 interface JourneyFact { id: string; trip_id: string; category: string; headline: string; body: string; music_url?: string; music_platform?: string; destinations?: string[]; is_active: boolean; sort_order?: number }
+interface DayTripSuggestion { id: string; trip_id: string; title: string; subtitle?: string; departure_city: string; destination_city: string; overview?: string; highlights?: string[]; tags?: string[]; duration_text?: string; effort_text?: string; is_featured: boolean; sort_order: number }
+interface DayTripBlock { id: string; suggestion_id: string; time_label?: string; block_type: string; title: string; description?: string; venue_name?: string; venue_notes?: string; is_optional: boolean; sort_order: number }
 
 interface Props {
   trip: Trip
@@ -76,6 +80,8 @@ interface Props {
   haggle: HaggleTrigger[]
   facts: JourneyFact[]
   routes: DayRoute[]
+  dayTripSuggestions: DayTripSuggestion[]
+  dayTripBlocks: DayTripBlock[]
   activeTab: string
 }
 
@@ -86,6 +92,7 @@ const TABS = [
   { id: 'travelers',    label: 'Travelers' },
   { id: 'contacts',     label: 'Contacts' },
   { id: 'hotels',       label: 'Hotels' },
+  { id: 'daytrips',     label: '🗺️ Day Trips' },
   { id: 'hunt',         label: 'Hunt' },
   { id: 'haggle',       label: '🛒 Haggle' },
   { id: 'packing',      label: 'Packing' },
@@ -651,7 +658,7 @@ function SectionHeader({ title, onAdd }: { title: string; onAdd?: () => void }) 
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, travelers, rwl, haggle, facts, routes, activeTab: initTab }: Props) {
+export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, travelers, rwl, haggle, facts, routes, dayTripSuggestions, dayTripBlocks, activeTab: initTab }: Props) {
   const [tab, setTab] = useState(initTab)
 
   return (
@@ -687,6 +694,7 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       {tab === 'travelers'     && <TravelersTab    trip={trip} travelers={travelers} />}
       {tab === 'contacts'      && <ContactsTab     trip={trip} contacts={contacts} />}
       {tab === 'hotels'        && <HotelsTab       trip={trip} hotels={hotels} travelers={travelers} />}
+      {tab === 'daytrips'      && <DayTripsTab     trip={trip} suggestions={dayTripSuggestions} blocks={dayTripBlocks} />}
       {tab === 'hunt'          && <HuntTab         trip={trip} challenges={challenges} />}
       {tab === 'haggle'        && <HaggleTab       trip={trip} triggers={haggle} />}
       {tab === 'packing'       && <PackingTab      trip={trip} packing={packing} />}
@@ -4607,6 +4615,451 @@ function ValidateTab({ trip }: { trip: Trip }) {
             Checks booking URLs, hotel sites, Amazon / streaming links, images, and GPX routes.
           </p>
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── Day Trips Tab ─────────────────────────────────────────────────────────────
+
+const BLOCK_TYPES = ['arrival', 'activity', 'meal', 'transport', 'rest', 'departure', 'note', 'other']
+
+function DayTripsTab({ trip, suggestions, blocks }: {
+  trip: Trip
+  suggestions: DayTripSuggestion[]
+  blocks: DayTripBlock[]
+}) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+  const bulk = useBulkSelect(suggestions.map(s => s.id))
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs text-ink-muted">
+            {suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}.
+            Ordered by featured first, then sort order.
+          </p>
+          <p className="text-xs text-ink-muted mt-0.5">
+            Each suggestion can have itinerary blocks (time slots) nested inside it.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          + Add Day Trip
+        </button>
+      </div>
+
+      <BulkDeleteBar
+        selected={bulk.selected}
+        total={suggestions.length}
+        table="day_trip_suggestions"
+        label="day trip"
+        onDone={() => { bulk.clear(); window.location.reload() }}
+        onToggleAll={bulk.toggleAll}
+      />
+
+      {suggestions.length === 0 && !adding && (
+        <div className="text-center py-16 border border-dashed border-gray-200 rounded-sm">
+          <p className="text-sm text-ink-muted mb-1">No day trip suggestions yet.</p>
+          <p className="text-xs text-ink-muted">Click + Add Day Trip to create the first one.</p>
+        </div>
+      )}
+
+      {adding && (
+        <Card>
+          <SectionHeader title="New Day Trip Suggestion" />
+          <form
+            action={async (fd) => {
+              fd.set('trip_id', trip.id)
+              await upsertDayTripSuggestionAction(fd)
+              setAdding(false)
+              window.location.reload()
+            }}
+            className="space-y-4"
+          >
+            <DayTripSuggestionFields suggestion={null} />
+            <div className="flex gap-3">
+              <SaveBtn pending={pending} />
+              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {suggestions.map(s => (
+        <DayTripSuggestionRow
+          key={s.id}
+          suggestion={s}
+          blocks={blocks.filter(b => b.suggestion_id === s.id)}
+          tripId={trip.id}
+          selected={bulk.selected.has(s.id)}
+          onToggle={() => bulk.toggle(s.id)}
+        />
+      ))}
+    </div>
+  )
+}
+
+/** Shared field layout for create & edit forms */
+function DayTripSuggestionFields({ suggestion }: { suggestion: DayTripSuggestion | null }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Title *</Label>
+          <Input name="title" required defaultValue={suggestion?.title} placeholder="Château de Cheverny" db="day_trip_suggestions.title" />
+        </div>
+        <div>
+          <Label>Subtitle</Label>
+          <Input name="subtitle" defaultValue={suggestion?.subtitle} placeholder="Best-preserved Loire château — inspiration for Tintin's Moulinsart" db="day_trip_suggestions.subtitle" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Departure City *</Label>
+          <Input name="departure_city" required defaultValue={suggestion?.departure_city} placeholder="Chambord" db="day_trip_suggestions.departure_city" />
+        </div>
+        <div>
+          <Label>Destination City *</Label>
+          <Input name="destination_city" required defaultValue={suggestion?.destination_city} placeholder="Cheverny" db="day_trip_suggestions.destination_city" />
+        </div>
+      </div>
+
+      <div>
+        <Label>Overview</Label>
+        <Textarea name="overview" rows={4} defaultValue={suggestion?.overview} placeholder="Narrative overview shown on the card…" db="day_trip_suggestions.overview" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Duration Text</Label>
+          <Input name="duration_text" defaultValue={suggestion?.duration_text} placeholder="Full day · 7–8 hours" db="day_trip_suggestions.duration_text" />
+        </div>
+        <div>
+          <Label>Effort Text</Label>
+          <Input name="effort_text" defaultValue={suggestion?.effort_text} placeholder="Easy — mostly walking" db="day_trip_suggestions.effort_text" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Tags (comma-separated)</Label>
+          <Input name="tags" defaultValue={suggestion?.tags?.join(', ')} placeholder="history, architecture, wine" db="day_trip_suggestions.tags" />
+        </div>
+        <div>
+          <Label>Sort Order</Label>
+          <Input name="sort_order" type="number" defaultValue={String(suggestion?.sort_order ?? 0)} db="day_trip_suggestions.sort_order" />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            name="is_featured"
+            value="true"
+            defaultChecked={suggestion?.is_featured ?? false}
+            className="rounded border-gray-300 text-gold focus:ring-gold"
+          />
+          <span className="text-sm text-navy font-medium">Featured</span>
+        </label>
+        <span className="text-xs text-ink-muted">Featured suggestions appear first.</span>
+        <FieldHint value="day_trip_suggestions.is_featured" />
+      </div>
+    </>
+  )
+}
+
+function DayTripSuggestionRow({ suggestion, blocks, tripId, selected, onToggle }: {
+  suggestion: DayTripSuggestion
+  blocks: DayTripBlock[]
+  tripId: string
+  selected: boolean
+  onToggle: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-sm overflow-hidden">
+      {/* Row header */}
+      <div className="flex items-center gap-3 px-5 py-4">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggle}
+          className="rounded border-gray-300 text-gold focus:ring-gold shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {suggestion.is_featured && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-sm font-semibold uppercase tracking-widest"
+                    style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C', letterSpacing: '0.12em' }}>
+                Featured
+              </span>
+            )}
+            <p className="font-serif font-bold text-navy text-sm">{suggestion.title}</p>
+            <span className="text-xs text-ink-muted">
+              {suggestion.departure_city} → {suggestion.destination_city}
+            </span>
+            {blocks.length > 0 && (
+              <span className="text-xs text-ink-muted">{blocks.length} block{blocks.length !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+          {suggestion.subtitle && (
+            <p className="text-xs text-ink-muted mt-0.5 truncate">{suggestion.subtitle}</p>
+          )}
+          {suggestion.tags && suggestion.tags.length > 0 && (
+            <div className="flex gap-1 mt-1.5 flex-wrap">
+              {suggestion.tags.map(tag => (
+                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full border border-gray-200 text-ink-muted">{tag}</span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setExpanded(x => !x)}
+            className="text-xs border border-gray-200 px-3 py-1.5 rounded-sm text-ink-muted hover:border-navy hover:text-navy transition-colors"
+          >
+            {expanded ? 'Close' : 'Blocks ↓'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(x => !x)}
+            className="text-xs border border-gray-200 px-3 py-1.5 rounded-sm text-ink-muted hover:border-navy hover:text-navy transition-colors"
+          >
+            Edit
+          </button>
+          <DeleteBtn
+            pending={pending}
+            onClick={() => startTransition(async () => {
+              if (confirm(`Delete "${suggestion.title}" and all its blocks? This cannot be undone.`)) {
+                await deleteDayTripSuggestionAction(suggestion.id)
+                window.location.reload()
+              }
+            })}
+          />
+        </div>
+      </div>
+
+      {/* Edit form */}
+      {editing && (
+        <div className="border-t border-gray-100 px-5 py-5">
+          <form
+            action={async (fd) => {
+              fd.set('id', suggestion.id)
+              fd.set('trip_id', tripId)
+              // Checkbox: if unchecked it won't appear in FormData, so default to 'false'
+              if (!fd.get('is_featured')) fd.set('is_featured', 'false')
+              await upsertDayTripSuggestionAction(fd)
+              setEditing(false)
+              window.location.reload()
+            }}
+            className="space-y-4"
+          >
+            <DayTripSuggestionFields suggestion={suggestion} />
+            <div className="flex gap-3">
+              <SaveBtn pending={pending} />
+              <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Blocks section */}
+      {expanded && (
+        <div className="border-t border-gray-100 px-5 py-5">
+          <DayTripBlocksSection suggestionId={suggestion.id} blocks={blocks} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DayTripBlocksSection({ suggestionId, blocks }: {
+  suggestionId: string
+  blocks: DayTripBlock[]
+}) {
+  const [adding, setAdding] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-navy uppercase tracking-widest" style={{ letterSpacing: '0.12em' }}>
+          Itinerary Blocks
+        </p>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs text-gold hover:opacity-75 uppercase tracking-widest"
+          style={{ letterSpacing: '0.12em' }}
+        >
+          + Add Block
+        </button>
+      </div>
+      <p className="text-xs text-ink-muted mb-4">
+        Blocks are time-slotted steps within this day trip (e.g. 09:00 Depart, 10:30 Visit museum, 13:00 Lunch).
+        Leave blank if the suggestion is overview-only.
+      </p>
+
+      {blocks.length === 0 && !adding && (
+        <p className="text-xs text-ink-muted italic">No blocks yet — this suggestion shows as an overview card only.</p>
+      )}
+
+      <div className="space-y-2">
+        {blocks.map(block => (
+          <DayTripBlockRow key={block.id} block={block} suggestionId={suggestionId} />
+        ))}
+      </div>
+
+      {adding && (
+        <form
+          className="mt-3 p-4 border border-gray-200 rounded-sm space-y-3"
+          style={{ background: '#faf8f4' }}
+          action={async (fd) => {
+            fd.set('suggestion_id', suggestionId)
+            fd.set('sort_order', String(blocks.length))
+            if (!fd.get('is_optional')) fd.set('is_optional', 'false')
+            await upsertDayTripBlockAction(fd)
+            setAdding(false)
+            window.location.reload()
+          }}
+        >
+          <DayTripBlockFields block={null} />
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
+          </div>
+        </form>
+      )}
+    </div>
+  )
+}
+
+function DayTripBlockFields({ block }: { block: DayTripBlock | null }) {
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <Label>Time Label</Label>
+          <Input name="time_label" defaultValue={block?.time_label} placeholder="09:00" db="day_trip_blocks.time_label" />
+        </div>
+        <div>
+          <Label>Block Type *</Label>
+          <Select name="block_type" defaultValue={block?.block_type || 'activity'} options={BLOCK_TYPES} db="day_trip_blocks.block_type" />
+        </div>
+        <div>
+          <Label>Sort Order</Label>
+          <Input name="sort_order" type="number" defaultValue={String(block?.sort_order ?? 0)} db="day_trip_blocks.sort_order" />
+        </div>
+      </div>
+      <div>
+        <Label>Title *</Label>
+        <Input name="title" required defaultValue={block?.title} placeholder="Visit the Portuguese Cistern" db="day_trip_blocks.title" />
+      </div>
+      <div>
+        <Label>Description</Label>
+        <Textarea name="description" rows={2} defaultValue={block?.description} placeholder="What happens at this block…" db="day_trip_blocks.description" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>Venue Name</Label>
+          <Input name="venue_name" defaultValue={block?.venue_name} placeholder="Café Maure" db="day_trip_blocks.venue_name" />
+        </div>
+        <div>
+          <Label>Venue Notes</Label>
+          <Input name="venue_notes" defaultValue={block?.venue_notes} placeholder="Arrive before noon to beat the crowd" db="day_trip_blocks.venue_notes" />
+        </div>
+      </div>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          name="is_optional"
+          value="true"
+          defaultChecked={block?.is_optional ?? false}
+          className="rounded border-gray-300 text-gold focus:ring-gold"
+        />
+        <span className="text-xs text-navy">Optional block</span>
+        <FieldHint value="day_trip_blocks.is_optional" />
+      </label>
+    </>
+  )
+}
+
+function DayTripBlockRow({ block, suggestionId }: { block: DayTripBlock; suggestionId: string }) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <div className="border border-gray-200 rounded-sm p-3" style={{ background: 'white' }}>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              {block.time_label && (
+                <span className="text-xs font-mono font-semibold text-gold shrink-0">{block.time_label}</span>
+              )}
+              <span className="text-[10px] px-1.5 py-0.5 rounded-sm border border-gray-200 text-ink-muted uppercase tracking-widest shrink-0" style={{ letterSpacing: '0.10em' }}>
+                {block.block_type}
+              </span>
+              <p className="text-sm font-medium text-navy truncate">{block.title}</p>
+              {block.is_optional && (
+                <span className="text-[10px] text-ink-muted italic shrink-0">optional</span>
+              )}
+            </div>
+            {block.description && (
+              <p className="text-xs text-ink-muted mt-1">{block.description}</p>
+            )}
+            {block.venue_name && (
+              <p className="text-xs text-ink-muted mt-0.5">📍 {block.venue_name}{block.venue_notes ? ` — ${block.venue_notes}` : ''}</p>
+            )}
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-2 py-1 rounded-sm">Edit</button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm('Delete this block?')) {
+                  await deleteDayTripBlockAction(block.id)
+                  window.location.reload()
+                }
+              })}
+              className="text-xs text-red-400 hover:text-red-600 border border-red-200 px-2 py-1 rounded-sm disabled:opacity-50"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form
+          className="space-y-3"
+          action={async (fd) => {
+            fd.set('id', block.id)
+            fd.set('suggestion_id', suggestionId)
+            if (!fd.get('is_optional')) fd.set('is_optional', 'false')
+            await upsertDayTripBlockAction(fd)
+            setEditing(false)
+            window.location.reload()
+          }}
+        >
+          <DayTripBlockFields block={block} />
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted hover:text-navy">Cancel</button>
+          </div>
+        </form>
       )}
     </div>
   )

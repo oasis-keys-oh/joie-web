@@ -32,6 +32,8 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
     { data: haggle },
     { data: facts },
     { data: routes },
+    { data: dayTripSuggestions },
+    { data: dayTripBlocks },
   ] = await Promise.all([
     admin.from('trips').select('*').eq('id', tripId).single(),
     admin.from('trip_days').select('*').eq('trip_id', tripId).order('day_number'),
@@ -47,6 +49,8 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
     admin.from('joie_haggle_triggers').select('*').eq('trip_id', tripId).order('location_name'),
     admin.from('journey_facts').select('*').eq('trip_id', tripId).order('sort_order'),
     admin.from('day_routes').select('*').eq('trip_id', tripId).order('sort_order'),
+    admin.from('day_trip_suggestions').select('*').eq('trip_id', tripId).order('is_featured', { ascending: false }).order('sort_order'),
+    admin.from('day_trip_blocks').select('*').order('sort_order'),
   ])
 
   if (!trip) redirect('/admin')
@@ -116,6 +120,8 @@ export default async function AdminTripPage({ params, searchParams }: Props) {
         haggle={haggle || []}
         facts={facts || []}
         routes={routes || []}
+        dayTripSuggestions={dayTripSuggestions || []}
+        dayTripBlocks={dayTripBlocks || []}
         activeTab={activeTab}
       />
     </div>

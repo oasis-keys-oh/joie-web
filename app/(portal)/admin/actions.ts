@@ -503,11 +503,75 @@ type BulkDeleteTable =
   | 'read_watch_listen'
   | 'joie_haggle_triggers'
   | 'journey_facts'
+  | 'day_trip_suggestions'
+  | 'day_trip_blocks'
 
 export async function bulkDeleteAction(table: BulkDeleteTable, ids: string[]) {
   if (!ids.length) return
   const admin = createAdminClient()
   await admin.from(table).delete().in('id', ids)
+}
+
+// ── Day Trip Suggestions ──────────────────────────────────────────────────────
+
+export async function upsertDayTripSuggestionAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const payload = {
+    trip_id:          formData.get('trip_id') as string,
+    title:            formData.get('title') as string,
+    subtitle:         formData.get('subtitle') as string || null,
+    departure_city:   formData.get('departure_city') as string,
+    destination_city: formData.get('destination_city') as string,
+    overview:         formData.get('overview') as string || null,
+    highlights:       null, // managed via JSON field if needed later
+    tags:             (formData.get('tags') as string || '')
+                        .split(',').map(s => s.trim()).filter(Boolean),
+    duration_text:    formData.get('duration_text') as string || null,
+    effort_text:      formData.get('effort_text') as string || null,
+    is_featured:      formData.get('is_featured') === 'true',
+    sort_order:       parseInt(formData.get('sort_order') as string) || 0,
+  }
+  if (id) {
+    sbOk(await admin.from('day_trip_suggestions').update(payload).eq('id', id))
+  } else {
+    sbOk(await admin.from('day_trip_suggestions').insert(payload))
+  }
+}
+
+export async function deleteDayTripSuggestionAction(id: string) {
+  const admin = createAdminClient()
+  // Cascade: delete blocks first, then the suggestion
+  await admin.from('day_trip_blocks').delete().eq('suggestion_id', id)
+  await admin.from('day_trip_suggestions').delete().eq('id', id)
+}
+
+// ── Day Trip Blocks ───────────────────────────────────────────────────────────
+
+export async function upsertDayTripBlockAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+  const payload = {
+    suggestion_id: formData.get('suggestion_id') as string,
+    time_label:    formData.get('time_label') as string || null,
+    block_type:    formData.get('block_type') as string,
+    title:         formData.get('title') as string,
+    description:   formData.get('description') as string || null,
+    venue_name:    formData.get('venue_name') as string || null,
+    venue_notes:   formData.get('venue_notes') as string || null,
+    is_optional:   formData.get('is_optional') === 'true',
+    sort_order:    parseInt(formData.get('sort_order') as string) || 0,
+  }
+  if (id) {
+    sbOk(await admin.from('day_trip_blocks').update(payload).eq('id', id))
+  } else {
+    sbOk(await admin.from('day_trip_blocks').insert(payload))
+  }
+}
+
+export async function deleteDayTripBlockAction(id: string) {
+  const admin = createAdminClient()
+  await admin.from('day_trip_blocks').delete().eq('id', id)
 }
 
 // ── Book / media validation & auto-fix ───────────────────────────────────────
