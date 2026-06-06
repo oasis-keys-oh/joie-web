@@ -1,5 +1,5 @@
 import { Event } from '@/lib/types'
-import { CheckCircle2, Clock, MapPin } from 'lucide-react'
+import { CheckCircle2, Clock, MapPin, AlertCircle } from 'lucide-react'
 import PlaceTooltip from '@/components/PlaceTooltip'
 
 interface ReservationCardProps {
@@ -12,22 +12,34 @@ const typeLabel: Record<string, string> = {
   transport: 'Transport',
   flight: 'Flight',
   hotel: 'Hotel',
+  hotel_checkin: 'Hotel',
+  hotel_checkout: 'Hotel',
   experience: 'Experience',
   tour: 'Tour',
   transfer: 'Transfer',
+  attraction: 'Attraction',
+  shopping: 'Shopping',
+  departure_reminder: 'Reminder',
+  ef_meeting: 'EF Adventures',
+  ferry: 'Ferry',
+  rental_car: 'Car Rental',
 }
 
 export default function ReservationCard({ event }: ReservationCardProps) {
   const isConfirmed = !event.booking_status || event.booking_status === 'confirmed'
-  const label = typeLabel[event.type] || event.type.replace('_', ' ')
+  const needsBooking = event.booking_status === 'needs_booking'
+  const label = typeLabel[event.type] || event.type.replace(/_/g, ' ')
 
   return (
     <div
       className="border rounded-sm overflow-hidden"
-      style={{ borderColor: '#e8e4dc' }}
+      style={{ borderColor: needsBooking ? 'rgba(217,119,6,0.35)' : '#e8e4dc' }}
     >
       {/* Header row */}
-      <div className="flex items-center justify-between px-6 py-4 bg-parchment border-b border-gray-100">
+      <div
+        className="flex items-center justify-between px-6 py-4 border-b border-gray-100"
+        style={{ background: needsBooking ? 'rgba(255,251,235,1)' : undefined }}
+      >
         <div className="flex items-center gap-3">
           <p
             className="text-xs font-semibold uppercase tracking-widest text-ink-muted"
@@ -44,6 +56,17 @@ export default function ReservationCard({ event }: ReservationCardProps) {
               style={{ letterSpacing: '0.12em' }}
             >
               Confirmed
+            </span>
+          </div>
+        )}
+        {needsBooking && (
+          <div className="flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+            <span
+              className="text-xs font-semibold text-amber-700 uppercase tracking-widest"
+              style={{ letterSpacing: '0.12em' }}
+            >
+              Book This
             </span>
           </div>
         )}

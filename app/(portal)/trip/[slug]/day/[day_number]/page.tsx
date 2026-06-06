@@ -167,11 +167,11 @@ export default async function DayPage({ params }: DayPageProps) {
             {/* Who to Call — local contacts for this city */}
             <LocalContactsSection contacts={localContacts} />
 
-            {/* Reservations */}
+            {/* Schedule — confirmed + needs_booking events */}
             {events.length > 0 && (
               <div className="mt-12">
                 <div className="flex items-center gap-5 mb-6">
-                  <p className="label shrink-0">Confirmed Reservations</p>
+                  <p className="label shrink-0">Today&apos;s Schedule</p>
                   <div className="flex-1 border-t border-gray-100" />
                 </div>
                 <div className="space-y-5">
