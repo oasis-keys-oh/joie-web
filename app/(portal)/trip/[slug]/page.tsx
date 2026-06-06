@@ -1,5 +1,6 @@
 import { getTripBySlug, getTripDays } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 import TripHeader from '@/components/TripHeader'
 import DayCard from '@/components/DayCard'
 import TripSidebar from '@/components/TripSidebar'
@@ -7,6 +8,7 @@ import PhotoFooter from '@/components/PhotoFooter'
 import PreTripDrops from '@/components/PreTripDrops'
 import CuratorThread from '@/components/CuratorThread'
 import PersonaDedication from '@/components/PersonaDedication'
+import FollowerPage from '@/components/follower/FollowerPage'
 import { Trip, TripDay } from '@/lib/types'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
@@ -42,6 +44,40 @@ interface TripPageProps {
   params: {
     slug: string
   }
+  searchParams: {
+    ref?: string
+    name?: string
+  }
+}
+
+// ── Follower data fetching ─────────────────────────────────────────────────────
+
+async function getLatestShareEvents(tripId: string, limit = 20) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  const { data } = await supabase
+    .from('trip_share_events')
+    .select('id, trip_id, event_type, location_name, place_category, challenge_title, memory_caption, media_url, created_at')
+    .eq('trip_id', tripId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  return data || []
+}
+
+async function getPublishedDays(tripId: string) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  const { data } = await supabase
+    .from('trip_days')
+    .select('id, day_number, title, location, region, wow_moment, thread_content, local_insider_tip, follower_published, follower_published_at')
+    .eq('trip_id', tripId)
+    .eq('follower_published', true)
+    .order('day_number', { ascending: true })
+  return data || []
 }
 
 export async function generateMetadata({ params }: TripPageProps) {
@@ -56,7 +92,54 @@ export async function generateMetadata({ params }: TripPageProps) {
   }
 }
 
-export default async function TripPage({ params }: TripPageProps) {
+export default async function TripPage({ params, searchParams }: TripPageProps) {
+  // ── Follower gate ────────────────────────────────────────────────────────────
+  // Visitors arriving via a share link (?ref= or ?name=) see the follower view.
+  // Returning followers have a joie_follow_<slug> cookie set after registration.
+  // All other visitors (travelers) see the full itinerary.
+
+  const cookieStore = await cookies()
+  const followerCookie = cookieStore.get(`joie_follow_${params.slug}`)
+  const hasRefParam = !!(searchParams.ref || searchParams.name)
+  const isReturningFollower = !!followerCookie
+
+  if (hasRefParam || isReturningFollower) {
+    let trip: Trip | null = null
+    let totalDays = 0
+
+    try {
+      const t = await getTripBySlug(params.slug)
+      trip = t
+      const allDays = await getTripDays(t.id)
+      totalDays = allDays.length
+    } catch {
+      // Trip not found — fall through to traveler 404 below
+    }
+
+    if (trip) {
+      const [shareEvents, publishedDays] = await Promise.all([
+        getLatestShareEvents(trip!.id),
+        getPublishedDays(trip!.id),
+      ])
+
+      return (
+        <FollowerPage
+          tripId={trip.id}
+          tripSlug={params.slug}
+          tripTitle={trip.title}
+          mode={isReturningFollower ? 'feed' : 'register'}
+          prefillName={searchParams.name}
+          refCode={searchParams.ref}
+          initialFollowerId={followerCookie?.value}
+          initialEvents={shareEvents as any}
+          publishedDays={publishedDays as any}
+          totalDays={totalDays}
+        />
+      )
+    }
+  }
+  // ── End follower gate ────────────────────────────────────────────────────────
+
   let trip: Trip | null = null
   let days: TripDay[] = []
   let drops: any[] = []

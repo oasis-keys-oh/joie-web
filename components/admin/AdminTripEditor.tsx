@@ -25,6 +25,13 @@ import {
   type ValidationItem,
   type BookValidationItem,
 } from '@/app/(portal)/admin/actions'
+import {
+  addFollowerAction,
+  removeFollowerAction,
+  publishDayToFollowersAction,
+  unpublishDayFromFollowersAction,
+  getFollowersAction,
+} from '@/app/(portal)/admin/followerActions'
 import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 import ImageUploadBtn from '@/components/admin/ImageUploadBtn'
 
@@ -88,6 +95,7 @@ interface Props {
 const TABS = [
   { id: 'days',         label: 'Days' },
   { id: 'settings',     label: '✏️ Trip Info' },
+  { id: 'followers',    label: '👥 Followers' },
   { id: 'events',       label: 'Events' },
   { id: 'travelers',    label: 'Travelers' },
   { id: 'contacts',     label: 'Contacts' },
@@ -690,6 +698,7 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
 
       {/* Tab content */}
       {tab === 'days'          && <DaysTab         trip={trip} days={days} travelers={travelers} routes={routes} />}
+      {tab === 'followers'     && <FollowersTab    trip={trip} days={days} />}
       {tab === 'events'        && <EventsTab       trip={trip} days={days} events={events} travelers={travelers} />}
       {tab === 'travelers'     && <TravelersTab    trip={trip} travelers={travelers} />}
       {tab === 'contacts'      && <ContactsTab     trip={trip} contacts={contacts} />}
@@ -1251,6 +1260,287 @@ function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; t
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ── Followers Tab ────────────────────────────────────────────────────────────
+
+interface Follower {
+  id: string
+  first_name?: string | null
+  last_name?: string | null
+  email?: string | null
+  status: string
+  ref_code?: string | null
+  notify_memories: boolean
+  notify_arrivals: boolean
+  notify_challenges: boolean
+  created_at: string
+  push_subscription?: any
+}
+
+function FollowersTab({ trip, days }: { trip: Trip; days: Day[] }) {
+  const [followers, setFollowers] = useState<Follower[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://oukalajourney.com'
+
+  function followerLink(refCode: string) {
+    return `${baseUrl}/trip/${trip.web_slug}?ref=${encodeURIComponent(refCode)}&name=${encodeURIComponent(refCode)}`
+  }
+
+  function copyLink(refCode: string, id: string) {
+    navigator.clipboard.writeText(followerLink(refCode))
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  function loadFollowers() {
+    startTransition(async () => {
+      try {
+        const data = await getFollowersAction(trip.id)
+        setFollowers(data as Follower[])
+        setLoaded(true)
+      } catch (e: any) {
+        setError(e.message)
+      }
+    })
+  }
+
+  // Load on mount
+  useState(() => { loadFollowers() })
+
+  async function handleRemove(followerId: string) {
+    if (!confirm('Remove this follower? They will no longer receive notifications.')) return
+    startTransition(async () => {
+      await removeFollowerAction(followerId, trip.id)
+      setFollowers(prev => prev.map(f => f.id === followerId ? { ...f, status: 'removed' } : f))
+    })
+  }
+
+  async function handlePublishDay(dayId: string) {
+    startTransition(async () => {
+      await publishDayToFollowersAction(dayId, trip.id)
+    })
+  }
+
+  async function handleUnpublishDay(dayId: string) {
+    startTransition(async () => {
+      await unpublishDayFromFollowersAction(dayId, trip.id)
+    })
+  }
+
+  const activeFollowers = followers.filter(f => f.status === 'active')
+  const otherFollowers = followers.filter(f => f.status !== 'active')
+
+  return (
+    <div className="space-y-10">
+
+      {/* Stats strip */}
+      <div className="flex gap-8">
+        <div>
+          <p className="text-2xl font-bold text-navy">{activeFollowers.length}</p>
+          <p className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>Active followers</p>
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-navy">{followers.filter(f => f.push_subscription).length}</p>
+          <p className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>Push enabled</p>
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-navy">{followers.filter(f => f.email).length}</p>
+          <p className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>Email captured</p>
+        </div>
+      </div>
+
+      {/* Add follower */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <p className="label">Add Follower</p>
+          <button
+            onClick={() => setShowAddForm(v => !v)}
+            className="text-xs border border-gray-200 px-3 py-1.5 hover:border-navy transition-colors"
+          >
+            {showAddForm ? 'Cancel' : '+ Add'}
+          </button>
+        </div>
+
+        {showAddForm && (
+          <form
+            action={async (fd: FormData) => {
+              fd.append('trip_id', trip.id)
+              fd.append('trip_slug', trip.web_slug)
+              startTransition(async () => {
+                try {
+                  await addFollowerAction(fd)
+                  setShowAddForm(false)
+                  loadFollowers()
+                } catch (e: any) { setError(e.message) }
+              })
+            }}
+            className="border border-gray-100 p-4 space-y-3 bg-gray-50"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-ink-muted mb-1">First name</label>
+                <input name="first_name" className="w-full border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-ink-muted mb-1">Last name</label>
+                <input name="last_name" className="w-full border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-ink-muted mb-1">Email</label>
+              <input name="email" type="email" className="w-full border border-gray-200 px-3 py-2 text-sm" />
+            </div>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="bg-navy text-white text-xs px-4 py-2 tracking-widest uppercase hover:bg-opacity-90 transition-all disabled:opacity-50"
+            >
+              {isPending ? 'Adding…' : 'Add & Generate Link'}
+            </button>
+          </form>
+        )}
+      </div>
+
+      {/* Follower list */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <p className="label">Followers {loaded && `(${activeFollowers.length} active)`}</p>
+          <button onClick={loadFollowers} disabled={isPending} className="text-xs text-ink-muted hover:text-navy transition-colors">
+            {isPending ? 'Loading…' : '↻ Refresh'}
+          </button>
+        </div>
+
+        {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
+        {!loaded && !isPending && (
+          <p className="text-sm text-ink-muted">Loading followers…</p>
+        )}
+
+        {loaded && followers.length === 0 && (
+          <p className="text-sm text-ink-muted">No followers yet. Share the trip link to get started.</p>
+        )}
+
+        {loaded && followers.length > 0 && (
+          <div className="border border-gray-100 divide-y divide-gray-100">
+            {[...activeFollowers, ...otherFollowers].map(f => (
+              <div key={f.id} className={`p-4 flex items-start gap-4 ${f.status !== 'active' ? 'opacity-40' : ''}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-medium text-navy">
+                      {[f.first_name, f.last_name].filter(Boolean).join(' ') || 'Anonymous'}
+                    </p>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      f.status === 'active' ? 'bg-green-50 text-green-700' :
+                      f.status === 'unsubscribed' ? 'bg-yellow-50 text-yellow-700' :
+                      'bg-red-50 text-red-700'
+                    }`}>
+                      {f.status}
+                    </span>
+                    {f.push_subscription && <span className="text-xs text-gold">🔔</span>}
+                  </div>
+                  {f.email && <p className="text-xs text-ink-muted">{f.email}</p>}
+                  <div className="flex items-center gap-3 mt-1">
+                    {f.ref_code && (
+                      <span className="text-xs text-ink-muted opacity-60">ref: {f.ref_code}</span>
+                    )}
+                    <span className="text-xs text-ink-muted opacity-40">
+                      {new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {f.ref_code && (
+                    <button
+                      onClick={() => copyLink(f.ref_code!, f.id)}
+                      className="text-xs border border-gray-200 px-2 py-1 hover:border-navy transition-colors"
+                    >
+                      {copiedId === f.id ? 'Copied!' : 'Copy link'}
+                    </button>
+                  )}
+                  {f.status === 'active' && (
+                    <button
+                      onClick={() => handleRemove(f.id)}
+                      className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Publish days */}
+      <div>
+        <p className="label mb-4">Publish Days to Followers</p>
+        <p className="text-xs text-ink-muted mb-4">
+          Published days appear in the Story feed on the follower page. Each day shows its WOW Moment, thread, and local insight.
+        </p>
+        <div className="border border-gray-100 divide-y divide-gray-100">
+          {days.map(day => {
+            const isPublished = (day as any).follower_published === true
+            return (
+              <div key={day.id} className="p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-navy">Day {day.day_number} — {day.title}</p>
+                  <p className="text-xs text-ink-muted">{day.location || day.region}</p>
+                  {isPublished && (day as any).follower_published_at && (
+                    <p className="text-xs text-green-600 mt-0.5">
+                      Published {new Date((day as any).follower_published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => isPublished ? handleUnpublishDay(day.id) : handlePublishDay(day.id)}
+                  disabled={isPending}
+                  className={`text-xs px-3 py-1.5 border transition-colors shrink-0 ${
+                    isPublished
+                      ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                      : 'border-gray-200 text-ink-muted hover:border-navy hover:text-navy'
+                  }`}
+                >
+                  {isPublished ? '✓ Published' : 'Publish'}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Share the link */}
+      <div>
+        <p className="label mb-3">Trip Follow Link</p>
+        <div className="flex items-center gap-3">
+          <input
+            readOnly
+            value={`${baseUrl}/trip/${trip.web_slug}`}
+            className="flex-1 border border-gray-200 px-3 py-2 text-sm text-ink-muted bg-gray-50"
+          />
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(`${baseUrl}/trip/${trip.web_slug}`)
+              setCopiedId('base')
+              setTimeout(() => setCopiedId(null), 2000)
+            }}
+            className="text-xs border border-gray-200 px-3 py-2 hover:border-navy transition-colors shrink-0"
+          >
+            {copiedId === 'base' ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+        <p className="text-xs text-ink-muted mt-2 opacity-60">
+          Add ?ref=name&name=name for personalized invite links.
+        </p>
+      </div>
     </div>
   )
 }
