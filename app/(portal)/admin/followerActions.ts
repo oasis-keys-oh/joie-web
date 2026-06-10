@@ -77,9 +77,16 @@ export async function getFollowersAction(tripId: string) {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('trip_followers')
-    .select('id, first_name, last_name, email, status, ref_code, notify_memories, notify_arrivals, notify_challenges, created_at, push_subscription')
+    .select('id, first_name, last_name, email, status, ref_code, notify_memories, notify_arrivals, notify_challenges, created_at, push_subscription, full_access')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return data || []
+}
+
+// ── Toggle full trip access for a follower ─────────────────────────────────────
+export async function toggleFollowerFullAccessAction(followerId: string, tripId: string, fullAccess: boolean) {
+  const admin = createAdminClient()
+  sbOk(await admin.from('trip_followers').update({ full_access: fullAccess }).eq('id', followerId))
+  revalidatePath(`/admin/trip/${tripId}`)
 }

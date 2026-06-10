@@ -117,25 +117,62 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
     }
 
     if (trip) {
-      const [shareEvents, publishedDays] = await Promise.all([
-        getLatestShareEvents(trip!.id),
-        getPublishedDays(trip!.id),
-      ])
+      // Check if this returning follower has full_access — if so, fall through to full itinerary
+      if (isReturningFollower && followerCookie?.value) {
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
+        const { data: followerRow } = await supabase
+          .from('trip_followers')
+          .select('full_access')
+          .eq('id', followerCookie.value)
+          .single()
 
-      return (
-        <FollowerPage
-          tripId={trip.id}
-          tripSlug={params.slug}
-          tripTitle={trip.title}
-          mode={isReturningFollower ? 'feed' : 'register'}
-          prefillName={searchParams.name}
-          refCode={searchParams.ref}
-          initialFollowerId={followerCookie?.value}
-          initialEvents={shareEvents as any}
-          publishedDays={publishedDays as any}
-          totalDays={totalDays}
-        />
-      )
+        if (followerRow?.full_access === true) {
+          // Full access granted — fall through to the full traveler itinerary below
+          // (don't return FollowerPage)
+        } else {
+          const [shareEvents, publishedDays] = await Promise.all([
+            getLatestShareEvents(trip!.id),
+            getPublishedDays(trip!.id),
+          ])
+          return (
+            <FollowerPage
+              tripId={trip.id}
+              tripSlug={params.slug}
+              tripTitle={trip.title}
+              mode="feed"
+              prefillName={searchParams.name}
+              refCode={searchParams.ref}
+              initialFollowerId={followerCookie.value}
+              initialEvents={shareEvents as any}
+              publishedDays={publishedDays as any}
+              totalDays={totalDays}
+            />
+          )
+        }
+      } else {
+        // New visitor with ?ref= — show registration form
+        const [shareEvents, publishedDays] = await Promise.all([
+          getLatestShareEvents(trip!.id),
+          getPublishedDays(trip!.id),
+        ])
+        return (
+          <FollowerPage
+            tripId={trip.id}
+            tripSlug={params.slug}
+            tripTitle={trip.title}
+            mode="register"
+            prefillName={searchParams.name}
+            refCode={searchParams.ref}
+            initialFollowerId={undefined}
+            initialEvents={shareEvents as any}
+            publishedDays={publishedDays as any}
+            totalDays={totalDays}
+          />
+        )
+      }
     }
   }
   // ── End follower gate ────────────────────────────────────────────────────────

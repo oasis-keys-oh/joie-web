@@ -31,6 +31,7 @@ import {
   publishDayToFollowersAction,
   unpublishDayFromFollowersAction,
   getFollowersAction,
+  toggleFollowerFullAccessAction,
 } from '@/app/(portal)/admin/followerActions'
 import { getPhotoPool, getPhotoForDay, DEFAULT_PHOTOS } from '@/lib/unsplash'
 import ImageUploadBtn from '@/components/admin/ImageUploadBtn'
@@ -1268,6 +1269,7 @@ function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; t
 
 interface Follower {
   id: string
+  full_access?: boolean
   first_name?: string | null
   last_name?: string | null
   email?: string | null
@@ -1300,6 +1302,15 @@ function FollowersTab({ trip, days }: { trip: Trip; days: Day[] }) {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
+  const testLink = `${baseUrl}/trip/${trip.web_slug}?ref=_test_&name=Test`
+  const [copiedTest, setCopiedTest] = useState(false)
+
+  function copyTestLink() {
+    navigator.clipboard.writeText(testLink)
+    setCopiedTest(true)
+    setTimeout(() => setCopiedTest(false), 2000)
+  }
+
   function loadFollowers() {
     startTransition(async () => {
       try {
@@ -1323,6 +1334,13 @@ function FollowersTab({ trip, days }: { trip: Trip; days: Day[] }) {
     })
   }
 
+  async function handleToggleFullAccess(followerId: string, current: boolean) {
+    startTransition(async () => {
+      await toggleFollowerFullAccessAction(followerId, trip.id, !current)
+      setFollowers(prev => prev.map(f => f.id === followerId ? { ...f, full_access: !current } : f))
+    })
+  }
+
   async function handlePublishDay(dayId: string) {
     startTransition(async () => {
       await publishDayToFollowersAction(dayId, trip.id)
@@ -1341,19 +1359,37 @@ function FollowersTab({ trip, days }: { trip: Trip; days: Day[] }) {
   return (
     <div className="space-y-10">
 
-      {/* Stats strip */}
-      <div className="flex gap-8">
-        <div>
-          <p className="text-2xl font-bold text-navy">{activeFollowers.length}</p>
-          <p className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>Active followers</p>
+      {/* Stats strip + test link */}
+      <div className="flex items-end justify-between gap-8 flex-wrap">
+        <div className="flex gap-8">
+          <div>
+            <p className="text-2xl font-bold text-navy">{activeFollowers.length}</p>
+            <p className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>Active followers</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-navy">{followers.filter(f => f.push_subscription).length}</p>
+            <p className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>Push enabled</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-navy">{followers.filter(f => f.email).length}</p>
+            <p className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>Email captured</p>
+          </div>
         </div>
-        <div>
-          <p className="text-2xl font-bold text-navy">{followers.filter(f => f.push_subscription).length}</p>
-          <p className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>Push enabled</p>
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-navy">{followers.filter(f => f.email).length}</p>
-          <p className="text-xs text-ink-muted uppercase tracking-widest" style={{ letterSpacing: '0.14em' }}>Email captured</p>
+        <div className="flex items-center gap-2">
+          <a
+            href={testLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs border border-gray-200 px-3 py-1.5 hover:border-navy transition-colors"
+          >
+            Open follower view ↗
+          </a>
+          <button
+            onClick={copyTestLink}
+            className="text-xs border border-gray-200 px-3 py-1.5 hover:border-navy transition-colors"
+          >
+            {copiedTest ? 'Copied!' : 'Copy test link'}
+          </button>
         </div>
       </div>
 
@@ -1456,7 +1492,21 @@ function FollowersTab({ trip, days }: { trip: Trip; days: Day[] }) {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  {f.status === 'active' && (
+                    <button
+                      onClick={() => handleToggleFullAccess(f.id, !!f.full_access)}
+                      disabled={isPending}
+                      title={f.full_access ? 'Revoke full itinerary access' : 'Grant full itinerary access'}
+                      className={`text-xs border px-2 py-1 transition-colors ${
+                        f.full_access
+                          ? 'border-gold text-gold hover:bg-gold hover:text-white'
+                          : 'border-gray-200 text-ink-muted hover:border-navy'
+                      }`}
+                    >
+                      {f.full_access ? '🔓 Full access' : 'Feed only'}
+                    </button>
+                  )}
                   {f.ref_code && (
                     <button
                       onClick={() => copyLink(f.ref_code!, f.id)}
