@@ -1287,10 +1287,12 @@ function FollowersTab({ trip, days }: { trip: Trip; days: Day[] }) {
   const [loaded, setLoaded] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedTest, setCopiedTest] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://oukalajourney.com'
+  const testLink = `${baseUrl}/trip/${trip.web_slug}?ref=_test_&name=Test`
 
   function followerLink(refCode: string) {
     return `${baseUrl}/trip/${trip.web_slug}?ref=${encodeURIComponent(refCode)}&name=${encodeURIComponent(refCode)}`
@@ -1301,9 +1303,6 @@ function FollowersTab({ trip, days }: { trip: Trip; days: Day[] }) {
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
   }
-
-  const testLink = `${baseUrl}/trip/${trip.web_slug}?ref=_test_&name=Test`
-  const [copiedTest, setCopiedTest] = useState(false)
 
   function copyTestLink() {
     navigator.clipboard.writeText(testLink)
