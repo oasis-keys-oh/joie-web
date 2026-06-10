@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 interface Props {
@@ -18,6 +18,11 @@ export default function FollowerRegistrationForm({ tripId, tripSlug, tripTitle, 
   const [pushOptIn, setPushOptIn] = useState(true)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [supportsPush, setSupportsPush] = useState(false)
+
+  useEffect(() => {
+    setSupportsPush('PushManager' in window)
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -121,7 +126,7 @@ export default function FollowerRegistrationForm({ tripId, tripSlug, tripTitle, 
           />
         </div>
 
-        {'PushManager' in window && (
+        {supportsPush && (
           <label className="flex items-start gap-3 cursor-pointer group">
             <div className="relative mt-0.5">
               <input
