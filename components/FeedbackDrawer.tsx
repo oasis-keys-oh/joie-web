@@ -23,19 +23,13 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Curators who can see all feedback threads
+// Curators who can see all feedback threads. NOTE: this is currently keyed to
+// the Andalusian Thread's traveler_key values ('omar', 'kristi') — there is no
+// per-trip "curator" role in the data model yet (traveler_profiles /
+// trip_travelers has no such flag), so on every other trip this is always
+// false and nobody sees the aggregated thread. Flagged as an open product
+// question in the joie-web-hotfix-1 sprint brief rather than guessed here.
 const CURATORS = ['omar', 'kristi']
-
-const TRAVELER_COLOR: Record<string, string> = {
-  omar:   '#1B2B4B',
-  kristi: '#C9A84C',
-  todd:   '#7c3aed',
-  erica:  '#0d9488',
-}
-
-const TRAVELER_INITIALS: Record<string, string> = {
-  omar: 'O', kristi: 'K', todd: 'T', erica: 'E',
-}
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString('en-US', {
@@ -45,7 +39,8 @@ function formatTime(iso: string) {
 }
 
 export default function FeedbackDrawer({ tripId, dayId, dayTitle, dayNumber }: Props) {
-  const { traveler } = usePersona()
+  const { traveler, travelers } = usePersona()
+  const travelerByKey = Object.fromEntries(travelers.map((t) => [t.key, t]))
   const [open, setOpen] = useState(false)
   const [comment, setComment] = useState('')
   const [entries, setEntries] = useState<FeedbackEntry[]>([])
@@ -153,8 +148,9 @@ export default function FeedbackDrawer({ tripId, dayId, dayTitle, dayNumber }: P
               <p className="label mb-4">All Notes</p>
               <div className="space-y-4">
                 {entries.map((entry) => {
-                  const color = TRAVELER_COLOR[entry.traveler_key] || '#1B2B4B'
-                  const initials = TRAVELER_INITIALS[entry.traveler_key] || '?'
+                  const entryTraveler = travelerByKey[entry.traveler_key]
+                  const color = entryTraveler?.color || '#1B2B4B'
+                  const initials = entryTraveler?.initials || '?'
                   return (
                     <div key={entry.id} className="flex gap-3">
                       <div
@@ -171,7 +167,7 @@ export default function FeedbackDrawer({ tripId, dayId, dayTitle, dayNumber }: P
                           {entry.comment}
                         </p>
                         <p className="text-ink-muted mt-1" style={{ fontSize: '0.67rem' }}>
-                          {entry.traveler_key} · {formatTime(entry.created_at)}
+                          {entryTraveler?.name || entry.traveler_key} · {formatTime(entry.created_at)}
                         </p>
                       </div>
                     </div>
@@ -201,7 +197,7 @@ export default function FeedbackDrawer({ tripId, dayId, dayTitle, dayNumber }: P
                   <div className="flex items-center gap-2 mb-3">
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                      style={{ background: TRAVELER_COLOR[traveler.key] || '#1B2B4B' }}
+                      style={{ background: traveler.color || '#1B2B4B' }}
                     >
                       {traveler.initials}
                     </div>

@@ -97,6 +97,27 @@ export async function getDayRoutes(dayId: string) {
   return (data || []) as import('./types').DayRoute[]
 }
 
+// Travelers actually linked to a trip — via trip_travelers → traveler_profiles.
+// Used by PersonaProvider to build the per-trip persona picker instead of a
+// hardcoded roster. Sorted by full_name for a stable, deterministic order
+// (used to derive stable colors/initials client-side).
+export async function getTripTravelers(tripId: string) {
+  const { data, error } = await supabase
+    .from('trip_travelers')
+    .select('traveler_profiles(*)')
+    .eq('trip_id', tripId)
+
+  if (error) {
+    console.error('[getTripTravelers]', error)
+    return []
+  }
+
+  return (data || [])
+    .map((row: any) => row.traveler_profiles)
+    .filter(Boolean)
+    .sort((a: any, b: any) => (a.full_name || '').localeCompare(b.full_name || ''))
+}
+
 export async function getHotelForDay(tripId: string, date: string) {
   const { data, error } = await supabase
     .from('reference_items')

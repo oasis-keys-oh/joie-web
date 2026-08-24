@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { usePersona, TRAVELERS } from '@/components/PersonaProvider'
+import { usePersona } from '@/components/PersonaProvider'
 
 export default function PersonaSwitcher() {
-  const { traveler, setTraveler, setShowPicker } = usePersona()
+  const { traveler, setTraveler, setShowPicker, travelers } = usePersona()
   const [open, setOpen] = useState(false)
 
   if (!traveler) {
@@ -62,7 +62,7 @@ export default function PersonaSwitcher() {
                 Switch Traveler
               </p>
             </div>
-            {TRAVELERS.map((t) => (
+            {travelers.map((t) => (
               <button
                 key={t.key}
                 onClick={() => { setTraveler(t); setOpen(false) }}

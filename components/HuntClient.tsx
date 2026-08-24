@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { usePersona, TRAVELERS } from '@/components/PersonaProvider'
+import { usePersona } from '@/components/PersonaProvider'
 
 interface Challenge {
   id: string
@@ -94,7 +94,7 @@ function getPointsLabel(pts: number): string {
 }
 
 export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientProps) {
-  const { traveler } = usePersona()
+  const { traveler, travelers } = usePersona()
   const [submissions, setSubmissions] = useState<Submissions>({})
   const [finaleVerse, setFinaleVerse] = useState('')
   const [finaleSubmitted, setFinaleSubmitted] = useState(false)
@@ -157,7 +157,7 @@ export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientP
 
   // Compute scores
   const scores: Record<string, number> = {}
-  for (const t of TRAVELERS) scores[t.key] = 0
+  for (const t of travelers) scores[t.key] = 0
   for (const [challengeId, completedBy] of Object.entries(submissions)) {
     const challenge = challenges.find((c) => c.id === challengeId)
     if (!challenge) continue
@@ -166,7 +166,7 @@ export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientP
     }
   }
 
-  const sorted = TRAVELERS.slice().sort((a, b) => (scores[b.key] || 0) - (scores[a.key] || 0))
+  const sorted = travelers.slice().sort((a, b) => (scores[b.key] || 0) - (scores[a.key] || 0))
   const totalPossible = challenges.reduce((sum, c) => sum + c.points, 0)
 
   async function toggleCompletion(challengeId: string, travelerKey: string) {
@@ -286,7 +286,7 @@ export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientP
 
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {TRAVELERS.map((t) => (
+            {travelers.map((t) => (
               <div
                 key={t.key}
                 className="p-4 rounded-sm text-center animate-pulse"
@@ -435,7 +435,7 @@ export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientP
                   <span className="text-xs text-ink-muted uppercase tracking-widest mr-1" style={{ letterSpacing: '0.1em' }}>
                     Mark complete:
                   </span>
-                  {TRAVELERS.map((t) => {
+                  {travelers.map((t) => {
                     const done = completedBy.includes(t.key)
                     return (
                       <button
@@ -532,7 +532,7 @@ export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientP
                   <span className="text-xs text-ink-muted uppercase tracking-widest mr-1" style={{ letterSpacing: '0.1em' }}>
                     Mark complete:
                   </span>
-                  {TRAVELERS.map((t) => {
+                  {travelers.map((t) => {
                     const done = completedBy.includes(t.key)
                     return (
                       <button

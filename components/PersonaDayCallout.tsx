@@ -20,22 +20,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Persona accent colours keyed to traveler key
-const PERSONA_ACCENT: Record<string, string> = {
-  omar:   '#1B2B4B',
-  kristi: '#C9A84C',
-  todd:   '#7c3aed',
-  erica:  '#0d9488',
-}
-
-// Persona icon
-const PERSONA_ICON: Record<string, string> = {
-  omar:   '🧭',
-  kristi: '✨',
-  todd:   '🏆',
-  erica:  '🌿',
-}
-
 export default function PersonaDayCallout({ dayId }: Props) {
   const { traveler } = usePersona()
   const [moment, setMoment] = useState<PersonaMoment | null>(null)
@@ -62,8 +46,8 @@ export default function PersonaDayCallout({ dayId }: Props) {
 
   if (!traveler || loading || !moment) return null
 
-  const accent = PERSONA_ACCENT[traveler.key] || '#1B2B4B'
-  const icon = PERSONA_ICON[traveler.key] || '✦'
+  const accent = traveler.color || '#1B2B4B'
+  const icon = traveler.emoji || '✦'
 
   return (
     <div

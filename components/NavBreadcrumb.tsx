@@ -5,13 +5,9 @@ import { usePathname } from 'next/navigation'
 import TripSearch from '@/components/TripSearch'
 import { usePersona } from '@/components/PersonaProvider'
 
-// Hard-coded trip ID — search needs it to load data.
-// When multiple trips exist this should come from a context or prop.
-const TRIP_ID = 'b1000000-0000-0000-0000-000000000001'
-
 export default function NavBreadcrumb() {
   const pathname = usePathname()
-  const { traveler } = usePersona()
+  const { traveler, tripId } = usePersona()
 
   // Extract slug from any /trip/[slug]/... path
   const tripPathMatch = pathname.match(/^\/trip\/([^/]+)/)
@@ -73,9 +69,9 @@ export default function NavBreadcrumb() {
     </Link>
   )
 
-  const searchButton = (
-    <TripSearch tripSlug={slug} tripId={TRIP_ID} />
-  )
+  const searchButton = tripId ? (
+    <TripSearch tripSlug={slug} tripId={tripId} />
+  ) : null
 
   if (isRoot) {
     return (
