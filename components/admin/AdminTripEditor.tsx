@@ -14,6 +14,7 @@ import {
   upsertTravelerAction, deleteTravelerAction,
   upsertRWLAction, deleteRWLAction,
   upsertHaggleTriggerAction, deleteHaggleTriggerAction,
+  upsertTravelInfoAction, deleteTravelInfoAction,
   upsertJourneyFactAction, deleteJourneyFactAction,
   upsertRouteAction, deleteRouteAction,
   upsertDayTripSuggestionAction, deleteDayTripSuggestionAction,
@@ -55,7 +56,7 @@ function dayDate(tripStartDate: string, dayNumber: number): string {
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; web_password?: string; story_image_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
-interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; timezone?: string; location_lat?: number; location_lng?: number; morning_brief?: string; wow_moment?: string; gpx_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
+interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; timezone?: string; location_lat?: number; location_lng?: number; map_stop_label?: string; morning_brief?: string; wow_moment?: string; gpx_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
 interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; partner_name?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; wine_preferences?: string; interests?: string; travel_style?: string; allergies?: string; languages?: string; activities?: string; bucket_list?: string; music_preferences?: string; age?: number }
 interface Event { id: string; day_id: string; type: string; title: string; subtitle?: string; time_start?: string; time_end?: string; timezone?: string; timezone_end?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string; traveler_keys?: string[] }
 interface DayRoute { id: string; trip_id: string; day_id: string; name?: string; gpx_url: string; traveler_keys?: string[]; sort_order: number }
@@ -68,6 +69,7 @@ interface PreTripDrop { id: string; date_offset_days: number; type: string; titl
 interface Feedback { id: string; day_id: string; traveler_name: string; comment: string; created_at: string }
 interface RWLItem { id: string; type: string; title: string; author_director?: string; reason?: string; amazon_url?: string; streaming_url?: string; streaming_platform?: string; cover_image_url?: string; isbn?: string; tmdb_id?: string; display_order?: number }
 interface HaggleTrigger { id: string; trip_id: string; day_id?: string; location_name: string; coordinates?: string; radius_meters?: number; currency?: string; phrases?: Record<string, string>; price_anchors?: Record<string, unknown>; tips?: string[] }
+interface TravelInfo { id: string; trip_id: string; country_name: string; currency_code?: string; currency_name?: string; currency_symbol?: string; fallback_rate_to_usd?: number; exchange_note?: string; tipping_notes?: { service: string; local_note: string }[]; connectivity_notes?: { title: string; note: string }[]; vaccination_notes?: { label: string; note: string }[]; food_water_notes?: { label: string; note: string }[]; sun_safety_note?: string; embassy_name?: string; embassy_url?: string; advisory_url?: string; sort_order?: number }
 interface JourneyFact { id: string; trip_id: string; category: string; headline: string; body: string; music_url?: string; music_platform?: string; destinations?: string[]; is_active: boolean; sort_order?: number }
 interface DayTripSuggestion { id: string; trip_id: string; title: string; subtitle?: string; departure_city: string; destination_city: string; overview?: string; highlights?: string[]; tags?: string[]; duration_text?: string; effort_text?: string; is_featured: boolean; sort_order: number }
 interface DayTripBlock { id: string; suggestion_id: string; time_label?: string; block_type: string; title: string; description?: string; venue_name?: string; venue_notes?: string; is_optional: boolean; sort_order: number }
@@ -86,6 +88,7 @@ interface Props {
   travelers: Traveler[]
   rwl: RWLItem[]
   haggle: HaggleTrigger[]
+  travelInfo: TravelInfo[]
   facts: JourneyFact[]
   routes: DayRoute[]
   dayTripSuggestions: DayTripSuggestion[]
@@ -104,6 +107,7 @@ const TABS = [
   { id: 'daytrips',     label: '🗺️ Day Trips' },
   { id: 'hunt',         label: 'Hunt' },
   { id: 'haggle',       label: '🛒 Haggle' },
+  { id: 'travelinfo',   label: '💱 Travel Info' },
   { id: 'packing',      label: 'Packing' },
   // Recommendations tab retired — read_watch_listen is the source of truth
   { id: 'rwl',          label: '📚 Read · Watch · Listen' },
@@ -667,7 +671,7 @@ function SectionHeader({ title, onAdd }: { title: string; onAdd?: () => void }) 
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, travelers, rwl, haggle, facts, routes, dayTripSuggestions, dayTripBlocks, activeTab: initTab }: Props) {
+export default function AdminTripEditor({ trip, days, events, contacts, hotels, challenges, packing, recs, drops, feedback, travelers, rwl, haggle, travelInfo, facts, routes, dayTripSuggestions, dayTripBlocks, activeTab: initTab }: Props) {
   const [tab, setTab] = useState(initTab)
 
   return (
@@ -707,6 +711,7 @@ export default function AdminTripEditor({ trip, days, events, contacts, hotels, 
       {tab === 'daytrips'      && <DayTripsTab     trip={trip} suggestions={dayTripSuggestions} blocks={dayTripBlocks} />}
       {tab === 'hunt'          && <HuntTab         trip={trip} challenges={challenges} />}
       {tab === 'haggle'        && <HaggleTab       trip={trip} triggers={haggle} />}
+      {tab === 'travelinfo'    && <TravelInfoTab   trip={trip} travelInfo={travelInfo} />}
       {tab === 'packing'       && <PackingTab      trip={trip} packing={packing} />}
       {/* RecsTab retired — RWL is the source of truth; prep page reads from read_watch_listen */}
       {tab === 'rwl'           && <RWLTab          trip={trip} items={rwl} />}
@@ -1054,6 +1059,81 @@ function DaysTab({ trip, days, travelers, routes }: { trip: Trip; days: Day[]; t
                     style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
                   >
                     {pending ? 'Saving…' : 'Save Title'}
+                  </button>
+                </div>
+
+                {/* Map Stop — powers the trip page's route-map sidebar (TripSidebar) */}
+                <div className="p-4 rounded-sm" style={{ background: 'rgba(27,43,75,0.03)', border: '1px solid rgba(27,43,75,0.08)' }}>
+                  <p className="text-xs text-ink-muted uppercase tracking-widest mb-3" style={{ letterSpacing: '0.12em' }}>
+                    🗺️ Route Map — Stop Label & Coordinates
+                  </p>
+                  <div>
+                    <Label>Map Stop Label</Label>
+                    <input
+                      name="map_stop_label"
+                      type="text"
+                      defaultValue={day.map_stop_label || ''}
+                      placeholder={`Short label for the map (falls back to "${day.location || 'Location'}" if blank)`}
+                      className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                      style={{ background: '#faf8f4' }}
+                    />
+                    <FieldHint value="trip_days.map_stop_label" />
+                    <p className="text-xs text-ink-muted mt-1">
+                      Consecutive days sharing the same label become one stop on the route map (e.g. "Rabat" for
+                      three days in a row shows as one pin with a "Days 3–5" range).
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div>
+                      <Label>Latitude</Label>
+                      <input
+                        name="location_lat"
+                        type="number"
+                        step="any"
+                        defaultValue={day.location_lat ?? ''}
+                        placeholder="34.0209"
+                        className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                        style={{ background: '#faf8f4' }}
+                      />
+                      <FieldHint value="trip_days.location_lat" />
+                    </div>
+                    <div>
+                      <Label>Longitude</Label>
+                      <input
+                        name="location_lng"
+                        type="number"
+                        step="any"
+                        defaultValue={day.location_lng ?? ''}
+                        placeholder="-6.8416"
+                        className="w-full border border-gray-200 rounded-sm px-3 py-2 text-sm text-navy focus:outline-none focus:border-gold"
+                        style={{ background: '#faf8f4' }}
+                      />
+                      <FieldHint value="trip_days.location_lng" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-ink-muted mt-1">
+                    A day with no coordinates simply won&rsquo;t appear on the map — it won&rsquo;t fall back to
+                    another trip&rsquo;s location.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const root = document.querySelector(`[data-day="${day.id}"]`) as HTMLElement
+                      const label = (root?.querySelector('input[name="map_stop_label"]') as HTMLInputElement)?.value || ''
+                      const lat = (root?.querySelector('input[name="location_lat"]') as HTMLInputElement)?.value || ''
+                      const lng = (root?.querySelector('input[name="location_lng"]') as HTMLInputElement)?.value || ''
+                      startTransition(async () => {
+                        await updateDayFieldAction(day.id, 'map_stop_label', label, trip.id)
+                        await updateDayFieldAction(day.id, 'location_lat', lat, trip.id)
+                        await updateDayFieldAction(day.id, 'location_lng', lng, trip.id)
+                        setSaved(s => ({ ...s, [day.id]: true }))
+                        setTimeout(() => setSaved(s => ({ ...s, [day.id]: false })), 2000)
+                      })
+                    }}
+                    className="mt-3 text-xs uppercase tracking-widest px-4 py-1.5 text-white rounded-sm"
+                    style={{ background: '#1B2B4B', letterSpacing: '0.12em' }}
+                  >
+                    {pending ? 'Saving…' : 'Save Map Stop'}
                   </button>
                 </div>
 
@@ -3988,6 +4068,192 @@ function HaggleTriggerRow({ trigger, tripId }: { trigger: HaggleTrigger; tripId:
             <Label>Price Anchors (JSON)</Label>
             <Textarea name="price_anchors" defaultValue={priceAnchorsText} rows={5} db="joie_haggle_triggers.price_anchors" />
           </div>
+          <div className="flex gap-3">
+            <SaveBtn pending={pending} />
+            <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>
+          </div>
+        </form>
+      )}
+    </Card>
+  )
+}
+
+// ── Travel Info Tab (Money & Connectivity / Health & Safety, per country) ──────
+// Backs the public Prep page — see Decision - Trip Travel Info Schema (2026-08-26).
+// A trip with zero rows here shows a graceful "coming soon" state on the public
+// Prep page rather than falling back to another trip's content.
+
+function TravelInfoTab({ trip, travelInfo }: { trip: Trip; travelInfo: TravelInfo[] }) {
+  const [adding, setAdding] = useState(false)
+  const bulk = useBulkSelect(travelInfo.map(t => t.id))
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-serif text-lg font-bold text-navy mb-1">Travel Info (Money & Health)</h3>
+          <p className="text-xs text-ink-muted max-w-prose">
+            One entry per country this trip visits. Powers the public Prep page&rsquo;s currency
+            converter, tipping guide, phone/data notes, vaccination/food-water/sun-safety notes, and
+            embassy/advisory links. A trip with no entries here shows a &ldquo;coming soon&rdquo; state
+            on the public page instead of another trip&rsquo;s data.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="text-xs uppercase tracking-widest px-4 py-2 text-white rounded-sm hover:opacity-85 shrink-0"
+          style={{ background: '#C9A84C', letterSpacing: '0.12em' }}
+        >
+          + Add Country
+        </button>
+      </div>
+      <BulkDeleteBar selected={bulk.selected} total={travelInfo.length} table="trip_travel_info" label="country" onDone={bulk.clear} onToggleAll={bulk.toggleAll} />
+
+      {adding && (
+        <Card>
+          <SectionHeader title="New Country" />
+          <form
+            action={async (fd) => {
+              fd.set('trip_id', trip.id)
+              await upsertTravelInfoAction(fd)
+              setAdding(false)
+              window.location.reload()
+            }}
+            className="space-y-4"
+          >
+            <input type="hidden" name="trip_id" value={trip.id} />
+            <TravelInfoFields />
+            <div className="flex gap-3">
+              <SaveBtn pending={false} />
+              <button type="button" onClick={() => setAdding(false)} className="text-xs text-ink-muted">Cancel</button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {travelInfo.length === 0 && !adding && (
+        <p className="text-sm text-ink-muted text-center py-8">
+          No countries added yet — the public Prep page will show a &ldquo;coming soon&rdquo; state
+          until at least one is added.
+        </p>
+      )}
+
+      {travelInfo.map(t => (
+        <div key={t.id} className="flex items-start gap-2">
+          <input type="checkbox" checked={bulk.selected.has(t.id)} onChange={() => bulk.toggle(t.id)} className="mt-3 shrink-0 accent-navy cursor-pointer" />
+          <div className="flex-1 min-w-0"><TravelInfoRow info={t} tripId={trip.id} /></div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Shared form fields for both the "add" form and the "edit" form — takes an optional
+ *  existing record to pre-fill defaultValues. */
+function TravelInfoFields({ info }: { info?: TravelInfo }) {
+  const tippingText = info?.tipping_notes ? JSON.stringify(info.tipping_notes, null, 2) : ''
+  const connectivityText = info?.connectivity_notes ? JSON.stringify(info.connectivity_notes, null, 2) : ''
+  const vaccinationText = info?.vaccination_notes ? JSON.stringify(info.vaccination_notes, null, 2) : ''
+  const foodWaterText = info?.food_water_notes ? JSON.stringify(info.food_water_notes, null, 2) : ''
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label>Country Name *</Label><Input name="country_name" defaultValue={info?.country_name} required placeholder="Morocco" db="trip_travel_info.country_name" /></div>
+        <div><Label>Sort Order</Label><Input name="sort_order" type="number" defaultValue={info?.sort_order != null ? String(info.sort_order) : '0'} db="trip_travel_info.sort_order" /></div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div><Label>Currency Code</Label><Input name="currency_code" defaultValue={info?.currency_code} placeholder="MAD" db="trip_travel_info.currency_code" /></div>
+        <div><Label>Currency Name</Label><Input name="currency_name" defaultValue={info?.currency_name} placeholder="Moroccan Dirham" db="trip_travel_info.currency_name" /></div>
+        <div><Label>Symbol</Label><Input name="currency_symbol" defaultValue={info?.currency_symbol} placeholder="DH" db="trip_travel_info.currency_symbol" /></div>
+      </div>
+      <div style={{ maxWidth: '260px' }}>
+        <Label>Fallback Rate to USD</Label>
+        <Input name="fallback_rate_to_usd" type="number" defaultValue={info?.fallback_rate_to_usd != null ? String(info.fallback_rate_to_usd) : ''} placeholder="10.05" db="trip_travel_info.fallback_rate_to_usd" />
+        <p className="text-xs text-ink-muted mt-1">Used only if the live exchange-rate API call fails on the public page.</p>
+      </div>
+      <div>
+        <Label>Exchange Note</Label>
+        <Textarea name="exchange_note" defaultValue={info?.exchange_note} rows={2} placeholder="ATMs are reliable, avoid airport exchange counters…" db="trip_travel_info.exchange_note" />
+      </div>
+      <div>
+        <Label>Tipping Notes (JSON array)</Label>
+        <Textarea name="tipping_notes" defaultValue={tippingText} rows={4} placeholder={'[\n  {"service": "Restaurant", "local_note": "10–15 MAD / person"},\n  {"service": "Taxi", "local_note": "Round up to nearest 5 MAD"}\n]'} db="trip_travel_info.tipping_notes" />
+        <p className="text-xs text-ink-muted mt-1">Array of {'{ service, local_note }'}. Becomes one column in the public Tipping Guide table.</p>
+      </div>
+      <div>
+        <Label>Connectivity Notes (JSON array)</Label>
+        <Textarea name="connectivity_notes" defaultValue={connectivityText} rows={4} placeholder={'[\n  {"title": "Local SIM", "note": "Available at the airport, ~$12 for 20GB"}\n]'} db="trip_travel_info.connectivity_notes" />
+        <p className="text-xs text-ink-muted mt-1">Array of {'{ title, note }'}. Duplicate titles across countries are automatically de-duplicated on the public page.</p>
+      </div>
+      <div>
+        <Label>Vaccination Notes (JSON array)</Label>
+        <Textarea name="vaccination_notes" defaultValue={vaccinationText} rows={3} placeholder={'[\n  {"label": "Hepatitis A & B", "note": "Recommended — check 4–6 weeks before travel"}\n]'} db="trip_travel_info.vaccination_notes" />
+      </div>
+      <div>
+        <Label>Food & Water Notes (JSON array)</Label>
+        <Textarea name="food_water_notes" defaultValue={foodWaterText} rows={3} placeholder={'[\n  {"label": "Tap water", "note": "Do not drink — bottled water is cheap and available"}\n]'} db="trip_travel_info.food_water_notes" />
+      </div>
+      <div>
+        <Label>Sun Safety Note</Label>
+        <Textarea name="sun_safety_note" defaultValue={info?.sun_safety_note} rows={2} db="trip_travel_info.sun_safety_note" />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div><Label>Embassy Name</Label><Input name="embassy_name" defaultValue={info?.embassy_name} placeholder="U.S. Embassy Rabat" db="trip_travel_info.embassy_name" /></div>
+        <div><Label>Embassy URL</Label><Input name="embassy_url" defaultValue={info?.embassy_url} placeholder="https://ma.usembassy.gov" db="trip_travel_info.embassy_url" /></div>
+        <div><Label>State Dept Advisory URL</Label><Input name="advisory_url" defaultValue={info?.advisory_url} placeholder="https://travel.state.gov/…" db="trip_travel_info.advisory_url" /></div>
+      </div>
+    </>
+  )
+}
+
+function TravelInfoRow({ info, tripId }: { info: TravelInfo; tripId: string }) {
+  const [editing, setEditing] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <Card>
+      {!editing ? (
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              {info.currency_code && <span className="text-xs font-mono px-2 py-0.5 rounded-sm" style={{ background: 'rgba(27,43,75,0.1)', color: '#1B2B4B' }}>{info.currency_code}</span>}
+            </div>
+            <p className="font-semibold text-navy text-sm">{info.country_name}</p>
+            <p className="text-xs text-ink-muted mt-1">
+              {(info.tipping_notes || []).length} tipping rows · {(info.connectivity_notes || []).length} connectivity notes ·{' '}
+              {(info.vaccination_notes || []).length} vaccination notes · {(info.food_water_notes || []).length} food/water notes
+              {info.embassy_url ? ' · embassy linked' : ''}
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs text-ink-muted hover:text-navy border border-gray-200 px-3 py-1.5 rounded-sm hover:border-navy transition-colors">Edit</button>
+            <DeleteBtn
+              pending={pending}
+              onClick={() => startTransition(async () => {
+                if (confirm(`Delete travel info for "${info.country_name}"?`)) {
+                  await deleteTravelInfoAction(info.id, tripId)
+                  window.location.reload()
+                }
+              })}
+            />
+          </div>
+        </div>
+      ) : (
+        <form
+          action={async (fd) => {
+            fd.set('id', info.id)
+            fd.set('trip_id', tripId)
+            await upsertTravelInfoAction(fd)
+            setEditing(false)
+            window.location.reload()
+          }}
+          className="space-y-4"
+        >
+          <input type="hidden" name="id" value={info.id} />
+          <input type="hidden" name="trip_id" value={tripId} />
+          <TravelInfoFields info={info} />
           <div className="flex gap-3">
             <SaveBtn pending={pending} />
             <button type="button" onClick={() => setEditing(false)} className="text-xs text-ink-muted">Cancel</button>

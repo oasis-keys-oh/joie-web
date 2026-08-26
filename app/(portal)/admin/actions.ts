@@ -431,6 +431,59 @@ export async function deleteHaggleTriggerAction(id: string) {
   await admin.from('joie_haggle_triggers').delete().eq('id', id)
 }
 
+// ── Trip Travel Info (Money/Health/Connectivity per country) ───────────────────
+// Backs the public Prep page's "Money & Connectivity" and "Health & Safety" tabs —
+// see Decision - Trip Travel Info Schema (2026-08-26).
+
+export async function upsertTravelInfoAction(formData: FormData) {
+  const admin = createAdminClient()
+  const id = formData.get('id') as string | null
+
+  // JSONB array fields — parse from textarea; default [] on parse error or blank
+  function parseJsonArray(field: string): unknown[] {
+    const raw = (formData.get(field) as string || '').trim()
+    if (!raw) return []
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
+  const payload = {
+    trip_id:              formData.get('trip_id') as string,
+    country_name:         formData.get('country_name') as string,
+    currency_code:        formData.get('currency_code') as string || null,
+    currency_name:        formData.get('currency_name') as string || null,
+    currency_symbol:      formData.get('currency_symbol') as string || null,
+    fallback_rate_to_usd: parseFloat(formData.get('fallback_rate_to_usd') as string) || null,
+    exchange_note:        formData.get('exchange_note') as string || null,
+    tipping_notes:        parseJsonArray('tipping_notes'),
+    connectivity_notes:   parseJsonArray('connectivity_notes'),
+    vaccination_notes:    parseJsonArray('vaccination_notes'),
+    food_water_notes:     parseJsonArray('food_water_notes'),
+    sun_safety_note:       formData.get('sun_safety_note') as string || null,
+    embassy_name:         formData.get('embassy_name') as string || null,
+    embassy_url:          formData.get('embassy_url') as string || null,
+    advisory_url:         formData.get('advisory_url') as string || null,
+    sort_order:           parseInt(formData.get('sort_order') as string) || 0,
+  }
+  if (id) {
+    sbOk(await admin.from('trip_travel_info').update(payload).eq('id', id))
+  } else {
+    sbOk(await admin.from('trip_travel_info').insert(payload))
+  }
+  const tripId = formData.get('trip_id') as string
+  if (tripId) revalidatePath(`/admin/trip/${tripId}`)
+}
+
+export async function deleteTravelInfoAction(id: string, tripId?: string) {
+  const admin = createAdminClient()
+  await admin.from('trip_travel_info').delete().eq('id', id)
+  if (tripId) revalidatePath(`/admin/trip/${tripId}`)
+}
+
 // ── Journey Facts ─────────────────────────────────────────────────────────────
 
 export async function upsertJourneyFactAction(formData: FormData) {
@@ -505,6 +558,7 @@ type BulkDeleteTable =
   | 'journey_facts'
   | 'day_trip_suggestions'
   | 'day_trip_blocks'
+  | 'trip_travel_info'
 
 export async function bulkDeleteAction(table: BulkDeleteTable, ids: string[]) {
   if (!ids.length) return

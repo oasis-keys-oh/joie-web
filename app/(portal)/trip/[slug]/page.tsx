@@ -236,7 +236,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   return (
     <>
       {/* Full-bleed hero — derive photo from first day's location */}
-      <TripHeader trip={trip} firstDestination={days[0]?.location || days[0]?.region || 'morocco'} />
+      <TripHeader trip={trip} firstDestination={days[0]?.location || days[0]?.region || ''} />
 
       {/* Two-column layout below hero */}
       <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14">
@@ -464,8 +464,14 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         </div>
       </div>
 
-      {/* Bottom photo showcase — Morocco first, then France */}
-      <PhotoFooter region="Morocco" caption="Morocco" />
+      {/* Bottom photo showcase — derived from the trip's closing day (was hardcoded to "Morocco"
+          regardless of trip; getPhotoPool() falls back to a generic default pool for any region/
+          location string it doesn't recognize, so this is safe for trips outside the curated pools) */}
+      {(() => {
+        const lastDay = days[days.length - 1]
+        const closingRegion = lastDay?.region || lastDay?.location || trip.title
+        return <PhotoFooter region={closingRegion} caption={lastDay?.region || undefined} />
+      })()}
 
       {/* Floating curator chat — always visible on trip pages */}
       <CuratorThread
