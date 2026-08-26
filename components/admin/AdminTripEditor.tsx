@@ -62,7 +62,7 @@ interface Event { id: string; day_id: string; type: string; title: string; subti
 interface DayRoute { id: string; trip_id: string; day_id: string; name?: string; gpx_url: string; traveler_keys?: string[]; sort_order: number }
 interface Contact { id: string; name: string; phone: string; role: string; destination: string; specialty?: string; intro_note?: string }
 interface Hotel { id: string; name: string; check_in?: string; check_out?: string; check_in_time?: string; check_out_time?: string; address?: string; phone?: string; website?: string; confirmation?: string; notes?: string; traveler_keys?: string[] }
-interface Challenge { id: string; day_number?: number; title: string; description: string; transliteration?: string; points: number; challenge_type: string; leg?: string; coordinates?: string }
+interface Challenge { id: string; day_number?: number; title: string; description: string; transliteration?: string; points: number; challenge_type: string; leg?: string; location?: string; requires_photo?: boolean; coordinates?: string }
 interface PackingItem { id: string; item: string; category: string; segment?: string; traveler_key?: string; reason?: string; sort_order?: number }
 interface Rec { id: string; type: string; title: string; author?: string; description?: string; why_relevant?: string; when_to_enjoy?: string; amazon_url?: string; streaming_url?: string; streaming_platform?: string; sort_order?: number }
 interface PreTripDrop { id: string; date_offset_days: number; type: string; title?: string; content: string; media_url?: string; sent: boolean }
@@ -127,7 +127,6 @@ const EVENT_TYPES = [
   'departure_reminder', 'shopping', 'other',
 ]
 const CHALLENGE_TYPES = ['find', 'photo', 'taste', 'buy', 'ask', 'learn', 'grand_finale']
-const LEG_OPTIONS = ['morocco', 'france']
 
 // ── Bulk-select hook & bar ────────────────────────────────────────────────────
 
@@ -2927,11 +2926,16 @@ function HuntTab({ trip, challenges }: { trip: Trip; challenges: Challenge[] }) 
               <div><Label>Day #</Label><Input name="day_number" placeholder="e.g. 3" db="hunt_challenges.day_number" /></div>
               <div><Label>Points</Label><Input name="points" defaultValue="10" db="hunt_challenges.points" /></div>
               <div><Label>Type</Label><Select name="challenge_type" options={CHALLENGE_TYPES} db="hunt_challenges.challenge_type" /></div>
-              <div><Label>Leg</Label><Select name="leg" options={LEG_OPTIONS} db="hunt_challenges.leg" /></div>
+              <div><Label>Leg</Label><Input name="leg" placeholder="e.g. morocco, vancouver" db="hunt_challenges.leg" /></div>
             </div>
             <div><Label>Title *</Label><Input name="title" required placeholder="Find the Blue Door" db="hunt_challenges.title" /></div>
+            <div><Label>Location</Label><Input name="location" placeholder="e.g. Medina, Rabat" db="hunt_challenges.location" /></div>
             <div><Label>Description *</Label><Textarea name="description" required placeholder="Full challenge text shown to travelers…" rows={3} db="hunt_challenges.description" /></div>
             <div><Label>Transliteration (optional)</Label><Input name="transliteration" placeholder="Arabic/French pronunciation guide…" db="hunt_challenges.transliteration" /></div>
+            <label className="flex items-center gap-2 text-xs text-navy cursor-pointer">
+              <input type="checkbox" name="requires_photo" value="true" className="rounded" />
+              Requires photo proof
+            </label>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Longitude</Label><Input name="coord_lon" placeholder="-7.6114 (lon first)" db="hunt_challenges.coordinates" /></div>
               <div><Label>Latitude</Label><Input name="coord_lat" placeholder="33.5892" db="hunt_challenges.coordinates" /></div>
@@ -3007,11 +3011,16 @@ function ChallengeRow({ challenge, tripId, tripStartDate }: { challenge: Challen
             <div><Label>Day #</Label><Input name="day_number" defaultValue={String(challenge.day_number || '')} db="hunt_challenges.day_number" /></div>
             <div><Label>Points</Label><Input name="points" defaultValue={String(challenge.points)} db="hunt_challenges.points" /></div>
             <div><Label>Type</Label><Select name="challenge_type" defaultValue={challenge.challenge_type} options={CHALLENGE_TYPES} db="hunt_challenges.challenge_type" /></div>
-            <div><Label>Leg</Label><Select name="leg" defaultValue={challenge.leg || 'morocco'} options={LEG_OPTIONS} db="hunt_challenges.leg" /></div>
+            <div><Label>Leg</Label><Input name="leg" defaultValue={challenge.leg || ''} db="hunt_challenges.leg" /></div>
           </div>
           <div><Label>Title *</Label><Input name="title" defaultValue={challenge.title} required db="hunt_challenges.title" /></div>
+          <div><Label>Location</Label><Input name="location" defaultValue={challenge.location || ''} db="hunt_challenges.location" /></div>
           <div><Label>Description *</Label><Textarea name="description" defaultValue={challenge.description} required rows={3} db="hunt_challenges.description" /></div>
           <div><Label>Transliteration</Label><Input name="transliteration" defaultValue={challenge.transliteration} db="hunt_challenges.transliteration" /></div>
+          <label className="flex items-center gap-2 text-xs text-navy cursor-pointer">
+            <input type="checkbox" name="requires_photo" value="true" defaultChecked={challenge.requires_photo} className="rounded" />
+            Requires photo proof
+          </label>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Longitude</Label>

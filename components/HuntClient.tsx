@@ -9,10 +9,9 @@ interface Challenge {
   title: string
   description: string
   points: number
-  category?: string
-  location_hint?: string
+  challenge_type?: string
+  location?: string
   requires_photo?: boolean
-  is_grand_finale?: boolean
 }
 
 interface HuntClientProps {
@@ -102,6 +101,10 @@ function ChallengeDescription({ text }: { text: string }) {
   )
 }
 
+function isGrandFinale(c: Challenge): boolean {
+  return c.challenge_type === 'grand_finale'
+}
+
 function getPointsLabel(pts: number): string {
   if (pts >= 10) return 'Grand Finale'
   if (pts >= 5)  return 'Challenge'
@@ -150,7 +153,7 @@ export default function HuntClient({ tripId, tripSlug, challenges, tiebreakerRul
   // Also load any saved grand finale verse for current traveler
   useEffect(() => {
     if (!traveler) return
-    const grandFinale = challenges.find((c) => c.is_grand_finale)
+    const grandFinale = challenges.find((c) => isGrandFinale(c))
     if (!grandFinale) return
 
     async function loadVerse() {
@@ -228,7 +231,7 @@ export default function HuntClient({ tripId, tripSlug, challenges, tiebreakerRul
 
   async function submitFinaleVerse() {
     if (!finaleVerse.trim() || !traveler) return
-    const grandFinale = challenges.find((c) => c.is_grand_finale)
+    const grandFinale = challenges.find((c) => isGrandFinale(c))
     if (!grandFinale) return
 
     setSaving(true)
@@ -271,8 +274,8 @@ export default function HuntClient({ tripId, tripSlug, challenges, tiebreakerRul
     return true
   })
 
-  const grandFinale = challenges.find((c) => c.is_grand_finale)
-  const regularChallenges = filteredChallenges.filter((c) => !c.is_grand_finale)
+  const grandFinale = challenges.find((c) => isGrandFinale(c))
+  const regularChallenges = filteredChallenges.filter((c) => !isGrandFinale(c))
 
   // Split regular challenges into tiers for clearer visual grouping
   const discoveryChallenges = regularChallenges.filter((c) => c.points < 5)
@@ -382,7 +385,7 @@ export default function HuntClient({ tripId, tripSlug, challenges, tiebreakerRul
         ))}
         {traveler && (
           <span className="ml-auto text-xs text-ink-muted self-center">
-            {iCompletedCount}/{challenges.filter(c => !c.is_grand_finale).length} done
+            {iCompletedCount}/{challenges.filter(c => !isGrandFinale(c)).length} done
           </span>
         )}
       </div>
@@ -432,14 +435,14 @@ export default function HuntClient({ tripId, tripSlug, challenges, tiebreakerRul
                     <h3 className="font-serif font-bold text-navy text-base leading-snug">
                       {challenge.title}
                     </h3>
-                    {challenge.category && (
+                    {challenge.challenge_type && (
                       <p className="text-xs text-ink-muted uppercase tracking-widest mt-0.5" style={{ letterSpacing: '0.1em' }}>
-                        {challenge.category}
+                        {challenge.challenge_type.replace('_', ' ')}
                       </p>
                     )}
                     <ChallengeDescription text={challenge.description} />
-                    {challenge.location_hint && (
-                      <p className="text-xs text-ink-muted mt-2 italic">📍 {challenge.location_hint}</p>
+                    {challenge.location && (
+                      <p className="text-xs text-ink-muted mt-2 italic">📍 {challenge.location}</p>
                     )}
                     {challenge.requires_photo && (
                       <p className="text-xs mt-2" style={{ color: ptColor }}>📸 Photo proof required</p>
@@ -523,15 +526,15 @@ export default function HuntClient({ tripId, tripSlug, challenges, tiebreakerRul
                     <h3 className="font-serif font-bold text-navy text-base leading-snug">
                       {challenge.title}
                     </h3>
-                    {challenge.category && (
+                    {challenge.challenge_type && (
                       <p className="text-xs text-ink-muted uppercase tracking-widest mt-0.5" style={{ letterSpacing: '0.1em' }}>
-                        {challenge.category}
+                        {challenge.challenge_type.replace('_', ' ')}
                       </p>
                     )}
                     <ChallengeDescription text={challenge.description} />
-                    {challenge.location_hint && (
+                    {challenge.location && (
                       <p className="text-xs text-ink-muted mt-2 italic">
-                        📍 {challenge.location_hint}
+                        📍 {challenge.location}
                       </p>
                     )}
                     {challenge.requires_photo && (

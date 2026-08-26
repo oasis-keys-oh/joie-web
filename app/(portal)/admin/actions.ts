@@ -377,9 +377,11 @@ export async function upsertChallengeWithCoordsAction(formData: FormData) {
     title:           formData.get('title') as string,
     description:     formData.get('description') as string,
     transliteration: formData.get('transliteration') as string || null,
+    location:        formData.get('location') as string || null,
     points:          parseInt(formData.get('points') as string) || 10,
     challenge_type:  formData.get('challenge_type') as string || 'find',
-    leg:             formData.get('leg') as string || 'morocco',
+    requires_photo:  formData.get('requires_photo') === 'true',
+    leg:             formData.get('leg') as string || null,
     coordinates,
   }
   if (id) {
