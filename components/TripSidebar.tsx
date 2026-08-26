@@ -9,27 +9,55 @@ import DaysUntilBadge from '@/components/DaysUntilBadge'
 interface TripSidebarProps {
   trip: Trip
   days: TripDay[]
+  travelerCount?: number
 }
 
-const HIGHLIGHT_DAYS = [2, 5, 8, 11, 14]
+// Highlight days are simply any day with a wow_moment — no more hardcoded day-number list.
+// (Was: HIGHLIGHT_DAYS = [2, 5, 8, 11, 14], tuned only for the Andalusian Thread's 15-day trip.)
 
-// Real route stops — matched to actual DB day data
-const STOPS = [
-  { id: 'casablanca', label: 'Casablanca', lat: 33.5731, lng: -7.5898 },
-  { id: 'rabat',      label: 'Rabat',      lat: 34.0209, lng: -6.8416 },
-  { id: 'lyon',       label: 'Lyon',       lat: 45.7640, lng: 4.8357  },
-  { id: 'beaune',     label: 'Beaune',     lat: 47.0205, lng: 4.8398  },
-  { id: 'loire',      label: 'Loire Valley', lat: 47.3900, lng: 0.6880 },
-  { id: 'paris',      label: 'Paris',      lat: 48.8566, lng: 2.3522  },
-]
+interface RouteStop {
+  label: string
+  sub: string
+  lat: number
+  lng: number
+  firstDay: number
+  lastDay: number
+}
+
+// Derive real route stops from trip_days — groups consecutive days sharing the same
+// map_stop_label (falls back to `location`) into one stop. Days with no coordinates are
+// skipped from the map/route list entirely rather than showing a fabricated location.
+function deriveRouteStops(days: TripDay[]): RouteStop[] {
+  const geocoded = days.filter((d) => d.location_lat != null && d.location_lng != null)
+  const stops: RouteStop[] = []
+
+  for (const day of geocoded) {
+    const label = day.map_stop_label || day.location || 'Stop'
+    const last = stops[stops.length - 1]
+    if (last && last.label === label) {
+      last.lastDay = day.day_number
+    } else {
+      stops.push({
+        label,
+        sub: day.region || '',
+        lat: day.location_lat!,
+        lng: day.location_lng!,
+        firstDay: day.day_number,
+        lastDay: day.day_number,
+      })
+    }
+  }
+
+  return stops
+}
 
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
 
-function RouteMap() {
+function RouteMap({ stops }: { stops: RouteStop[] }) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!ref.current || !GOOGLE_MAPS_KEY) return
+    if (!ref.current || !GOOGLE_MAPS_KEY || stops.length === 0) return
 
     // Load Google Maps JS API dynamically
     const scriptId = 'google-maps-script'
@@ -39,7 +67,7 @@ function RouteMap() {
       if (!google) return
 
       const bounds = new google.maps.LatLngBounds()
-      STOPS.forEach(s => bounds.extend({ lat: s.lat, lng: s.lng }))
+      stops.forEach(s => bounds.extend({ lat: s.lat, lng: s.lng }))
 
       const map = new google.maps.Map(ref.current, {
         mapTypeId: 'roadmap',
@@ -63,7 +91,7 @@ function RouteMap() {
 
       // Draw route polyline
       const path = new google.maps.Polyline({
-        path: STOPS.map(s => ({ lat: s.lat, lng: s.lng })),
+        path: stops.map(s => ({ lat: s.lat, lng: s.lng })),
         geodesic: true,
         strokeColor: '#C9A84C',
         strokeOpacity: 0,
@@ -76,8 +104,8 @@ function RouteMap() {
       })
 
       // Place markers
-      STOPS.forEach((stop, i) => {
-        const isEndpoint = i === 0 || i === STOPS.length - 1
+      stops.forEach((stop, i) => {
+        const isEndpoint = i === 0 || i === stops.length - 1
         const marker = new google.maps.Marker({
           position: { lat: stop.lat, lng: stop.lng },
           map,
@@ -118,9 +146,9 @@ function RouteMap() {
     } else {
       init()
     }
-  }, [])
+  }, [stops])
 
-  if (!GOOGLE_MAPS_KEY) {
+  if (!GOOGLE_MAPS_KEY || stops.length === 0) {
     return (
       <div className="rounded-sm border border-gray-100 flex items-center justify-center" style={{ height: '240px', background: '#f0ede6' }}>
         <p className="text-ink-muted text-xs">Map unavailable</p>
@@ -137,8 +165,14 @@ function RouteMap() {
   )
 }
 
-export default function TripSidebar({ trip, days }: TripSidebarProps) {
-  const highlights = days.filter((d) => HIGHLIGHT_DAYS.includes(d.day_number) && d.wow_moment)
+export default function TripSidebar({ trip, days, travelerCount }: TripSidebarProps) {
+  // A day counts as a "highlight" simply by having a wow_moment — no hardcoded day-number list,
+  // so this works for a 6-day trip as well as a 15-day one.
+  const highlights = days.filter((d) => !!d.wow_moment)
+  const stops = deriveRouteStops(days)
+  const countryCount = new Set(
+    days.map((d) => (d.region || '').split('/')[0].split('—')[0].trim()).filter(Boolean)
+  ).size
 
   return (
     <aside className="space-y-8">
@@ -152,19 +186,21 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
           <p className="label shrink-0">Map</p>
           <div className="flex-1 border-t border-gray-100" />
         </div>
-        <RouteMap />
+        <RouteMap stops={stops} />
 
-        {/* Route stop list */}
+        {/* Route stop list — derived from real trip_days data (map_stop_label/location + region),
+            bookended by the trip's home base (text only, no pin — we don't have its coordinates) */}
         <div className="mt-4 space-y-0">
           {[
-            { label: 'Denver',       sub: 'Departure · Jun 8',       day: null },
-            { label: 'Casablanca',   sub: 'Morocco · Days 2–3',      day: 2 },
-            { label: 'Rabat',        sub: 'Morocco · Days 3–5',      day: 3 },
-            { label: 'Lyon',         sub: 'France · Days 6–7',       day: 6 },
-            { label: 'Burgundy',     sub: 'France · Days 7–10',      day: 8 },
-            { label: 'Loire Valley', sub: 'France · Days 10–13',     day: 11 },
-            { label: 'Paris',        sub: 'Days 14–15',              day: 14 },
-            { label: 'Denver',       sub: 'Return · Jun 22',         day: null },
+            ...(trip.home_base ? [{ label: trip.home_base, sub: 'Departure', day: null as number | null }] : []),
+            ...stops.map((s) => ({
+              label: s.label,
+              sub: [s.sub, s.firstDay === s.lastDay ? `Day ${s.firstDay}` : `Days ${s.firstDay}–${s.lastDay}`]
+                .filter(Boolean)
+                .join(' · '),
+              day: s.firstDay,
+            })),
+            ...(trip.home_base ? [{ label: trip.home_base, sub: 'Return', day: null as number | null }] : []),
           ].map((stop, i, arr) => {
             const href = stop.day ? `/trip/${trip.web_slug}/day/${stop.day}` : null
             const dot = (
@@ -280,10 +316,10 @@ export default function TripSidebar({ trip, days }: TripSidebarProps) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { num: String(days.length || 15), label: 'Days' },
-            { num: String(new Set(days.map(d => (d.region || '').split('/')[0].trim()).filter(Boolean)).size || 2), label: 'Countries' },
-            { num: String(STOPS.length), label: 'Cities' },
-            { num: '4', label: 'Travelers' },
+            { num: String(days.length), label: 'Days' },
+            { num: String(countryCount || 1), label: 'Countries' },
+            { num: String(stops.length), label: 'Cities' },
+            { num: String(travelerCount ?? '—'), label: 'Travelers' },
           ].map((stat) => (
             <div key={stat.label} className="text-center py-4 border border-gray-100 rounded-sm">
               <p className="font-serif text-2xl font-bold text-navy">{stat.num}</p>

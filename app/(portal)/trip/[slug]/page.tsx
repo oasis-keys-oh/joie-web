@@ -1,4 +1,4 @@
-import { getTripBySlug, getTripDays } from '@/lib/supabase'
+import { getTripBySlug, getTripDays, getTripTravelers } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import TripHeader from '@/components/TripHeader'
@@ -64,6 +64,18 @@ async function getLatestShareEvents(tripId: string, limit = 20) {
     .order('created_at', { ascending: false })
     .limit(limit)
   return data || []
+}
+
+async function getHuntChallengeCount(tripId: string) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  const { count } = await supabase
+    .from('hunt_challenges')
+    .select('id', { count: 'exact', head: true })
+    .eq('trip_id', tripId)
+  return count || 0
 }
 
 async function getPublishedDays(tripId: string) {
@@ -180,6 +192,8 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   let trip: Trip | null = null
   let days: TripDay[] = []
   let drops: any[] = []
+  let travelerCount = 0
+  let huntChallengeCount = 0
   let error: string | null = null
   const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD server time
 
@@ -188,6 +202,12 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
     trip = t
     days = await getTripDays(t.id)
     drops = await getPreTripDrops(t.id, t.start_date)
+    const [travelers, challengeCount] = await Promise.all([
+      getTripTravelers(t.id),
+      getHuntChallengeCount(t.id),
+    ])
+    travelerCount = travelers.length
+    huntChallengeCount = challengeCount
   } catch {
     error = 'Trip not found'
   }
@@ -346,7 +366,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
                     Scavenger Hunt
                   </h3>
                   <p className="text-white opacity-50 text-xs leading-relaxed">
-                    11 challenges across Morocco and France. Points, stakes, a Grand Finale verse — and the first stork rule.
+                    {huntChallengeCount > 0 ? `${huntChallengeCount} challenges` : 'Challenges'} across your journey. Points, stakes, and a Grand Finale.
                   </p>
                 </Link>
 
@@ -438,7 +458,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
 
           {/* ── RIGHT SIDEBAR ── */}
           <div className="lg:sticky lg:top-24">
-            <TripSidebar trip={trip} days={days} />
+            <TripSidebar trip={trip} days={days} travelerCount={travelerCount} />
           </div>
 
         </div>

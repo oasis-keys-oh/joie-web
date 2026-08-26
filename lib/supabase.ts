@@ -118,6 +118,23 @@ export async function getTripTravelers(tripId: string) {
     .sort((a: any, b: any) => (a.full_name || '').localeCompare(b.full_name || ''))
 }
 
+// Per-country travel info (currency, tipping, connectivity, health/safety, embassy) for a trip.
+// Backs the Prep page's "Money & Connectivity" and "Health & Safety" tabs — previously hardcoded
+// to Morocco/France regardless of trip.
+export async function getTripTravelInfo(tripId: string) {
+  const { data, error } = await supabase
+    .from('trip_travel_info')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    console.error('[getTripTravelInfo]', error)
+    return []
+  }
+  return (data || []) as import('./types').TripTravelInfo[]
+}
+
 export async function getHotelForDay(tripId: string, date: string) {
   const { data, error } = await supabase
     .from('reference_items')

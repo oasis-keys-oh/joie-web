@@ -73,6 +73,7 @@ export interface Trip {
   epigraph_transliteration?: string;
   start_date: string;
   end_date: string;
+  home_base?: string;
   web_slug: string;
   web_password?: string;
   color_theme?: ColorTheme;
@@ -120,8 +121,31 @@ export interface TripDay {
   pace_afternoon?: string;
   pace_note?: string;
   cultural_notes?: CulturalNote[];
+  location_lat?: number;
+  location_lng?: number;
+  map_stop_label?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface TripTravelInfo {
+  id: string;
+  trip_id: string;
+  country_name: string;
+  currency_code?: string;
+  currency_name?: string;
+  currency_symbol?: string;
+  fallback_rate_to_usd?: number;
+  exchange_note?: string;
+  tipping_notes?: { service: string; local_note: string }[];
+  connectivity_notes?: { title: string; note: string }[];
+  vaccination_notes?: { label: string; note: string }[];
+  food_water_notes?: { label: string; note: string }[];
+  sun_safety_note?: string;
+  embassy_name?: string;
+  embassy_url?: string;
+  advisory_url?: string;
+  sort_order?: number;
 }
 
 export interface Event {

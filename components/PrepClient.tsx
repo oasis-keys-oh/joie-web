@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { usePersona } from '@/components/PersonaProvider'
+import type { TripTravelInfo } from '@/lib/types'
 
 interface PackingItem {
   id: string
@@ -29,6 +30,7 @@ interface PrepClientProps {
   tripSlug: string
   packingItems: PackingItem[]
   recommendations: Recommendation[]
+  travelInfo: TripTravelInfo[]
 }
 
 type Tab = 'packing' | 'read' | 'money' | 'health'
@@ -59,71 +61,101 @@ const REC_TYPES: { id: string; label: string; emoji: string }[] = [
   { id: 'music', label: 'Music', emoji: '🎵' },
 ]
 
-type CurrencyCode = 'USD' | 'MAD' | 'EUR'
+// Rotating palette for non-USD currencies — assigned in order, not tied to any specific country.
+const CURRENCY_COLORS = ['#b45309', '#15803d', '#7e22ce', '#0e7490', '#be123c']
+
+// Deterministic string hash — used to pick a stable color for a segment/country name
+// without hardcoding which name maps to which color.
+function hashString(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i)
+  return h
+}
+
+// Small known-country flag lookup for Official Travel Resources — falls back to a
+// generic globe rather than guessing/hardcoding one country as the default.
+const COUNTRY_FLAGS: Record<string, string> = {
+  morocco: '🇲🇦', france: '🇫🇷', canada: '🇨🇦', 'united states': '🇺🇸',
+  spain: '🇪🇸', italy: '🇮🇹', portugal: '🇵🇹', mexico: '🇲🇽', 'united kingdom': '🇬🇧',
+  greece: '🇬🇷', japan: '🇯🇵', thailand: '🇹🇭',
+}
+function countryFlag(name: string): string {
+  return COUNTRY_FLAGS[name.trim().toLowerCase()] || '🌍'
+}
 
 // ── Exchange Rate Widget (bidirectional) ──────────────────────────────
-function ExchangeRateCalculator() {
-  const [activeCurrency, setActiveCurrency] = useState<CurrencyCode>('USD')
+// Fully data-driven: builds its currency list from whichever countries this trip's
+// trip_travel_info rows define, instead of a hardcoded USD/MAD/EUR set.
+function ExchangeRateCalculator({ countries }: { countries: TripTravelInfo[] }) {
+  const CURRENCIES = [
+    { code: 'USD', label: 'US Dollar', symbol: '$', color: '#1d4ed8', fallbackRate: 1 },
+    ...countries
+      .filter((c) => c.currency_code && c.currency_code !== 'USD')
+      .filter((c, i, arr) => arr.findIndex((x) => x.currency_code === c.currency_code) === i) // dedupe
+      .map((c, i) => ({
+        code: c.currency_code!,
+        label: c.currency_name || c.currency_code!,
+        symbol: c.currency_symbol || c.currency_code!,
+        color: CURRENCY_COLORS[i % CURRENCY_COLORS.length],
+        fallbackRate: c.fallback_rate_to_usd || 1,
+      })),
+  ]
+
+  const [activeCurrency, setActiveCurrency] = useState<string>('USD')
   const [inputValue, setInputValue] = useState('100')
-  const [rates, setRates] = useState<{ MAD: number; EUR: number } | null>(null)
+  const [rates, setRates] = useState<Record<string, number> | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchRates() {
+      const fallback: Record<string, number> = { USD: 1 }
+      for (const c of CURRENCIES) fallback[c.code] = c.fallbackRate
       try {
         const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD')
         if (!res.ok) throw new Error('fetch failed')
         const data = await res.json()
-        setRates({ MAD: data.rates.MAD, EUR: data.rates.EUR })
+        const live: Record<string, number> = { USD: 1 }
+        for (const c of CURRENCIES) {
+          live[c.code] = data.rates?.[c.code] ?? c.fallbackRate
+        }
+        setRates(live)
         setLastUpdated(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }))
       } catch {
-        setRates({ MAD: 10.05, EUR: 0.92 })
+        setRates(fallback)
         setLastUpdated(null)
       } finally {
         setLoading(false)
       }
     }
     fetchRates()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countries.map((c) => c.currency_code).join(',')])
 
   // Convert inputValue in activeCurrency → USD (base)
-  function toUSD(amount: number, from: CurrencyCode): number {
+  function toUSD(amount: number, from: string): number {
     if (!rates) return amount
     if (from === 'USD') return amount
-    if (from === 'MAD') return amount / rates.MAD
-    if (from === 'EUR') return amount / rates.EUR
-    return amount
+    return amount / (rates[from] || 1)
   }
 
   const rawAmount = parseFloat(inputValue) || 0
   const usdBase = toUSD(rawAmount, activeCurrency)
 
-  function getConverted(code: CurrencyCode): number {
+  function getConverted(code: string): number {
     if (!rates) return 0
     if (code === 'USD') return usdBase
-    if (code === 'MAD') return usdBase * rates.MAD
-    if (code === 'EUR') return usdBase * rates.EUR
-    return 0
+    return usdBase * (rates[code] || 1)
   }
 
-  function formatRate(from: CurrencyCode, to: CurrencyCode): string {
+  function formatRate(from: string, to: string): string {
     if (!rates) return ''
     const fromUSD = toUSD(1, from)
-    const toAmt = getConverted === undefined ? 0 : (() => {
-      if (to === 'USD') return fromUSD
-      if (to === 'MAD') return fromUSD * rates.MAD
-      if (to === 'EUR') return fromUSD * rates.EUR
-      return 0
-    })()
+    const toAmt = to === 'USD' ? fromUSD : fromUSD * (rates[to] || 1)
     return `1 ${from} = ${toAmt.toFixed(2)} ${to}`
   }
 
-  const CURRENCIES: { code: CurrencyCode; label: string; symbol: string; color: string }[] = [
-    { code: 'USD', label: 'US Dollar',       symbol: '$',  color: '#1d4ed8' },
-    { code: 'MAD', label: 'Moroccan Dirham', symbol: 'DH', color: '#b45309' },
-    { code: 'EUR', label: 'Euro',            symbol: '€',  color: '#15803d' },
-  ]
+  if (CURRENCIES.length <= 1) return null // nothing to convert against
 
   return (
     <div
@@ -157,7 +189,7 @@ function ExchangeRateCalculator() {
               const isActive = activeCurrency === c.code
               const displayValue = isActive
                 ? inputValue
-                : getConverted(c.code).toFixed(c.code === 'MAD' ? 0 : 2)
+                : getConverted(c.code).toFixed(c.fallbackRate > 5 ? 0 : 2)
 
               return (
                 <div
@@ -167,7 +199,7 @@ function ExchangeRateCalculator() {
                       // Switch active currency — convert displayed value to new input
                       const converted = getConverted(c.code)
                       setActiveCurrency(c.code)
-                      setInputValue(c.code === 'MAD' ? converted.toFixed(0) : converted.toFixed(2))
+                      setInputValue(c.fallbackRate > 5 ? converted.toFixed(0) : converted.toFixed(2))
                     }
                   }}
                   className="flex items-center gap-4 px-4 py-3 rounded-sm cursor-pointer transition-all duration-200"
@@ -229,13 +261,19 @@ function ExchangeRateCalculator() {
 }
 
 // ── Main Component ────────────────────────────────────────────────────
-export default function PrepClient({ tripSlug, packingItems, recommendations }: PrepClientProps) {
+export default function PrepClient({ tripSlug, packingItems, recommendations, travelInfo }: PrepClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>('packing')
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
   const [healthPackingList, setHealthPackingList] = useState<Set<string>>(new Set())
-  const [segment, setSegment] = useState<'all' | 'morocco' | 'france'>('all')
+  const [segment, setSegment] = useState<string>('all')
   const [revealedRecs, setRevealedRecs] = useState<Set<string>>(new Set())
   const { traveler } = usePersona()
+
+  // Real segments present in this trip's packing list (was hardcoded to 'morocco'/'france').
+  const segments = Array.from(
+    new Set(packingItems.map((i) => i.segment).filter((s): s is string => !!s && s !== 'all'))
+  )
+  const segmentColor = (seg: string) => CURRENCY_COLORS[Math.abs(hashString(seg)) % CURRENCY_COLORS.length]
 
   function revealRec(id: string) {
     setRevealedRecs((prev) => new Set([...prev, id]))
@@ -302,9 +340,10 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
           Oukala Packing Philosophy
         </p>
         <p className="text-sm text-ink leading-relaxed">
-          Morocco and France require different wardrobes. Plan for layering in Burgundy (June evenings can be 55°F),
-          and modest dress for medinas — knees and shoulders covered. One carry-on each if you can manage it.
-          The best hotel stays leave room for what you find.
+          {travelInfo.length > 1
+            ? `${travelInfo.map((c) => c.country_name).join(' and ')} may call for different wardrobes — check the segment filters below for what's specific to each. `
+            : ''}
+          One carry-on each if you can manage it. The best hotel stays leave room for what you find.
         </p>
       </div>
 
@@ -357,7 +396,7 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
           {/* Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div className="flex gap-2">
-              {(['all', 'morocco', 'france'] as const).map((s) => (
+              {segments.length === 0 ? null : ['all', ...segments].map((s) => (
                 <button
                   key={s}
                   onClick={() => setSegment(s)}
@@ -366,7 +405,7 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
                   }`}
                   style={{ letterSpacing: '0.12em' }}
                 >
-                  {s === 'all' ? 'Full Trip' : s === 'morocco' ? 'Morocco' : 'France'}
+                  {s === 'all' ? 'Full Trip' : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
               ))}
             </div>
@@ -422,8 +461,8 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
                             <span
                               className="shrink-0 text-xs px-2 py-0.5 rounded-sm mt-0.5"
                               style={{
-                                background: item.segment === 'morocco' ? 'rgba(180, 83, 9, 0.1)' : 'rgba(21, 128, 61, 0.1)',
-                                color: item.segment === 'morocco' ? '#b45309' : '#15803d',
+                                background: `${segmentColor(item.segment)}18`,
+                                color: segmentColor(item.segment),
                               }}
                             >
                               {item.segment}
@@ -600,110 +639,117 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
         <div className="space-y-10 max-w-2xl">
 
           {/* Live exchange rate calculator — top of money tab */}
-          <ExchangeRateCalculator />
+          <ExchangeRateCalculator countries={travelInfo} />
 
-          <div>
-            <div className="flex items-center gap-4 mb-6">
-              <p className="label shrink-0">Currencies</p>
-              <div className="flex-1 border-t border-gray-100" />
+          {travelInfo.length > 0 && (
+            <div>
+              <div className="flex items-center gap-4 mb-6">
+                <p className="label shrink-0">Currencies</p>
+                <div className="flex-1 border-t border-gray-100" />
+              </div>
+              <div className="space-y-4">
+                {travelInfo.map((c, i) => {
+                  const color = CURRENCY_COLORS[i % CURRENCY_COLORS.length]
+                  return (
+                    <div
+                      key={c.id}
+                      className="p-6 rounded-sm"
+                      style={{ background: 'rgba(27,43,75,0.03)', borderLeft: `3px solid ${color}` }}
+                    >
+                      <div className="flex items-baseline gap-3 mb-2">
+                        <p className="font-serif font-bold text-navy text-lg">
+                          {c.currency_name} {c.currency_code ? `(${c.currency_code})` : ''}
+                        </p>
+                        {c.fallback_rate_to_usd && (
+                          <p className="text-xs text-ink-muted uppercase tracking-widest">
+                            ~{c.fallback_rate_to_usd} {c.currency_code} = $1 USD
+                          </p>
+                        )}
+                      </div>
+                      {c.exchange_note && <p className="text-sm text-ink leading-relaxed">{c.exchange_note}</p>}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            <div className="space-y-4">
-              {[
-                {
-                  country: 'Morocco',
-                  currency: 'Moroccan Dirham (MAD)',
-                  symbol: 'DH',
-                  rate: '~10 MAD = $1 USD',
-                  tip: 'ATMs in Casablanca and Rabat medinas are reliable. Avoid airport exchange counters. Never exchange money on the street — it is illegal and the rates are fake.',
-                  warning: 'Dirhams cannot be exported — spend or exchange before leaving.',
-                  color: '#b45309',
-                },
-                {
-                  country: 'France',
-                  currency: 'Euro (EUR)',
-                  symbol: '€',
-                  rate: '~0.92 EUR = $1 USD',
-                  tip: 'Cards accepted almost everywhere. Rural wine estates may prefer cash — carry €100 in small bills when visiting Burgundy villages.',
-                  warning: null,
-                  color: '#15803d',
-                },
-              ].map((c) => (
-                <div
-                  key={c.country}
-                  className="p-6 rounded-sm"
-                  style={{ background: 'rgba(27,43,75,0.03)', borderLeft: `3px solid ${c.color}` }}
-                >
-                  <div className="flex items-baseline gap-3 mb-2">
-                    <p className="font-serif font-bold text-navy text-lg">{c.currency}</p>
-                    <p className="text-xs text-ink-muted uppercase tracking-widest">{c.rate}</p>
-                  </div>
-                  <p className="text-sm text-ink leading-relaxed mb-3">{c.tip}</p>
-                  {c.warning && (
-                    <p className="text-xs px-3 py-2 rounded-sm" style={{ background: 'rgba(180,83,9,0.08)', color: '#b45309' }}>
-                      ⚠️ {c.warning}
-                    </p>
-                  )}
+          )}
+
+          {(() => {
+            // Flatten + dedupe connectivity notes across countries (same note often applies to all of them)
+            const seen = new Set<string>()
+            const items = travelInfo.flatMap((c) => c.connectivity_notes || []).filter((item) => {
+              if (seen.has(item.title)) return false
+              seen.add(item.title)
+              return true
+            })
+            if (items.length === 0) return null
+            return (
+              <div>
+                <div className="flex items-center gap-4 mb-6">
+                  <p className="label shrink-0">Phone & Data</p>
+                  <div className="flex-1 border-t border-gray-100" />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center gap-4 mb-6">
-              <p className="label shrink-0">Phone & Data</p>
-              <div className="flex-1 border-t border-gray-100" />
-            </div>
-            <div className="space-y-3">
-              {[
-                { title: 'T-Mobile Magenta / Google Fi', note: 'Both work in Morocco and France with no extra fees. Speeds are acceptable in cities.' },
-                { title: 'Local SIM — Morocco', note: 'Maroc Telecom SIMs available at the airport. A 30-day 20GB data plan costs ~$12. Useful if staying longer.' },
-                { title: 'WhatsApp', note: 'The default messaging app in Morocco — even for hotel concierge. Make sure everyone in the group has it.' },
-                { title: 'Download Offline Maps', note: 'Download Morocco and France maps in Google Maps or Maps.me before you leave. Medinas can be confusing without data.' },
-              ].map((item) => (
-                <div key={item.title} className="flex gap-4 py-4 border-b border-gray-50">
-                  <div className="w-2 h-2 rounded-full bg-gold mt-2 shrink-0" />
-                  <span style={{ display: 'block' }}>
-                    <span className="font-medium text-navy text-sm" style={{ display: 'block' }}>{item.title}</span>
-                    <span className="text-sm text-ink-muted mt-1 leading-relaxed" style={{ display: 'block' }}>{item.note}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center gap-4 mb-6">
-              <p className="label shrink-0">Tipping Guide</p>
-              <div className="flex-1 border-t border-gray-100" />
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left py-2 pr-6 text-xs uppercase tracking-widest text-ink-muted font-normal" style={{ letterSpacing: '0.12em' }}>Service</th>
-                    <th className="text-left py-2 pr-6 text-xs uppercase tracking-widest text-ink-muted font-normal" style={{ letterSpacing: '0.12em' }}>Morocco</th>
-                    <th className="text-left py-2 text-xs uppercase tracking-widest text-ink-muted font-normal" style={{ letterSpacing: '0.12em' }}>France</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { service: 'Restaurant', morocco: '10–15 MAD / person', france: 'Round up, tip not required' },
-                    { service: 'Private Driver / Guide', morocco: '50–100 MAD / day', france: '€10–15 / day' },
-                    { service: 'Hotel Housekeeping', morocco: '10–20 MAD / night', france: '€2–5 / night' },
-                    { service: 'Riad / Guesthouse Staff', morocco: '20–40 MAD / stay', france: 'N/A' },
-                    { service: 'Taxi', morocco: 'Round up to nearest 5 MAD', france: 'Round up or small tip' },
-                    { service: 'Hammam / Spa', morocco: '20–40 MAD', france: '€5–15' },
-                  ].map((row) => (
-                    <tr key={row.service} className="border-b border-gray-50">
-                      <td className="py-3 pr-6 font-medium text-navy">{row.service}</td>
-                      <td className="py-3 pr-6 text-ink-muted">{row.morocco}</td>
-                      <td className="py-3 text-ink-muted">{row.france}</td>
-                    </tr>
+                <div className="space-y-3">
+                  {items.map((item) => (
+                    <div key={item.title} className="flex gap-4 py-4 border-b border-gray-50">
+                      <div className="w-2 h-2 rounded-full bg-gold mt-2 shrink-0" />
+                      <span style={{ display: 'block' }}>
+                        <span className="font-medium text-navy text-sm" style={{ display: 'block' }}>{item.title}</span>
+                        <span className="text-sm text-ink-muted mt-1 leading-relaxed" style={{ display: 'block' }}>{item.note}</span>
+                      </span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
+            )
+          })()}
+
+          {(() => {
+            const withTips = travelInfo.filter((c) => (c.tipping_notes || []).length > 0)
+            if (withTips.length === 0) return null
+            const services = Array.from(new Set(withTips.flatMap((c) => (c.tipping_notes || []).map((t) => t.service))))
+            return (
+              <div>
+                <div className="flex items-center gap-4 mb-6">
+                  <p className="label shrink-0">Tipping Guide</p>
+                  <div className="flex-1 border-t border-gray-100" />
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left py-2 pr-6 text-xs uppercase tracking-widest text-ink-muted font-normal" style={{ letterSpacing: '0.12em' }}>Service</th>
+                        {withTips.map((c) => (
+                          <th key={c.id} className="text-left py-2 pr-6 text-xs uppercase tracking-widest text-ink-muted font-normal" style={{ letterSpacing: '0.12em' }}>
+                            {c.country_name}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {services.map((service) => (
+                        <tr key={service} className="border-b border-gray-50">
+                          <td className="py-3 pr-6 font-medium text-navy">{service}</td>
+                          {withTips.map((c) => {
+                            const note = (c.tipping_notes || []).find((t) => t.service === service)
+                            return (
+                              <td key={c.id} className="py-3 pr-6 text-ink-muted">{note?.local_note || '—'}</td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
+
+          {travelInfo.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-ink-muted text-sm">Money & connectivity details for this trip are coming soon.</p>
             </div>
-          </div>
+          )}
 
         </div>
       )}
@@ -715,38 +761,40 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
             {
               title: 'Before You Leave',
               items: [
-                { label: 'Hepatitis A & B', note: 'Recommended for Morocco if not already vaccinated. Check with your doctor 4–6 weeks before travel.' },
-                { label: 'Typhoid', note: 'Recommended if you plan to eat at local restaurants and street food (you should).' },
-                { label: 'Tetanus', note: 'Ensure you\'re up to date.' },
                 { label: 'Prescriptions', note: 'Bring enough for the full trip plus 5 extra days. Carry in original pharmacy bottles.' },
                 { label: 'Travel Insurance', note: 'Get it. Covers emergency evacuation, trip cancellation, and medical abroad. Recommended: World Nomads or Allianz.' },
+                { label: 'Tetanus', note: "Ensure you're up to date." },
+                ...travelInfo.flatMap((c) =>
+                  (c.vaccination_notes || []).map((v) => ({ label: `${v.label} (${c.country_name})`, note: v.note }))
+                ),
               ],
             },
-            {
-              title: 'Food & Water in Morocco',
-              items: [
-                { label: 'Tap water', note: 'Do not drink tap water in Morocco. Bottled water is cheap and universally available.' },
-                { label: 'Ice', note: 'At luxury riads and rated restaurants, ice is made from filtered water. In markets and casual spots — skip it.' },
-                { label: 'Fresh salads & fruit', note: 'Fine at your riad and high-end restaurants. At markets, peel everything you eat raw.' },
-                { label: 'Street food', note: 'Go for it — but observe turnover. A busy stall with hot fresh food is almost always safe.' },
-              ],
-            },
+            ...(travelInfo.some((c) => (c.food_water_notes || []).length > 0)
+              ? [{
+                  title: 'Food & Water',
+                  items: travelInfo.flatMap((c) =>
+                    (c.food_water_notes || []).map((f) => ({ label: `${f.label} — ${c.country_name}`, note: f.note }))
+                  ),
+                }]
+              : []),
             {
               title: 'Sun & Heat',
               items: [
-                { label: 'SPF 50+', note: 'June UV index in Rabat is 9–10 (very high). Reapply every 2 hours outdoors.' },
-                { label: 'Hydration', note: 'Morocco in June is warm — 80°F+. Drink 3+ liters per day when active. Keep a bottle in your day bag.' },
-                { label: 'Timing', note: 'Plan major medina walks before 10am or after 4pm. The midday pause is real — lunch in the shade, then a rest.' },
+                { label: 'Hydration', note: 'Drink 3+ liters of water per day when active outdoors. Keep a bottle in your day bag.' },
+                { label: 'Timing', note: 'Plan strenuous outdoor activity for morning or late afternoon — take a rest during peak sun.' },
+                ...travelInfo
+                  .filter((c) => c.sun_safety_note)
+                  .map((c) => ({ label: `Sun notes — ${c.country_name}`, note: c.sun_safety_note as string })),
               ],
             },
             {
               title: 'Pharmacy Essentials to Pack',
               items: [
-                { label: 'Imodium / Pepto-Bismol', note: 'Just in case. The food is worth it.' },
-                { label: 'Antihistamine', note: 'For dust, cats (riads have them), or seasonal allergies.' },
+                { label: 'Imodium / Pepto-Bismol', note: 'Just in case.' },
+                { label: 'Antihistamine', note: 'For dust, pet dander, or seasonal allergies.' },
                 { label: 'Pain reliever', note: 'Ibuprofen and Tylenol. Harder to find familiar brands abroad.' },
-                { label: 'Blister kit', note: 'Medinas involve serious cobblestone walking. Bring moleskin and bandages.' },
-                { label: 'Hand sanitizer', note: 'Small travel size. Mosques and medinas have limited sinks.' },
+                { label: 'Blister kit', note: 'For unexpectedly long walking days. Bring moleskin and bandages.' },
+                { label: 'Hand sanitizer', note: 'Small travel size — useful anywhere public restrooms are scarce.' },
               ],
             },
           ].map((section) => (
@@ -782,55 +830,45 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
           ))}
 
           {/* ── Official Travel Resources ── */}
+          {travelInfo.length > 0 && (
           <div>
             <div className="flex items-center gap-4 mb-5">
               <p className="label shrink-0">Official Travel Resources</p>
               <div className="flex-1 border-t border-gray-100" />
             </div>
             <div className="space-y-3">
-              {[
-                {
-                  flag: '🇲🇦',
-                  country: 'Morocco',
-                  advisory: { label: 'State Dept Advisory', url: 'https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/Morocco.html' },
-                  embassy: { label: 'U.S. Embassy Rabat', url: 'https://ma.usembassy.gov' },
-                  smartTraveler: true,
-                },
-                {
-                  flag: '🇫🇷',
-                  country: 'France',
-                  advisory: { label: 'State Dept Advisory', url: 'https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/France.html' },
-                  embassy: { label: 'U.S. Embassy Paris', url: 'https://fr.usembassy.gov' },
-                  smartTraveler: true,
-                },
-              ].map((c) => (
+              {travelInfo.map((c) => (
                 <div
-                  key={c.country}
+                  key={c.id}
                   className="flex items-center gap-4 px-5 py-4 rounded-sm border border-gray-100 bg-white"
                 >
-                  <span style={{ fontSize: '1.4rem' }}>{c.flag}</span>
+                  <span style={{ fontSize: '1.4rem' }}>{countryFlag(c.country_name)}</span>
                   <span className="flex-1">
-                    <span className="font-medium text-navy text-sm block">{c.country}</span>
+                    <span className="font-medium text-navy text-sm block">{c.country_name}</span>
                   </span>
                   <div className="flex gap-2 flex-wrap justify-end">
-                    <a
-                      href={c.advisory.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs px-3 py-1.5 rounded-sm border border-gray-200 text-ink-muted hover:border-navy hover:text-navy transition-all"
-                      style={{ letterSpacing: '0.06em' }}
-                    >
-                      {c.advisory.label} →
-                    </a>
-                    <a
-                      href={c.embassy.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs px-3 py-1.5 rounded-sm border border-gray-200 text-ink-muted hover:border-navy hover:text-navy transition-all"
-                      style={{ letterSpacing: '0.06em' }}
-                    >
-                      {c.embassy.label} →
-                    </a>
+                    {c.advisory_url && (
+                      <a
+                        href={c.advisory_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs px-3 py-1.5 rounded-sm border border-gray-200 text-ink-muted hover:border-navy hover:text-navy transition-all"
+                        style={{ letterSpacing: '0.06em' }}
+                      >
+                        State Dept Advisory →
+                      </a>
+                    )}
+                    {c.embassy_url && (
+                      <a
+                        href={c.embassy_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs px-3 py-1.5 rounded-sm border border-gray-200 text-ink-muted hover:border-navy hover:text-navy transition-all"
+                        style={{ letterSpacing: '0.06em' }}
+                      >
+                        {c.embassy_name || 'Embassy'} →
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
@@ -854,6 +892,7 @@ export default function PrepClient({ tripSlug, packingItems, recommendations }: 
               </div>
             </div>
           </div>
+          )}
 
         </div>
       )}
