@@ -19,6 +19,9 @@ interface HuntClientProps {
   tripId: string
   tripSlug: string   // kept for UI breadcrumb links only
   challenges: Challenge[]
+  tiebreakerRule: string
+  startDate?: string
+  endDate?: string
 }
 
 const supabase = createClient(
@@ -29,7 +32,19 @@ const supabase = createClient(
 // Submissions: challengeId → travelerKeys who completed it
 type Submissions = Record<string, string[]>
 
-const TIEBREAKER_RULE = 'Whoever spots the first stork in Morocco wins the tiebreaker.'
+function formatTripWindow(start?: string, end?: string): string {
+  if (!start || !end) return 'the trip window'
+  try {
+    const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric' }
+    const s = new Date(start + 'T00:00:00')
+    const e = new Date(end + 'T00:00:00')
+    const startStr = s.toLocaleDateString('en-US', opts)
+    const endStr = e.toLocaleDateString('en-US', { ...opts, year: 'numeric' })
+    return `${startStr}–${endStr}`
+  } catch {
+    return 'the trip window'
+  }
+}
 
 function getPointsColor(pts: number): string {
   if (pts >= 10) return '#f97316'
@@ -93,7 +108,7 @@ function getPointsLabel(pts: number): string {
   return 'Discovery'
 }
 
-export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientProps) {
+export default function HuntClient({ tripId, tripSlug, challenges, tiebreakerRule, startDate, endDate }: HuntClientProps) {
   const { traveler, travelers } = usePersona()
   const [submissions, setSubmissions] = useState<Submissions>({})
   const [finaleVerse, setFinaleVerse] = useState('')
@@ -341,7 +356,7 @@ export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientP
           className="mt-3 text-center text-xs text-ink-muted"
           style={{ fontSize: '0.68rem', letterSpacing: '0.04em' }}
         >
-          Tiebreaker: {TIEBREAKER_RULE}
+          Tiebreaker: {tiebreakerRule}
         </p>
       </div>
 
@@ -647,11 +662,11 @@ export default function HuntClient({ tripId, tripSlug, challenges }: HuntClientP
         <p className="label mb-3">Rules</p>
         <ul className="space-y-2">
           {[
-            'Challenges must be completed during the trip window (June 9–24, 2026).',
+            `Challenges must be completed during the trip window (${formatTripWindow(startDate, endDate)}).`,
             'Photo challenges require evidence — the honor system applies to all others.',
             'Challenges can be completed by multiple travelers; points go to each finisher.',
             'The Grand Finale verse is evaluated on originality, imagery, and journey resonance.',
-            'Tiebreaker: first stork spotted in Morocco. No ties allowed.',
+            `Tiebreaker: ${tiebreakerRule} No ties allowed.`,
           ].map((rule) => (
             <li key={rule} className="flex gap-3 text-sm text-ink" style={{ color: '#555', lineHeight: '1.6' }}>
               <div className="w-1.5 h-1.5 rounded-full bg-navy mt-2 shrink-0 opacity-40" />

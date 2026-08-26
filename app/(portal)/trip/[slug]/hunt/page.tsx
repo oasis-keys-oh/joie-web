@@ -77,8 +77,8 @@ export default async function HuntPage({ params }: HuntPageProps) {
           The Hunt
         </h1>
         <p className="text-white opacity-50 mt-3 text-sm max-w-2xl" style={{ lineHeight: '1.7' }}>
-          Eleven challenges across Morocco and France. Points. Stakes. A Grand Finale verse.
-          The tiebreaker rule: whoever spots the first stork wins.
+          {challenges.length} challenge{challenges.length === 1 ? '' : 's'} across your journey. Points. Stakes. A Grand Finale verse.
+          {' '}The tiebreaker rule: {trip.hunt_tiebreaker_rule || 'whoever finishes first wins.'}
         </p>
 
         {/* Points legend */}
@@ -101,7 +101,14 @@ export default async function HuntPage({ params }: HuntPageProps) {
         </div>
       </div>
 
-      <HuntClient tripId={trip.id} tripSlug={params.slug} challenges={challenges} />
+      <HuntClient
+        tripId={trip.id}
+        tripSlug={params.slug}
+        challenges={challenges}
+        tiebreakerRule={trip.hunt_tiebreaker_rule || 'Whoever finishes first wins the tiebreaker.'}
+        startDate={trip.start_date}
+        endDate={trip.end_date}
+      />
     </div>
   )
 }
