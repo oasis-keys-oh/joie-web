@@ -290,6 +290,7 @@ export async function upsertTravelerAction(formData: FormData) {
     // Personality & travel
     travel_style:     formData.get('travel_style') as string || null,
     personality:      formData.get('personality') as string || null,
+    role_label:       formData.get('role_label') as string || null,
     interests:        formData.get('interests') as string || null,
     activities:       formData.get('activities') as string || null,
     music_preferences: formData.get('music_preferences') as string || null,
