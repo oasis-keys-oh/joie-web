@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { usePersona } from '@/components/PersonaProvider'
-import type { TripTravelInfo } from '@/lib/types'
+import type { TripTravelInfo, TripReferenceSection } from '@/lib/types'
 
 interface PackingItem {
   id: string
@@ -31,16 +31,11 @@ interface PrepClientProps {
   packingItems: PackingItem[]
   recommendations: Recommendation[]
   travelInfo: TripTravelInfo[]
+  referenceSections?: TripReferenceSection[]
+  guideCity?: string
 }
 
-type Tab = 'packing' | 'read' | 'money' | 'health'
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'packing', label: 'What to Pack' },
-  { id: 'read', label: 'Read / Watch / Listen' },
-  { id: 'money', label: 'Money & Connectivity' },
-  { id: 'health', label: 'Health & Safety' },
-]
+type Tab = 'packing' | 'read' | 'money' | 'health' | 'guide'
 
 const PACKING_CATEGORIES = [
   'Documents & Finance',
@@ -261,8 +256,27 @@ function ExchangeRateCalculator({ countries }: { countries: TripTravelInfo[] }) 
 }
 
 // ── Main Component ────────────────────────────────────────────────────
-export default function PrepClient({ tripSlug, packingItems, recommendations, travelInfo }: PrepClientProps) {
+export default function PrepClient({
+  tripSlug,
+  packingItems,
+  recommendations,
+  travelInfo,
+  referenceSections = [],
+  guideCity,
+}: PrepClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>('packing')
+
+  // The Guide tab only appears when there's actually curator content to show —
+  // no empty tab for trips that haven't had this researched yet.
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'packing', label: 'What to Pack' },
+    { id: 'read', label: 'Read / Watch / Listen' },
+    { id: 'money', label: 'Money & Connectivity' },
+    { id: 'health', label: 'Health & Safety' },
+    ...(referenceSections.length > 0
+      ? [{ id: 'guide' as Tab, label: `The Guide: Explore ${guideCity || 'the Destination'}` }]
+      : []),
+  ]
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set())
   const [healthPackingList, setHealthPackingList] = useState<Set<string>>(new Set())
   const [segment, setSegment] = useState<string>('all')
@@ -894,6 +908,104 @@ export default function PrepClient({ tripSlug, packingItems, recommendations, tr
           </div>
           )}
 
+        </div>
+      )}
+
+      {/* ── THE GUIDE TAB ── */}
+      {activeTab === 'guide' && (
+        <div className="space-y-14 max-w-2xl">
+          {referenceSections.map((section) => (
+            <div key={section.id}>
+              <div className="flex items-center gap-4 mb-6">
+                <p className="label shrink-0">{section.title}</p>
+                <div className="flex-1 border-t border-gray-100" />
+              </div>
+              <div className="space-y-4">
+                {section.content.map((item, idx) => {
+                  // Tip-style items: { title, body }
+                  if (item.title && item.body) {
+                    return (
+                      <div key={idx} className="flex gap-4 py-3 border-b border-gray-50">
+                        <div className="w-2 h-2 rounded-full bg-gold mt-2 shrink-0" />
+                        <span className="flex-1">
+                          <span className="font-medium text-navy text-sm block">{item.title}</span>
+                          <span className="text-sm text-ink-muted mt-1 leading-relaxed block">{item.body}</span>
+                        </span>
+                      </div>
+                    )
+                  }
+                  // Neighborhood-style items: { neighborhood, when, character }
+                  if (item.neighborhood) {
+                    return (
+                      <div
+                        key={idx}
+                        className="px-5 py-4 rounded-sm border border-gray-100 bg-white"
+                      >
+                        <p className="font-medium text-navy text-sm mb-1">{item.neighborhood}</p>
+                        {item.when && (
+                          <p className="text-xs text-gold mb-1.5" style={{ letterSpacing: '0.04em' }}>
+                            {item.when}
+                          </p>
+                        )}
+                        {item.character && (
+                          <p className="text-sm text-ink-muted leading-relaxed">{item.character}</p>
+                        )}
+                      </div>
+                    )
+                  }
+                  // Attraction / drink-style items: { name, description, why?, cost?, rating?, address?, must_do?, photo_spot?, one_to_order? }
+                  if (item.name) {
+                    return (
+                      <div
+                        key={idx}
+                        className="px-5 py-4 rounded-sm border border-gray-100 bg-white"
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-1.5">
+                          <p className="font-medium text-navy text-sm">{item.name}</p>
+                          {item.rating && (
+                            <span
+                              className="text-xs shrink-0 px-2 py-0.5 rounded-sm"
+                              style={{ background: 'rgba(201,168,76,0.12)', color: '#8a6d1f' }}
+                            >
+                              {item.rating}
+                            </span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p className="text-sm text-ink-muted leading-relaxed mb-2">{item.description}</p>
+                        )}
+                        <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-muted">
+                          {item.address && <span>📍 {item.address}</span>}
+                          {item.cost && <span>{item.cost}</span>}
+                          {item.must_do && <span>Must do: {item.must_do}</span>}
+                        </div>
+                        {item.why && (
+                          <p className="text-xs text-ink-muted italic mt-2">{item.why}</p>
+                        )}
+                        {item.one_to_order && (
+                          <p className="text-xs text-navy mt-2">
+                            <strong>Order this:</strong> {item.one_to_order}
+                          </p>
+                        )}
+                        {item.photo_spot && (
+                          <p className="text-xs text-ink-muted mt-2">📷 {item.photo_spot}</p>
+                        )}
+                      </div>
+                    )
+                  }
+                  // Fallback: plain paragraph-style items: { text }
+                  if (item.text) {
+                    return (
+                      <p key={idx} className="text-sm text-ink leading-relaxed">
+                        {item.text}
+                      </p>
+                    )
+                  }
+                  return null
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

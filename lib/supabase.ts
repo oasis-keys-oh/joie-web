@@ -135,6 +135,39 @@ export async function getTripTravelInfo(tripId: string) {
   return (data || []) as import('./types').TripTravelInfo[]
 }
 
+// Curator research sections (neighborhood guides, top sights, bar picks, "things you
+// wouldn't think about" tips) — backs the Prep page's "The Guide" tab.
+//
+// Deliberately excludes section_keys that duplicate content now rendered elsewhere on
+// the site: trip-narrative essays (already on the trip index page via trip.trip_narrative),
+// cultural/tipping norms (already on this same Prep page via trip_travel_info), and
+// per-location photo spots / dining guides (already on each day page via
+// trip_days.photo_spot / trip_days.wine_food_picks + confirmed events). Only the
+// genuinely non-duplicated exploratory content — neighborhoods, top sights, bar picks,
+// general travel tips — surfaces here.
+const REDUNDANT_REFERENCE_SECTION_KEYS = [
+  'why_the_salish_vow', // trip-narrative essay — duplicates trip.trip_narrative
+  'cultural_norms',     // tipping/taxes/etiquette — duplicates trip_travel_info
+  'photo_spots',        // duplicates trip_days.photo_spot per day
+  'dining_guide',       // duplicates trip_days.wine_food_picks + confirmed events
+]
+
+export async function getTripReferenceSections(tripId: string) {
+  const { data, error } = await supabase
+    .from('trip_reference_sections')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    console.error('[getTripReferenceSections]', error)
+    return []
+  }
+  return (data || []).filter(
+    (s) => !REDUNDANT_REFERENCE_SECTION_KEYS.includes(s.section_key)
+  ) as import('./types').TripReferenceSection[]
+}
+
 export async function getHotelForDay(tripId: string, date: string) {
   const { data, error } = await supabase
     .from('reference_items')

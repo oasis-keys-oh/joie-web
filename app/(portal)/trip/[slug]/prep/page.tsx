@@ -1,4 +1,4 @@
-import { getTripBySlug, getTripTravelInfo } from '@/lib/supabase'
+import { getTripBySlug, getTripTravelInfo, getTripReferenceSections } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import PrepClient from '@/components/PrepClient'
@@ -57,14 +57,16 @@ export default async function PrepPage({ params }: PrepPageProps) {
   let packingItems: any[] = []
   let recommendations: any[] = []
   let travelInfo: any[] = []
+  let referenceSections: any[] = []
 
   try {
     const t = await getTripBySlug(params.slug)
     trip = t
-    ;[packingItems, recommendations, travelInfo] = await Promise.all([
+    ;[packingItems, recommendations, travelInfo, referenceSections] = await Promise.all([
       getPackingItems(t.id),
       getRecommendations(t.id),
       getTripTravelInfo(t.id),
+      getTripReferenceSections(t.id),
     ])
   } catch {
     // fall through to null check below
@@ -115,6 +117,8 @@ export default async function PrepPage({ params }: PrepPageProps) {
         packingItems={packingItems}
         recommendations={recommendations}
         travelInfo={travelInfo}
+        referenceSections={referenceSections}
+        guideCity={trip.home_base ? trip.home_base.split(',')[0].trim() : undefined}
       />
     </div>
   )

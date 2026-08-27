@@ -150,6 +150,20 @@ export interface TripTravelInfo {
   sort_order?: number;
 }
 
+// Curator research sections on a trip (neighborhood guides, top sights, bar
+// recommendations, "things you wouldn't think about" tips, etc). `content` is
+// deliberately loosely typed — different section_keys use different shapes
+// (paragraphs, tables, tip lists, attraction cards). Consumers should render
+// defensively based on which fields are present on each item.
+export interface TripReferenceSection {
+  id: string;
+  trip_id: string;
+  section_key: string;
+  title: string;
+  content: Array<Record<string, any>>;
+  sort_order?: number;
+}
+
 export interface Event {
   id: string;
   day_id: string;
