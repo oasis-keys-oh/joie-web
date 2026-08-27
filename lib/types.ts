@@ -75,6 +75,7 @@ export interface Trip {
   end_date: string;
   home_base?: string;
   hunt_tiebreaker_rule?: string;
+  closing_photo_url?: string;
   web_slug: string;
   web_password?: string;
   color_theme?: ColorTheme;

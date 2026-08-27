@@ -55,7 +55,7 @@ function dayDate(tripStartDate: string, dayNumber: number): string {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; web_password?: string; story_image_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
+interface Trip { id: string; title: string; web_slug: string; start_date: string; end_date: string; web_password?: string; story_image_url?: string; closing_photo_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string }
 interface Day { id: string; day_number: number; date: string; title: string; region: string; location?: string; timezone?: string; location_lat?: number; location_lng?: number; map_stop_label?: string; morning_brief?: string; wow_moment?: string; gpx_url?: string; hero_image_url?: string; hero_image_url_2?: string; hero_image_url_3?: string; hero_image_url_4?: string; footer_image_url?: string }
 interface Traveler { id: string; traveler_key?: string; full_name: string; email?: string; phone?: string; partner_name?: string; pillow_firmness?: string; coffee_order?: string; curtains_arrival?: string; dietary_notes?: string; mobility_notes?: string; anniversary_date?: string; personality?: string; notes?: string; wine_preferences?: string; interests?: string; travel_style?: string; allergies?: string; languages?: string; activities?: string; bucket_list?: string; music_preferences?: string; age?: number }
 interface Event { id: string; day_id: string; type: string; title: string; subtitle?: string; time_start?: string; time_end?: string; timezone?: string; timezone_end?: string; address?: string; phone?: string; confirmation?: string; booking_url?: string; booking_status?: string; notes?: string; traveler_keys?: string[] }
@@ -4680,6 +4680,23 @@ function SettingsTab({ trip }: { trip: Trip }) {
           <div className="mt-3 rounded-sm overflow-hidden border border-gray-100" style={{ aspectRatio: '16/9', maxWidth: '400px' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={trip.story_image_url} alt="Story banner preview" className="w-full h-full object-cover" />
+          </div>
+        )}
+      </Card>
+
+      {/* Closing / footer photo — bottom of the trip home page */}
+      <Card>
+        <h4 className="font-semibold text-sm text-navy mb-1">Closing Photo (Journey Footer)</h4>
+        <p className="text-xs text-ink-muted mb-5">
+          Full-bleed image shown at the very bottom of the trip page. Leave blank to auto-select
+          from the last day&apos;s region/location instead — this field only matters if you want a
+          specific photo rather than the auto-picked one.
+        </p>
+        <TripTextField trip={trip} field="closing_photo_url" label="Closing Photo URL" placeholder="https://images.unsplash.com/photo-HASH?w=2400&h=900&fit=crop&q=85" isImage />
+        {trip.closing_photo_url && (
+          <div className="mt-3 rounded-sm overflow-hidden border border-gray-100" style={{ aspectRatio: '16/6', maxWidth: '400px' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={trip.closing_photo_url} alt="Closing photo preview" className="w-full h-full object-cover" />
           </div>
         )}
       </Card>

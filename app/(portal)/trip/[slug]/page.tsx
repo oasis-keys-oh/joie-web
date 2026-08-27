@@ -470,7 +470,13 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       {(() => {
         const lastDay = days[days.length - 1]
         const closingRegion = lastDay?.region || lastDay?.location || trip.title
-        return <PhotoFooter region={closingRegion} caption={lastDay?.region || undefined} />
+        return (
+          <PhotoFooter
+            region={closingRegion}
+            caption={lastDay?.region || undefined}
+            overrideUrl={trip.closing_photo_url || undefined}
+          />
+        )
       })()}
 
       {/* Floating curator chat — always visible on trip pages */}
